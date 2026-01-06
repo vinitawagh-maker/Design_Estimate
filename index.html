@@ -392,6 +392,149 @@
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
         }
+
+        /* Budget Calculator */
+        .budget-calculator {
+            border: 1px solid #444;
+            margin-bottom: 20px;
+            background: #111;
+        }
+
+        .calculator-header {
+            background: #1a1a00;
+            padding: 10px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            transition: background 0.2s;
+        }
+
+        .calculator-header:hover {
+            background: #2d2d00;
+        }
+
+        .calculator-header span:first-child {
+            color: #ffd700;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .calculator-body {
+            padding: 16px;
+            display: block;
+            overflow: hidden;
+            max-height: 1000px;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+        }
+
+        .calculator-body.collapsed {
+            max-height: 0;
+            padding: 0 16px;
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .calc-group label {
+            display: block;
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 6px;
+        }
+
+        .calc-group input,
+        .calc-group select {
+            font-size: 13px;
+        }
+
+        .complexity-override-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .complexity-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .complexity-item label {
+            flex: 1;
+            color: #ccc;
+        }
+
+        .complexity-item select {
+            flex: 0 0 100px;
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        /* Industry Indicator */
+        .industry-indicator {
+            display: inline-block;
+            width: 16px;
+            text-align: center;
+            cursor: help;
+            font-weight: 700;
+            margin-left: 4px;
+        }
+
+        .industry-indicator.above {
+            color: #ff6666;
+        }
+
+        .industry-indicator.below {
+            color: #66ff66;
+        }
+
+        .industry-indicator.within {
+            color: #ffd700;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 220px;
+            background-color: #1a1a1a;
+            color: #ffd700;
+            text-align: left;
+            border: 1px solid #ffd700;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -110px;
+            font-size: 11px;
+            line-height: 1.4;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .calc-grid {
+                grid-template-columns: 1fr;
+            }
+            .complexity-override-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -471,13 +614,75 @@
                 <div id="step4" class="step-content hidden">
                     <div class="section-title">DISCIPLINE BUDGETS</div>
                     <div class="section-desc">Enter total budget per discipline (distributed by claiming %)</div>
-                    
+
+                    <!-- CALCULATOR SECTION -->
+                    <div id="budget-calculator" class="budget-calculator">
+                        <div class="calculator-header" onclick="toggleCalculator()">
+                            <span>▼ COST ESTIMATOR</span>
+                            <span id="calculator-status" style="color: #888; font-size: 11px;">Configure inputs below</span>
+                        </div>
+
+                        <div id="calculator-body" class="calculator-body">
+                            <div class="calc-grid">
+                                <div class="calc-group">
+                                    <label>Total Construction Cost ($)</label>
+                                    <input type="number" id="calc-construction-cost" placeholder="5000000" min="0" step="10000">
+                                </div>
+
+                                <div class="calc-group">
+                                    <label>Design Fee (% of Construction)</label>
+                                    <input type="number" id="calc-design-fee-pct" value="15" min="1" max="30" step="0.5">
+                                </div>
+
+                                <div class="calc-group">
+                                    <label>Project Type</label>
+                                    <select id="calc-project-type" onchange="updateComplexityDefaults()">
+                                        <option value="Bridge">Bridge</option>
+                                        <option value="Highway/Roadway" selected>Highway/Roadway</option>
+                                        <option value="Drainage/Utilities">Drainage/Utilities</option>
+                                    </select>
+                                </div>
+
+                                <div class="calc-group">
+                                    <label>Project Complexity (Reference)</label>
+                                    <select id="calc-global-complexity">
+                                        <option value="Low">Low</option>
+                                        <option value="Medium" selected>Medium</option>
+                                        <option value="High">High</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 12px; padding: 8px; background: #1a1a00; border: 1px solid #333; font-size: 12px;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Total Design Fee:</span>
+                                    <span id="calc-total-fee" style="color: #ffd700; font-weight: 600;">$0</span>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end;">
+                                <button class="btn btn-sm" onclick="showComplexityOverrides()">Advanced Settings</button>
+                                <button class="btn btn-primary btn-sm" onclick="calculateBudgets()">Calculate Estimates</button>
+                            </div>
+
+                            <!-- Advanced Complexity Overrides (hidden by default) -->
+                            <div id="complexity-overrides" class="hidden" style="margin-top: 16px; border-top: 1px solid #333; padding-top: 16px;">
+                                <div style="font-size: 11px; color: #888; margin-bottom: 8px;">
+                                    Override auto-assigned complexity levels per discipline:
+                                </div>
+                                <div id="complexity-grid" class="complexity-override-grid"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ascii-line">────────────────────────────────────────────────────</div>
+
                     <div style="max-height: 350px; overflow-y: auto;">
                         <table id="budget-table"></table>
                     </div>
-                    
+
                     <div class="ascii-line">────────────────────────────────────────────────────</div>
-                    
+
                     <div style="display: flex; justify-content: space-between; color: #fff;">
                         <span>TOTAL PROJECT BUDGET:</span>
                         <span id="total-budget" style="color: #ffd700; font-size: 18px;">$0</span>
@@ -608,7 +813,16 @@
             packages: [],
             budgets: {},
             claiming: {},
-            dates: {}
+            dates: {},
+            calculator: {
+                totalConstructionCost: 0,
+                designFeePercent: 15,
+                projectType: 'Highway/Roadway',
+                totalDesignFee: 0,
+                complexityOverrides: {},
+                isCalculated: false,
+                manualEdits: {}
+            }
         };
 
         let currentStep = 1;
@@ -660,6 +874,123 @@
 
         // Default claiming scheme
         const defaultClaiming = [10, 15, 25, 30, 20];
+
+        // Project complexity mapping per project type
+        const projectComplexityMap = {
+            'Bridge': {
+                'Structures': 'High', 'Design Management': 'Medium', 'Civil': 'High',
+                'Drainage': 'Medium', 'Electrical': 'Low', 'Environmental': 'Medium',
+                'Traffic': 'Low', 'ITS': 'Low', 'Mechanical': 'Medium',
+                'Geotechnical': 'High', 'Survey': 'Medium', 'Landscape': 'Low',
+                'Utilities': 'Medium', 'Lighting': 'Low', 'Pavement': 'Low',
+                'Bridges': 'High', 'Safety': 'Medium', 'QA/QC': 'Medium'
+            },
+            'Highway/Roadway': {
+                'Structures': 'Medium', 'Design Management': 'High', 'Civil': 'High',
+                'Drainage': 'High', 'Electrical': 'Medium', 'Environmental': 'Medium',
+                'Traffic': 'High', 'ITS': 'Medium', 'Mechanical': 'Low',
+                'Geotechnical': 'Medium', 'Survey': 'High', 'Landscape': 'Medium',
+                'Utilities': 'High', 'Lighting': 'Medium', 'Pavement': 'High',
+                'Bridges': 'Medium', 'Safety': 'High', 'QA/QC': 'Medium'
+            },
+            'Drainage/Utilities': {
+                'Structures': 'Low', 'Design Management': 'Medium', 'Civil': 'Medium',
+                'Drainage': 'High', 'Electrical': 'Medium', 'Environmental': 'High',
+                'Traffic': 'Low', 'ITS': 'Low', 'Mechanical': 'Low',
+                'Geotechnical': 'Medium', 'Survey': 'Medium', 'Landscape': 'Low',
+                'Utilities': 'High', 'Lighting': 'Low', 'Pavement': 'Medium',
+                'Bridges': 'Low', 'Safety': 'Low', 'QA/QC': 'Medium'
+            }
+        };
+
+        // Industry standard design fee distribution percentages
+        const industryDistribution = {
+            'Bridge': {
+                'Structures': { Low: 18, Medium: 22, High: 28 },
+                'Design Management': { Low: 8, Medium: 10, High: 13 },
+                'Civil': { Low: 10, Medium: 12, High: 15 },
+                'Drainage': { Low: 3, Medium: 5, High: 7 },
+                'Electrical': { Low: 2, Medium: 3, High: 5 },
+                'Environmental': { Low: 3, Medium: 4, High: 6 },
+                'Traffic': { Low: 2, Medium: 3, High: 4 },
+                'ITS': { Low: 1, Medium: 2, High: 3 },
+                'Mechanical': { Low: 2, Medium: 3, High: 4 },
+                'Geotechnical': { Low: 6, Medium: 8, High: 10 },
+                'Survey': { Low: 3, Medium: 4, High: 5 },
+                'Landscape': { Low: 1, Medium: 2, High: 3 },
+                'Utilities': { Low: 2, Medium: 3, High: 4 },
+                'Lighting': { Low: 1, Medium: 2, High: 3 },
+                'Pavement': { Low: 2, Medium: 3, High: 4 },
+                'Bridges': { Low: 18, Medium: 22, High: 28 },
+                'Safety': { Low: 2, Medium: 3, High: 4 },
+                'QA/QC': { Low: 3, Medium: 4, High: 6 }
+            },
+            'Highway/Roadway': {
+                'Structures': { Low: 10, Medium: 15, High: 20 },
+                'Design Management': { Low: 10, Medium: 12, High: 15 },
+                'Civil': { Low: 15, Medium: 18, High: 22 },
+                'Drainage': { Low: 8, Medium: 10, High: 12 },
+                'Electrical': { Low: 4, Medium: 6, High: 8 },
+                'Environmental': { Low: 4, Medium: 5, High: 7 },
+                'Traffic': { Low: 8, Medium: 10, High: 12 },
+                'ITS': { Low: 3, Medium: 5, High: 7 },
+                'Mechanical': { Low: 2, Medium: 3, High: 4 },
+                'Geotechnical': { Low: 4, Medium: 6, High: 8 },
+                'Survey': { Low: 5, Medium: 7, High: 9 },
+                'Landscape': { Low: 3, Medium: 4, High: 6 },
+                'Utilities': { Low: 6, Medium: 8, High: 10 },
+                'Lighting': { Low: 3, Medium: 4, High: 6 },
+                'Pavement': { Low: 10, Medium: 12, High: 15 },
+                'Bridges': { Low: 8, Medium: 10, High: 12 },
+                'Safety': { Low: 4, Medium: 5, High: 7 },
+                'QA/QC': { Low: 3, Medium: 4, High: 6 }
+            },
+            'Drainage/Utilities': {
+                'Structures': { Low: 5, Medium: 8, High: 10 },
+                'Design Management': { Low: 8, Medium: 10, High: 12 },
+                'Civil': { Low: 12, Medium: 15, High: 18 },
+                'Drainage': { Low: 18, Medium: 22, High: 26 },
+                'Electrical': { Low: 4, Medium: 6, High: 8 },
+                'Environmental': { Low: 8, Medium: 10, High: 14 },
+                'Traffic': { Low: 2, Medium: 3, High: 4 },
+                'ITS': { Low: 1, Medium: 2, High: 3 },
+                'Mechanical': { Low: 2, Medium: 3, High: 4 },
+                'Geotechnical': { Low: 5, Medium: 7, High: 9 },
+                'Survey': { Low: 4, Medium: 6, High: 8 },
+                'Landscape': { Low: 2, Medium: 3, High: 4 },
+                'Utilities': { Low: 16, Medium: 20, High: 24 },
+                'Lighting': { Low: 2, Medium: 3, High: 4 },
+                'Pavement': { Low: 6, Medium: 8, High: 10 },
+                'Bridges': { Low: 4, Medium: 6, High: 8 },
+                'Safety': { Low: 2, Medium: 3, High: 4 },
+                'QA/QC': { Low: 4, Medium: 5, High: 7 }
+            }
+        };
+
+        // Industry benchmark ranges for variance indicators
+        const industryBenchmarks = {
+            'Bridge': {
+                'Structures': { min: 0.18, max: 0.30, typical: 0.24 },
+                'Design Management': { min: 0.08, max: 0.15, typical: 0.11 },
+                'Civil': { min: 0.10, max: 0.16, typical: 0.13 },
+                'Geotechnical': { min: 0.06, max: 0.12, typical: 0.09 }
+            },
+            'Highway/Roadway': {
+                'Structures': { min: 0.10, max: 0.22, typical: 0.16 },
+                'Design Management': { min: 0.10, max: 0.16, typical: 0.13 },
+                'Civil': { min: 0.15, max: 0.24, typical: 0.19 },
+                'Drainage': { min: 0.08, max: 0.14, typical: 0.11 },
+                'Traffic': { min: 0.08, max: 0.14, typical: 0.11 },
+                'Pavement': { min: 0.10, max: 0.17, typical: 0.13 }
+            },
+            'Drainage/Utilities': {
+                'Structures': { min: 0.05, max: 0.12, typical: 0.08 },
+                'Design Management': { min: 0.08, max: 0.13, typical: 0.10 },
+                'Drainage': { min: 0.18, max: 0.28, typical: 0.23 },
+                'Utilities': { min: 0.16, max: 0.26, typical: 0.21 },
+                'Environmental': { min: 0.08, max: 0.16, typical: 0.12 }
+            }
+        };
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -836,29 +1167,49 @@
                     <tr>
                         <th>DISCIPLINE</th>
                         <th style="text-align: right; width: 200px;">TOTAL BUDGET</th>
+                        <th style="text-align: center; width: 40px;">IND</th>
                     </tr>
                 </thead>
                 <tbody>
             `;
-            
+
             projectData.disciplines.forEach(disc => {
                 const budget = projectData.budgets[disc] || exampleBudgets[disc] || 100000;
                 html += `
-                    <tr>
+                    <tr data-disc="${disc}">
                         <td>${disc}</td>
                         <td>
                             <input type="number" class="table-input budget-input" data-disc="${disc}" value="${budget}">
                         </td>
+                        <td class="indicator-cell" style="text-align: center;">•</td>
                     </tr>
                 `;
             });
-            
+
             html += '</tbody>';
             table.innerHTML = html;
-            
+
+            // Add input listeners with manual edit tracking
             document.querySelectorAll('.budget-input').forEach(input => {
-                input.addEventListener('input', updateTotalBudget);
+                input.addEventListener('input', () => {
+                    // Mark as manually edited
+                    projectData.calculator.manualEdits[input.dataset.disc] = true;
+                    updateTotalBudget();
+                });
             });
+
+            // Initialize calculator if first time
+            if (!projectData.calculator.isCalculated) {
+                initCalculator();
+            } else {
+                // Re-populate calculator values
+                document.getElementById('calc-construction-cost').value = projectData.calculator.totalConstructionCost;
+                document.getElementById('calc-design-fee-pct').value = projectData.calculator.designFeePercent;
+                document.getElementById('calc-project-type').value = projectData.calculator.projectType;
+                updateCalculatorTotal();
+                updateIndustryIndicators();
+            }
+
             updateTotalBudget();
         }
 
@@ -868,6 +1219,244 @@
                 total += parseFloat(input.value) || 0;
             });
             document.getElementById('total-budget').textContent = '$' + total.toLocaleString();
+
+            // Update indicators if calculation was performed
+            if (projectData.calculator.isCalculated) {
+                updateIndustryIndicators();
+            }
+        }
+
+        // Calculator Functions
+        function toggleCalculator() {
+            const body = document.getElementById('calculator-body');
+            const header = document.querySelector('.calculator-header span:first-child');
+
+            if (body.classList.contains('collapsed')) {
+                body.classList.remove('collapsed');
+                header.textContent = '▼ COST ESTIMATOR';
+            } else {
+                body.classList.add('collapsed');
+                header.textContent = '► COST ESTIMATOR';
+            }
+        }
+
+        function showComplexityOverrides() {
+            const overrideSection = document.getElementById('complexity-overrides');
+
+            if (overrideSection.classList.contains('hidden')) {
+                buildComplexityOverrideGrid();
+                overrideSection.classList.remove('hidden');
+            } else {
+                overrideSection.classList.add('hidden');
+            }
+        }
+
+        function buildComplexityOverrideGrid() {
+            const grid = document.getElementById('complexity-grid');
+            const projectType = document.getElementById('calc-project-type').value;
+
+            let html = '';
+            projectData.disciplines.forEach(disc => {
+                const autoComplexity = projectComplexityMap[projectType][disc] || 'Medium';
+                const savedOverride = projectData.calculator.complexityOverrides[disc];
+                const currentValue = savedOverride || autoComplexity;
+
+                html += `
+                    <div class="complexity-item">
+                        <label>${disc}</label>
+                        <select class="complexity-override" data-disc="${disc}" onchange="saveComplexityOverride(this)">
+                            <option value="Low" ${currentValue === 'Low' ? 'selected' : ''}>Low</option>
+                            <option value="Medium" ${currentValue === 'Medium' ? 'selected' : ''}>Medium</option>
+                            <option value="High" ${currentValue === 'High' ? 'selected' : ''}>High</option>
+                        </select>
+                        ${savedOverride ? '<span style="color: #ffd700;">*</span>' : ''}
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+        }
+
+        function saveComplexityOverride(selectEl) {
+            const disc = selectEl.dataset.disc;
+            const value = selectEl.value;
+            const projectType = document.getElementById('calc-project-type').value;
+            const autoValue = projectComplexityMap[projectType][disc];
+
+            // Only save if different from auto-assigned
+            if (value !== autoValue) {
+                projectData.calculator.complexityOverrides[disc] = value;
+            } else {
+                delete projectData.calculator.complexityOverrides[disc];
+            }
+        }
+
+        function updateComplexityDefaults() {
+            // Clear overrides when project type changes
+            projectData.calculator.complexityOverrides = {};
+
+            // Rebuild override grid if visible
+            const overrideSection = document.getElementById('complexity-overrides');
+            if (!overrideSection.classList.contains('hidden')) {
+                buildComplexityOverrideGrid();
+            }
+
+            // Recalculate total design fee
+            updateCalculatorTotal();
+        }
+
+        function updateCalculatorTotal() {
+            const constructionCost = parseFloat(document.getElementById('calc-construction-cost').value) || 0;
+            const designFeePct = parseFloat(document.getElementById('calc-design-fee-pct').value) || 0;
+            const totalFee = constructionCost * (designFeePct / 100);
+
+            document.getElementById('calc-total-fee').textContent = '$' + totalFee.toLocaleString();
+            projectData.calculator.totalConstructionCost = constructionCost;
+            projectData.calculator.designFeePercent = designFeePct;
+            projectData.calculator.totalDesignFee = totalFee;
+        }
+
+        function initCalculator() {
+            document.getElementById('calc-construction-cost').addEventListener('input', updateCalculatorTotal);
+            document.getElementById('calc-design-fee-pct').addEventListener('input', updateCalculatorTotal);
+            updateCalculatorTotal();
+        }
+
+        function calculateBudgets() {
+            const constructionCost = parseFloat(document.getElementById('calc-construction-cost').value);
+            const designFeePct = parseFloat(document.getElementById('calc-design-fee-pct').value);
+            const projectType = document.getElementById('calc-project-type').value;
+
+            // Validation
+            if (!constructionCost || constructionCost <= 0) {
+                alert('Enter a valid construction cost.');
+                return;
+            }
+
+            if (!designFeePct || designFeePct <= 0 || designFeePct > 30) {
+                alert('Design fee must be between 1% and 30%.');
+                return;
+            }
+
+            const totalDesignFee = constructionCost * (designFeePct / 100);
+
+            // Get selected disciplines
+            const selectedDisciplines = projectData.disciplines;
+
+            // Calculate raw percentages for selected disciplines
+            let rawPercentages = {};
+            let totalRawPercentage = 0;
+
+            selectedDisciplines.forEach(disc => {
+                // Get complexity (override or auto-assigned)
+                const complexity = projectData.calculator.complexityOverrides[disc] ||
+                    projectComplexityMap[projectType][disc] ||
+                    'Medium';
+
+                // Get industry percentage
+                const distribution = industryDistribution[projectType];
+                const percentage = distribution[disc] ? distribution[disc][complexity] : 5;
+
+                rawPercentages[disc] = percentage;
+                totalRawPercentage += percentage;
+            });
+
+            // Normalize percentages to sum to 100%
+            let normalizedBudgets = {};
+            selectedDisciplines.forEach(disc => {
+                const normalizedPct = (rawPercentages[disc] / totalRawPercentage) * 100;
+                normalizedBudgets[disc] = totalDesignFee * (normalizedPct / 100);
+            });
+
+            // Apply calculated budgets to table
+            selectedDisciplines.forEach(disc => {
+                const input = document.querySelector(`.budget-input[data-disc="${disc}"]`);
+                if (input && !projectData.calculator.manualEdits[disc]) {
+                    input.value = Math.round(normalizedBudgets[disc]);
+                    projectData.budgets[disc] = normalizedBudgets[disc];
+                }
+            });
+
+            // Mark as calculated
+            projectData.calculator.isCalculated = true;
+            projectData.calculator.projectType = projectType;
+
+            // Update totals and indicators
+            updateTotalBudget();
+            updateIndustryIndicators();
+
+            // Collapse calculator and update status
+            document.getElementById('calculator-body').classList.add('collapsed');
+            document.querySelector('.calculator-header span:first-child').textContent = '► COST ESTIMATOR';
+            document.getElementById('calculator-status').textContent = 'Estimates applied • Click to edit';
+            document.getElementById('calculator-status').style.color = '#00ff00';
+
+            updateStatus('BUDGETS CALCULATED');
+        }
+
+        function updateIndustryIndicators() {
+            if (!projectData.calculator.isCalculated) return;
+
+            const totalBudget = Object.values(projectData.budgets).reduce((sum, val) => sum + val, 0);
+            const projectType = projectData.calculator.projectType;
+
+            projectData.disciplines.forEach(disc => {
+                const budget = projectData.budgets[disc] || 0;
+                const ratio = budget / totalBudget;
+
+                // Get industry benchmark (if exists)
+                const benchmark = industryBenchmarks[projectType] && industryBenchmarks[projectType][disc];
+
+                if (!benchmark) {
+                    // No benchmark available, use neutral indicator
+                    const cell = document.querySelector(`tr[data-disc="${disc}"] .indicator-cell`);
+                    if (cell) cell.innerHTML = '<span class="industry-indicator within">•</span>';
+                    return;
+                }
+
+                // Determine variance
+                let indicator = '';
+                let variance = 0;
+
+                if (ratio > benchmark.max) {
+                    variance = ((ratio - benchmark.typical) / benchmark.typical * 100).toFixed(1);
+                    indicator = `
+                        <span class="industry-indicator above tooltip">↑
+                            <span class="tooltiptext">
+                                Above industry range<br>
+                                Your ratio: ${(ratio * 100).toFixed(1)}%<br>
+                                Industry range: ${(benchmark.min * 100).toFixed(1)}% - ${(benchmark.max * 100).toFixed(1)}%<br>
+                                Variance: +${variance}%
+                            </span>
+                        </span>
+                    `;
+                } else if (ratio < benchmark.min) {
+                    variance = ((benchmark.typical - ratio) / benchmark.typical * 100).toFixed(1);
+                    indicator = `
+                        <span class="industry-indicator below tooltip">↓
+                            <span class="tooltiptext">
+                                Below industry range<br>
+                                Your ratio: ${(ratio * 100).toFixed(1)}%<br>
+                                Industry range: ${(benchmark.min * 100).toFixed(1)}% - ${(benchmark.max * 100).toFixed(1)}%<br>
+                                Variance: -${variance}%
+                            </span>
+                        </span>
+                    `;
+                } else {
+                    indicator = `
+                        <span class="industry-indicator within tooltip">•
+                            <span class="tooltiptext">
+                                Within industry range<br>
+                                Your ratio: ${(ratio * 100).toFixed(1)}%<br>
+                                Industry range: ${(benchmark.min * 100).toFixed(1)}% - ${(benchmark.max * 100).toFixed(1)}%
+                            </span>
+                        </span>
+                    `;
+                }
+
+                const cell = document.querySelector(`tr[data-disc="${disc}"] .indicator-cell`);
+                if (cell) cell.innerHTML = indicator;
+            });
         }
 
         function buildClaimingTable() {
