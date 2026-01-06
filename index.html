@@ -2385,71 +2385,237 @@
                 projectData.disciplines.map(d => `<option value="${d}">${d}</option>`).join('');
         }
 
+        /**
+         * Creates and configures the Chart.js chart
+         * Handles both line charts and stacked bar charts with percentage labels
+         */
         function createChart() {
             const ctx = document.getElementById('performance-chart').getContext('2d');
             if (chart) chart.destroy();
             
             const data = getChartData();
             const type = document.getElementById('chart-type').value;
+            const isStackedBar = type === 'bar' && data.datasets;
+            
+            // Configure chart options based on chart type
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        display: isStackedBar,
+                        position: 'bottom',
+                        labels: {
+                            color: '#ffd700',
+                            font: { size: 11 },
+                            padding: 10,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1a1a1a',
+                        titleColor: '#ffd700',
+                        bodyColor: '#fff',
+                        borderColor: '#ffd700',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: (context) => {
+                                const label = context.dataset.label || '';
+                                const value = '$' + context.raw.toLocaleString();
+                                
+                                if (isStackedBar && data.totals) {
+                                    const total = data.totals[context.dataIndex];
+                                    const percentage = total > 0 
+                                        ? ((context.raw / total) * 100).toFixed(1) 
+                                        : '0.0';
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                                
+                                return label + ': ' + value;
+                            },
+                            footer: (tooltipItems) => {
+                                if (isStackedBar && data.totals) {
+                                    const index = tooltipItems[0].dataIndex;
+                                    return 'Total: $' + data.totals[index].toLocaleString();
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        stacked: isStackedBar,
+                        grid: { color: '#333' },
+                        ticks: {
+                            color: '#888',
+                            callback: v => '$' + (v/1000).toFixed(0) + 'K'
+                        }
+                    },
+                    x: {
+                        stacked: isStackedBar,
+                        grid: { color: '#222' },
+                        ticks: { color: '#888' }
+                    }
+                }
+            };
+            
+            // Store totals for percentage calculation in plugin
+            let chartTotals = null;
+            if (isStackedBar && data.totals) {
+                chartTotals = data.totals;
+            }
+            
+            // Configure datasets based on chart type
+            let datasets;
+            if (isStackedBar) {
+                datasets = data.datasets;
+            } else {
+                datasets = [
+                    {
+                        label: 'PLANNED',
+                        data: data.planned,
+                        borderColor: '#ffd700',
+                        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'ACTUAL',
+                        data: data.actual,
+                        borderColor: '#00ff00',
+                        backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.3
+                    }
+                ];
+            }
             
             chart = new Chart(ctx, {
                 type: type,
                 data: {
                     labels: data.labels,
-                    datasets: [
-                        {
-                            label: 'PLANNED',
-                            data: data.planned,
-                            borderColor: '#ffd700',
-                            backgroundColor: type === 'bar' ? '#ffd700' : 'rgba(255, 215, 0, 0.1)',
-                            borderWidth: 2,
-                            fill: type === 'line',
-                            tension: 0.3
-                        },
-                        {
-                            label: 'ACTUAL',
-                            data: data.actual,
-                            borderColor: '#00ff00',
-                            backgroundColor: type === 'bar' ? '#00ff00' : 'rgba(0, 255, 0, 0.1)',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            fill: false,
-                            tension: 0.3
-                        }
-                    ]
+                    datasets: datasets
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#1a1a1a',
-                            titleColor: '#ffd700',
-                            bodyColor: '#fff',
-                            borderColor: '#ffd700',
-                            borderWidth: 1,
-                            callbacks: {
-                                label: ctx => ctx.dataset.label + ': $' + ctx.raw.toLocaleString()
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: '#333' },
-                            ticks: {
-                                color: '#888',
-                                callback: v => '$' + (v/1000).toFixed(0) + 'K'
-                            }
-                        },
-                        x: {
-                            grid: { color: '#222' },
-                            ticks: { color: '#888' }
-                        }
+                options: chartOptions,
+                plugins: isStackedBar ? [{
+                    id: 'percentageLabels',
+                    afterDatasetsDraw: (chart) => {
+                        if (!chartTotals) return;
+                        
+                        const ctx = chart.ctx;
+                        
+                        chart.data.datasets.forEach((dataset, datasetIndex) => {
+                            const meta = chart.getDatasetMeta(datasetIndex);
+                            meta.data.forEach((bar, index) => {
+                                const value = dataset.data[index];
+                                const total = chartTotals[index];
+                                
+                                if (total > 0 && value > 0) {
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    
+                                    // Only show label if segment is large enough (>= 5%)
+                                    if (percentage >= 5) {
+                                        const x = bar.x;
+                                        // For stacked bars, bar.y is the top and bar.base is the bottom
+                                        const segmentHeight = Math.abs(bar.base - bar.y);
+                                        
+                                        // Only show if segment is tall enough to be readable
+                                        if (segmentHeight > 15) {
+                                            const y = bar.y + (segmentHeight / 2);
+                                            
+                                            ctx.save();
+                                            ctx.fillStyle = '#fff';
+                                            ctx.strokeStyle = '#000';
+                                            ctx.lineWidth = 2;
+                                            ctx.font = 'bold 10px JetBrains Mono';
+                                            ctx.textAlign = 'center';
+                                            ctx.textBaseline = 'middle';
+                                            
+                                            // Add text stroke for better visibility
+                                            ctx.strokeText(percentage + '%', x, y);
+                                            ctx.fillText(percentage + '%', x, y);
+                                            ctx.restore();
+                                        }
+                                    }
+                                }
+                            });
+                        });
                     }
-                }
+                }] : []
             });
+        }
+
+        /**
+         * Generates a color palette for disciplines with distinct, visible colors
+         * @param {number} count - Number of colors needed
+         * @returns {Array<string>} Array of color hex codes
+         */
+        function generateDisciplineColors(count) {
+            // Distinct color palette optimized for visibility and contrast
+            const colors = [
+                '#ffd700', // Gold (primary)
+                '#00ff88', // Green
+                '#00aaff', // Blue
+                '#ff6b6b', // Red
+                '#9b59b6', // Purple
+                '#f39c12', // Orange
+                '#1abc9c', // Turquoise
+                '#e74c3c', // Dark Red
+                '#3498db', // Light Blue
+                '#2ecc71', // Dark Green
+                '#e67e22', // Dark Orange
+                '#16a085', // Dark Turquoise
+                '#c0392b', // Darker Red
+                '#8e44ad', // Dark Purple
+                '#2980b9', // Dark Blue
+                '#27ae60', // Darker Green
+                '#d35400', // Very Dark Orange
+                '#7f8c8d'  // Gray
+            ];
+            return colors.slice(0, count);
+        }
+
+        /**
+         * Collects chart items grouped by discipline
+         * @param {string} disciplineFilter - Selected discipline filter ('all' or discipline name)
+         * @returns {Object} Object with items per discipline and all dates
+         */
+        function collectChartItemsByDiscipline(disciplineFilter) {
+            const itemsByDiscipline = {};
+            const allDates = [];
+            const disciplinesToShow = disciplineFilter === 'all' 
+                ? projectData.disciplines 
+                : [disciplineFilter];
+
+            disciplinesToShow.forEach(discipline => {
+                itemsByDiscipline[discipline] = [];
+                const disciplineBudget = projectData.budgets[discipline] || 0;
+                
+                projectData.packages.forEach(packageName => {
+                    const key = `${discipline}-${packageName}`;
+                    const dates = projectData.dates[key];
+                    const claimPct = projectData.claiming[key] || 0;
+                    const packageBudget = disciplineBudget * (claimPct / 100);
+                    
+                    if (dates && dates.start && dates.end) {
+                        const startDate = new Date(dates.start);
+                        const endDate = new Date(dates.end);
+                        itemsByDiscipline[discipline].push({
+                            start: startDate,
+                            end: endDate,
+                            budget: packageBudget
+                        });
+                        allDates.push(startDate, endDate);
+                    }
+                });
+            });
+
+            return { itemsByDiscipline, allDates };
         }
 
         /**
@@ -2557,28 +2723,101 @@
         }
 
         /**
+         * Generates stacked chart data points per discipline
+         * @param {Date} startDate - Chart start date
+         * @param {Date} endDate - Chart end date
+         * @param {Object} itemsByDiscipline - Items grouped by discipline
+         * @param {string} viewType - 'cumulative' or 'monthly'
+         * @returns {{labels: Array<string>, datasets: Array<Object>}}
+         */
+        /**
+         * Generates stacked chart data with discipline colors
+         * @param {Date} startDate - Chart start date
+         * @param {Date} endDate - Chart end date
+         * @param {Object} itemsByDiscipline - Items grouped by discipline
+         * @param {string} viewType - 'cumulative' or 'monthly'
+         * @returns {{labels: Array<string>, datasets: Array<Object>, totals: Array<number>}}
+         */
+        function generateStackedChartData(startDate, endDate, itemsByDiscipline, viewType) {
+            const labels = [];
+            const disciplines = Object.keys(itemsByDiscipline);
+            const colors = generateDisciplineColors(disciplines.length);
+            const datasets = disciplines.map((discipline, index) => ({
+                label: discipline,
+                data: [],
+                backgroundColor: colors[index],
+                borderColor: colors[index],
+                borderWidth: 1
+            }));
+            
+            const totals = []; // Store total for each month to calculate percentages
+            let cumulativeByDiscipline = {};
+            disciplines.forEach(disc => cumulativeByDiscipline[disc] = 0);
+            
+            const current = new Date(startDate);
+            while (current <= endDate) {
+                labels.push(current.toLocaleDateString('en-US', { year: '2-digit', month: 'short' }));
+                
+                let monthTotal = 0;
+                disciplines.forEach((discipline, index) => {
+                    const monthly = calculateMonthlyBudget(current, itemsByDiscipline[discipline]);
+                    let value = monthly;
+                    
+                    if (viewType === 'cumulative') {
+                        cumulativeByDiscipline[discipline] += monthly;
+                        value = cumulativeByDiscipline[discipline];
+                    }
+                    
+                    const rounded = Math.round(value);
+                    datasets[index].data.push(rounded);
+                    monthTotal += rounded;
+                });
+                
+                totals.push(monthTotal);
+                current.setMonth(current.getMonth() + 1);
+            }
+            
+            return { labels, datasets, totals };
+        }
+
+        /**
          * Gets chart data based on current filters and view type
-         * @returns {{labels: Array<string>, planned: Array<number>, actual: Array<number>}}
+         * @returns {{labels: Array<string>, planned: Array<number>, actual: Array<number>} | {labels: Array<string>, datasets: Array<Object>}}
          */
         function getChartData() {
             const disciplineFilter = document.getElementById('filter-discipline').value;
             const viewType = document.getElementById('view-type').value;
+            const chartType = document.getElementById('chart-type').value;
             
-            // Collect items and dates
-            const { items, allDates } = collectChartItems(disciplineFilter);
-            
-            if (!allDates.length) {
-                return { labels: ['N/A'], planned: [0], actual: [0] };
+            // For stacked bar charts, use discipline-grouped data
+            if (chartType === 'bar') {
+                const { itemsByDiscipline, allDates } = collectChartItemsByDiscipline(disciplineFilter);
+                
+                if (!allDates.length) {
+                    return { labels: ['N/A'], datasets: [] };
+                }
+                
+                const dateRange = calculateChartDateRange(allDates);
+                if (!dateRange) {
+                    return { labels: ['N/A'], datasets: [] };
+                }
+                
+                return generateStackedChartData(dateRange.start, dateRange.end, itemsByDiscipline, viewType);
+            } else {
+                // For line charts, use original format
+                const { items, allDates } = collectChartItems(disciplineFilter);
+                
+                if (!allDates.length) {
+                    return { labels: ['N/A'], planned: [0], actual: [0] };
+                }
+                
+                const dateRange = calculateChartDateRange(allDates);
+                if (!dateRange) {
+                    return { labels: ['N/A'], planned: [0], actual: [0] };
+                }
+                
+                return generateChartDataPoints(dateRange.start, dateRange.end, items, viewType);
             }
-            
-            // Calculate date range
-            const dateRange = calculateChartDateRange(allDates);
-            if (!dateRange) {
-                return { labels: ['N/A'], planned: [0], actual: [0] };
-            }
-            
-            // Generate data points
-            return generateChartDataPoints(dateRange.start, dateRange.end, items, viewType);
         }
 
         function updateChart() {
