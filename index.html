@@ -197,7 +197,7 @@
             padding: 10px 12px;
             cursor: pointer;
             font-size: 13px;
-            color: #888;
+            color: #fff;
             transition: all 0.2s;
         }
         
@@ -844,7 +844,7 @@
                             <div class="calc-grid">
                                 <div class="calc-group">
                                     <label>Total Construction Cost ($)</label>
-                                    <input type="number" id="calc-construction-cost" placeholder="5000000" min="0" step="10000">
+                                    <input type="text" id="calc-construction-cost" placeholder="5,000,000" inputmode="numeric">
                                 </div>
 
                                 <div class="calc-group">
@@ -1096,7 +1096,7 @@
         // Discipline list with pre-selected items
         const allDisciplines = [
             { name: 'Structures', selected: true },
-            { name: 'Design Management', selected: true },
+            { name: 'Design PM', selected: true },
             { name: 'Civil', selected: false },
             { name: 'Drainage', selected: false },
             { name: 'Electrical', selected: false },
@@ -1111,14 +1111,16 @@
             { name: 'Lighting', selected: false },
             { name: 'Pavement', selected: false },
             { name: 'Bridges', selected: false },
-            { name: 'Safety', selected: false },
-            { name: 'QA/QC', selected: false }
+            { name: 'H&H', selected: false },
+            { name: 'Communications', selected: false },
+            { name: 'Architecture', selected: false },
+            { name: 'Systems', selected: false }
         ];
 
         // Example budgets [in the future we will use a database to get the budgets]
         const exampleBudgets = {
             'Structures': 450000,
-            'Design Management': 180000,
+            'Design PM': 180000,
             'Civil': 320000,
             'Drainage': 95000,
             'Electrical': 210000,
@@ -1133,8 +1135,10 @@
             'Lighting': 75000,
             'Pavement': 280000,
             'Bridges': 520000,
-            'Safety': 60000,
-            'QA/QC': 95000
+            'H&H': 120000,
+            'Communications': 95000,
+            'Architecture': 150000,
+            'Systems': 180000
         };
 
         // Default claiming scheme
@@ -1171,28 +1175,31 @@
         // Project complexity mapping per project type
         const projectComplexityMap = {
             'Bridge': {
-                'Structures': 'High', 'Design Management': 'Medium', 'Civil': 'High',
+                'Structures': 'High', 'Design PM': 'Medium', 'Civil': 'High',
                 'Drainage': 'Medium', 'Electrical': 'Low', 'Environmental': 'Medium',
                 'Traffic': 'Low', 'ITS': 'Low', 'Mechanical': 'Medium',
                 'Geotechnical': 'High', 'Survey': 'Medium', 'Landscape': 'Low',
                 'Utilities': 'Medium', 'Lighting': 'Low', 'Pavement': 'Low',
-                'Bridges': 'High', 'Safety': 'Medium', 'QA/QC': 'Medium'
+                'Bridges': 'High', 'H&H': 'Medium', 'Communications': 'Low',
+                'Architecture': 'Medium', 'Systems': 'Medium'
             },
             'Highway/Roadway': {
-                'Structures': 'Medium', 'Design Management': 'High', 'Civil': 'High',
+                'Structures': 'Medium', 'Design PM': 'High', 'Civil': 'High',
                 'Drainage': 'High', 'Electrical': 'Medium', 'Environmental': 'Medium',
                 'Traffic': 'High', 'ITS': 'Medium', 'Mechanical': 'Low',
                 'Geotechnical': 'Medium', 'Survey': 'High', 'Landscape': 'Medium',
                 'Utilities': 'High', 'Lighting': 'Medium', 'Pavement': 'High',
-                'Bridges': 'Medium', 'Safety': 'High', 'QA/QC': 'Medium'
+                'Bridges': 'Medium', 'H&H': 'High', 'Communications': 'Medium',
+                'Architecture': 'Low', 'Systems': 'Medium'
             },
             'Drainage/Utilities': {
-                'Structures': 'Low', 'Design Management': 'Medium', 'Civil': 'Medium',
+                'Structures': 'Low', 'Design PM': 'Medium', 'Civil': 'Medium',
                 'Drainage': 'High', 'Electrical': 'Medium', 'Environmental': 'High',
                 'Traffic': 'Low', 'ITS': 'Low', 'Mechanical': 'Low',
                 'Geotechnical': 'Medium', 'Survey': 'Medium', 'Landscape': 'Low',
                 'Utilities': 'High', 'Lighting': 'Low', 'Pavement': 'Medium',
-                'Bridges': 'Low', 'Safety': 'Low', 'QA/QC': 'Medium'
+                'Bridges': 'Low', 'H&H': 'High', 'Communications': 'Low',
+                'Architecture': 'Low', 'Systems': 'Low'
             }
         };
 
@@ -1200,7 +1207,7 @@
         const industryDistribution = {
             'Bridge': {
                 'Structures': { Low: 18, Medium: 22, High: 28 },
-                'Design Management': { Low: 8, Medium: 10, High: 13 },
+                'Design PM': { Low: 8, Medium: 10, High: 13 },
                 'Civil': { Low: 10, Medium: 12, High: 15 },
                 'Drainage': { Low: 3, Medium: 5, High: 7 },
                 'Electrical': { Low: 2, Medium: 3, High: 5 },
@@ -1215,12 +1222,14 @@
                 'Lighting': { Low: 1, Medium: 2, High: 3 },
                 'Pavement': { Low: 2, Medium: 3, High: 4 },
                 'Bridges': { Low: 18, Medium: 22, High: 28 },
-                'Safety': { Low: 2, Medium: 3, High: 4 },
-                'QA/QC': { Low: 3, Medium: 4, High: 6 }
+                'H&H': { Low: 4, Medium: 6, High: 8 },
+                'Communications': { Low: 2, Medium: 3, High: 4 },
+                'Architecture': { Low: 3, Medium: 4, High: 6 },
+                'Systems': { Low: 3, Medium: 5, High: 7 }
             },
             'Highway/Roadway': {
                 'Structures': { Low: 10, Medium: 15, High: 20 },
-                'Design Management': { Low: 10, Medium: 12, High: 15 },
+                'Design PM': { Low: 10, Medium: 12, High: 15 },
                 'Civil': { Low: 15, Medium: 18, High: 22 },
                 'Drainage': { Low: 8, Medium: 10, High: 12 },
                 'Electrical': { Low: 4, Medium: 6, High: 8 },
@@ -1235,12 +1244,14 @@
                 'Lighting': { Low: 3, Medium: 4, High: 6 },
                 'Pavement': { Low: 10, Medium: 12, High: 15 },
                 'Bridges': { Low: 8, Medium: 10, High: 12 },
-                'Safety': { Low: 4, Medium: 5, High: 7 },
-                'QA/QC': { Low: 3, Medium: 4, High: 6 }
+                'H&H': { Low: 6, Medium: 8, High: 10 },
+                'Communications': { Low: 3, Medium: 4, High: 6 },
+                'Architecture': { Low: 2, Medium: 3, High: 4 },
+                'Systems': { Low: 4, Medium: 5, High: 7 }
             },
             'Drainage/Utilities': {
                 'Structures': { Low: 5, Medium: 8, High: 10 },
-                'Design Management': { Low: 8, Medium: 10, High: 12 },
+                'Design PM': { Low: 8, Medium: 10, High: 12 },
                 'Civil': { Low: 12, Medium: 15, High: 18 },
                 'Drainage': { Low: 18, Medium: 22, High: 26 },
                 'Electrical': { Low: 4, Medium: 6, High: 8 },
@@ -1255,8 +1266,10 @@
                 'Lighting': { Low: 2, Medium: 3, High: 4 },
                 'Pavement': { Low: 6, Medium: 8, High: 10 },
                 'Bridges': { Low: 4, Medium: 6, High: 8 },
-                'Safety': { Low: 2, Medium: 3, High: 4 },
-                'QA/QC': { Low: 4, Medium: 5, High: 7 }
+                'H&H': { Low: 8, Medium: 10, High: 12 },
+                'Communications': { Low: 2, Medium: 3, High: 4 },
+                'Architecture': { Low: 1, Medium: 2, High: 3 },
+                'Systems': { Low: 3, Medium: 4, High: 5 }
             }
         };
 
@@ -1264,13 +1277,13 @@
         const industryBenchmarks = {
             'Bridge': {
                 'Structures': { min: 0.18, max: 0.30, typical: 0.24 },
-                'Design Management': { min: 0.08, max: 0.15, typical: 0.11 },
+                'Design PM': { min: 0.08, max: 0.15, typical: 0.11 },
                 'Civil': { min: 0.10, max: 0.16, typical: 0.13 },
                 'Geotechnical': { min: 0.06, max: 0.12, typical: 0.09 }
             },
             'Highway/Roadway': {
                 'Structures': { min: 0.10, max: 0.22, typical: 0.16 },
-                'Design Management': { min: 0.10, max: 0.16, typical: 0.13 },
+                'Design PM': { min: 0.10, max: 0.16, typical: 0.13 },
                 'Civil': { min: 0.15, max: 0.24, typical: 0.19 },
                 'Drainage': { min: 0.08, max: 0.14, typical: 0.11 },
                 'Traffic': { min: 0.08, max: 0.14, typical: 0.11 },
@@ -1278,7 +1291,7 @@
             },
             'Drainage/Utilities': {
                 'Structures': { min: 0.05, max: 0.12, typical: 0.08 },
-                'Design Management': { min: 0.08, max: 0.13, typical: 0.10 },
+                'Design PM': { min: 0.08, max: 0.13, typical: 0.10 },
                 'Drainage': { min: 0.18, max: 0.28, typical: 0.23 },
                 'Utilities': { min: 0.16, max: 0.26, typical: 0.21 },
                 'Environmental': { min: 0.08, max: 0.16, typical: 0.12 }
@@ -1431,7 +1444,9 @@
                     break;
                 case 4:
                     document.querySelectorAll('.budget-input').forEach(input => {
-                        projectData.budgets[input.dataset.disc] = parseFloat(input.value) || 0;
+                        // Remove commas before parsing
+                        const value = parseFloat(input.value.replace(/,/g, '')) || 0;
+                        projectData.budgets[input.dataset.disc] = value;
                     });
                     break;
                 case 5:
@@ -1524,11 +1539,15 @@
 
             projectData.disciplines.forEach(disc => {
                 const budget = projectData.budgets[disc] || exampleBudgets[disc] || 100000;
+                const formattedBudget = Math.round(budget).toLocaleString('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                });
                 html += `
                     <tr data-disc="${disc}">
                         <td>${disc}</td>
                         <td>
-                            <input type="number" class="table-input budget-input" data-disc="${disc}" value="${budget}">
+                            <input type="text" class="table-input budget-input" data-disc="${disc}" value="${formattedBudget}">
                         </td>
                         <td class="indicator-cell" style="text-align: center;">•</td>
                     </tr>
@@ -1538,11 +1557,47 @@
             html += '</tbody>';
             table.innerHTML = html;
 
-            // Add input listeners with manual edit tracking
+            // Add input listeners with manual edit tracking and formatting
             document.querySelectorAll('.budget-input').forEach(input => {
-                input.addEventListener('input', () => {
+                // Validate input to only allow numbers and commas
+                input.addEventListener('keydown', function(event) {
+                    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+                    if (allowedKeys.includes(event.key)) {
+                        return;
+                    }
+                    if (event.ctrlKey || event.metaKey) {
+                        if (['a', 'c', 'v', 'x'].includes(event.key.toLowerCase())) {
+                            return;
+                        }
+                    }
+                    if (!/[\d,]/.test(event.key)) {
+                        event.preventDefault();
+                    }
+                });
+                
+                // Format on blur
+                input.addEventListener('blur', function() {
+                    const value = parseFloat(this.value.replace(/,/g, '')) || 0;
+                    if (value > 0) {
+                        this.value = Math.round(value).toLocaleString('en-US', {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                        });
+                    } else {
+                        this.value = '';
+                    }
+                });
+                
+                // Remove formatting on focus for easier editing
+                input.addEventListener('focus', function() {
+                    const value = parseFloat(this.value.replace(/,/g, '')) || 0;
+                    this.value = value > 0 ? value.toString() : '';
+                });
+                
+                // Track manual edits and update total
+                input.addEventListener('input', function() {
                     // Mark as manually edited
-                    projectData.calculator.manualEdits[input.dataset.disc] = true;
+                    projectData.calculator.manualEdits[this.dataset.disc] = true;
                     updateTotalBudget();
                 });
             });
@@ -1552,10 +1607,17 @@
                 initCalculator();
             } else {
                 // Re-populate calculator values
-                document.getElementById('calc-construction-cost').value = projectData.calculator.totalConstructionCost;
+                const costInput = document.getElementById('calc-construction-cost');
+                const cost = projectData.calculator.totalConstructionCost || 0;
+                costInput.value = cost > 0 ? Math.round(cost).toLocaleString('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                }) : '';
                 document.getElementById('calc-design-fee-pct').value = projectData.calculator.designFeePercent;
                 document.getElementById('calc-project-type').value = projectData.calculator.projectType;
-                updateCalculatorTotal();
+                
+                // Re-initialize calculator to set up event listeners
+                initCalculator();
                 updateIndustryIndicators();
             }
 
@@ -1568,9 +1630,11 @@
         function updateTotalBudget() {
             let total = 0;
             document.querySelectorAll('.budget-input').forEach(input => {
-                total += parseFloat(input.value) || 0;
+                // Remove commas before parsing
+                const value = parseFloat(input.value.replace(/,/g, '')) || 0;
+                total += value;
             });
-            document.getElementById('total-budget').textContent = '$' + total.toLocaleString();
+            document.getElementById('total-budget').textContent = formatCurrency(total);
 
             // Update indicators if calculation was performed
             if (projectData.calculator.isCalculated) {
@@ -1665,22 +1729,99 @@
          * Calculates and displays the total design fee based on construction cost and design fee percentage
          */
         function updateCalculatorTotal() {
-            const constructionCost = parseFloat(document.getElementById('calc-construction-cost').value) || 0;
+            const costInput = document.getElementById('calc-construction-cost');
+            // Remove commas before parsing
+            const constructionCost = parseFloat(costInput.value.replace(/,/g, '')) || 0;
             const designFeePct = parseFloat(document.getElementById('calc-design-fee-pct').value) || 0;
             const totalFee = constructionCost * (designFeePct / 100);
 
-            document.getElementById('calc-total-fee').textContent = '$' + totalFee.toLocaleString();
+            document.getElementById('calc-total-fee').textContent = formatCurrency(totalFee);
             projectData.calculator.totalConstructionCost = constructionCost;
             projectData.calculator.designFeePercent = designFeePct;
             projectData.calculator.totalDesignFee = totalFee;
         }
 
         /**
+         * Formats construction cost input with commas on blur
+         */
+        function formatConstructionCostInput(event) {
+            const input = event ? event.target : document.getElementById('calc-construction-cost');
+            const value = parseFloat(input.value.replace(/,/g, '')) || 0;
+            if (value > 0) {
+                input.value = Math.round(value).toLocaleString('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                });
+            } else {
+                input.value = '';
+            }
+        }
+
+        /**
+         * Removes formatting from construction cost input on focus for easier editing
+         */
+        function unformatConstructionCostInput(event) {
+            const input = event ? event.target : document.getElementById('calc-construction-cost');
+            const value = parseFloat(input.value.replace(/,/g, '')) || 0;
+            input.value = value > 0 ? value.toString() : '';
+        }
+
+        /**
+         * Validates construction cost input to only allow numbers and commas
+         */
+        function validateConstructionCostInput(event) {
+            const input = event.target;
+            // Allow: numbers, commas, backspace, delete, tab, escape, enter, and arrow keys
+            const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+            if (allowedKeys.includes(event.key)) {
+                return;
+            }
+            // Allow Ctrl/Cmd + A, C, V, X
+            if (event.ctrlKey || event.metaKey) {
+                if (['a', 'c', 'v', 'x'].includes(event.key.toLowerCase())) {
+                    return;
+                }
+            }
+            // Only allow numbers and commas
+            if (!/[\d,]/.test(event.key)) {
+                event.preventDefault();
+            }
+        }
+
+        /**
          * Initializes calculator event listeners for real-time total updates
          */
         function initCalculator() {
-            document.getElementById('calc-construction-cost').addEventListener('input', updateCalculatorTotal);
-            document.getElementById('calc-design-fee-pct').addEventListener('input', updateCalculatorTotal);
+            const costInput = document.getElementById('calc-construction-cost');
+            
+            // Add event listeners (check if already initialized to prevent duplicates)
+            if (!costInput.dataset.initialized) {
+                costInput.addEventListener('input', () => {
+                    updateCalculatorTotal();
+                });
+                costInput.addEventListener('blur', formatConstructionCostInput);
+                costInput.addEventListener('focus', unformatConstructionCostInput);
+                costInput.addEventListener('keydown', validateConstructionCostInput);
+                costInput.dataset.initialized = 'true';
+            }
+            
+            // Format initial value if present
+            if (costInput.value && parseFloat(costInput.value.replace(/,/g, '')) > 0) {
+                const value = parseFloat(costInput.value.replace(/,/g, '')) || 0;
+                if (value > 0) {
+                    costInput.value = Math.round(value).toLocaleString('en-US', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    });
+                }
+            }
+            
+            const feeInput = document.getElementById('calc-design-fee-pct');
+            if (!feeInput.dataset.initialized) {
+                feeInput.addEventListener('input', updateCalculatorTotal);
+                feeInput.dataset.initialized = 'true';
+            }
+            
             updateCalculatorTotal();
         }
 
@@ -1755,7 +1896,12 @@
             disciplines.forEach(discipline => {
                 const input = document.querySelector(`.budget-input[data-disc="${discipline}"]`);
                 if (input && !projectData.calculator.manualEdits[discipline]) {
-                    input.value = Math.round(normalizedBudgets[discipline]);
+                    const rounded = Math.round(normalizedBudgets[discipline]);
+                    // Format with commas
+                    input.value = rounded.toLocaleString('en-US', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    });
                     projectData.budgets[discipline] = normalizedBudgets[discipline];
                 }
             });
@@ -1785,7 +1931,9 @@
          * Validates inputs, calculates normalized budgets, and updates the UI
          */
         function calculateBudgets() {
-            const constructionCost = parseFloat(document.getElementById('calc-construction-cost').value);
+            const costInput = document.getElementById('calc-construction-cost');
+            // Remove commas before parsing
+            const constructionCost = parseFloat(costInput.value.replace(/,/g, ''));
             const designFeePct = parseFloat(document.getElementById('calc-design-fee-pct').value);
             const projectType = document.getElementById('calc-project-type').value;
 
@@ -3295,8 +3443,16 @@
          * @param {number} amount - Amount to format
          * @returns {string} Formatted currency string
          */
+        /**
+         * Formats currency value with commas and no decimal places
+         * @param {number} amount - Currency value to format
+         * @returns {string} Formatted currency string (e.g., "$1,234,567")
+         */
         function formatCurrency(amount) {
-            return '$' + (amount || 0).toLocaleString();
+            return '$' + Math.round(amount || 0).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
         }
     </script>
 </body>
