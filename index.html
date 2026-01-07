@@ -6274,9 +6274,20 @@ Confidence: "high"=explicit, "medium"=inferred, "low"=guessed`;
             console.log('Local merge complete:', localMerged);
 
             // Step 2: Use AI to merge only complex fields (disciplineScopes, scope, schedule, confidence, notes)
-            // Extract just the data portion for the AI (not usage stats)
-            const dataOnly = chunkResults.map(r => r.data || r);
-            const mergePrompt = `Merge ${chunkResults.length} WBS chunk analyses. Return raw JSON:
+            // Extract ONLY the complex fields to reduce payload size significantly
+            const complexFieldsOnly = chunkResults.map((r, idx) => {
+                const data = r.data || r;
+                return {
+                    chunk: idx + 1,
+                    disciplineScopes: data.disciplineScopes || {},
+                    scope: data.scope || '',
+                    schedule: data.schedule || '',
+                    confidence: data.confidence || {},
+                    notes: data.notes || ''
+                };
+            });
+            
+            const mergePrompt = `Merge ${chunkResults.length} WBS chunk analyses (complex fields only). Return raw JSON:
 {"disciplineScopes":{},"scope":"","schedule":"","confidence":{"phases":"high/medium/low","disciplines":"high/medium/low","packages":"high/medium/low","budgets":"low","scope":"high/medium/low","schedule":"high/medium/low"},"notes":""}
 
 Merge rules:
@@ -6286,27 +6297,48 @@ Merge rules:
 - confidence: Use highest confidence level found across chunks (high > medium > low)
 - notes: Combine all notes
 
-Chunks: ${JSON.stringify(dataOnly, null, 2)}`;
+Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
 
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'gpt-5.2',
-                    messages: [
-                        { role: 'user', content: mergePrompt }
-                    ],
-                    max_completion_tokens: 32000,
-                    temperature: 0.2
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error?.message || `API error: ${response.status}`);
+            // Retry logic for network errors (HTTP/2 protocol errors)
+            let response = null;
+            let retries = 3;
+            let lastError = null;
+            
+            while (retries > 0 && !response) {
+                try {
+                    response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: 'gpt-5.2',
+                            messages: [
+                                { role: 'user', content: mergePrompt }
+                            ],
+                            max_completion_tokens: 32000,
+                            temperature: 0.2
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.error?.message || `API error: ${response.status}`);
+                    }
+                } catch (err) {
+                    lastError = err;
+                    retries--;
+                    response = null;
+                    if (retries > 0) {
+                        console.log(`Merge API call failed, retrying... (${retries} attempts left):`, err.message);
+                        await new Promise(r => setTimeout(r, 3000)); // Wait 3 seconds before retry
+                    }
+                }
+            }
+            
+            if (!response) {
+                throw lastError || new Error('Failed to merge chunk results after multiple attempts');
             }
 
             const data = await response.json();
