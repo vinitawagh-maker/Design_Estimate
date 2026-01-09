@@ -19,9 +19,9 @@
     /* Colors - Text */
     --color-text-primary: #ffd700;
     --color-text-white: #fff;
-    --color-text-light: #e0e0e0;
-    --color-text-muted: #888;
-    --color-text-dimmed: #666;
+    --color-text-light: #ffffff;
+    --color-text-muted: #ffffff;
+    --color-text-dimmed: #cccccc;
     --color-text-dark: #000;
 
     /* Colors - Border */

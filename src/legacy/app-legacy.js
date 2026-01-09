@@ -2552,7 +2552,7 @@ let projectData = {
                 .map(([id, _]) => id);
             
             if (activeDisciplines.length === 0) {
-                html += `<p style="color: #888; padding: 20px;">No disciplines are active. Enable disciplines in the MH Estimator first.</p>`;
+                html += `<p style="color: #ffffff; padding: 20px;">No disciplines are active. Enable disciplines in the MH Estimator first.</p>`;
             } else {
                 for (const discId of activeDisciplines) {
                     const config = DISCIPLINE_CONFIG[discId];
@@ -3979,7 +3979,7 @@ let projectData = {
                     <td><span class="wbs-expand-icon ${isExpanded ? 'expanded' : ''}">▶</span> ${wbsPrefix}</td>
                     <td>${phase}</td>
                     <td>${discipline}</td>
-                    <td style="color: #888; font-weight: 400;">${projectData.packages.length} packages</td>
+                    <td style="color: #ffffff; font-weight: 400;">${projectData.packages.length} packages</td>
                     <td style="text-align: right;">$${Math.round(totalBudget).toLocaleString()}</td>
                     <td style="text-align: center;">100%</td>
                     <td>${startDate}</td>
@@ -3997,7 +3997,7 @@ let projectData = {
             const isExpanded = wbsTableState.expandedDisciplines.has(rowId);
             return `
                 <tr class="wbs-package-row ${isExpanded ? '' : 'hidden'}" data-parent="${rowId}">
-                    <td style="color: #888;">${wbsNumber}</td>
+                    <td style="color: #ffffff;">${wbsNumber}</td>
                     <td style="color: #666;">${phase}</td>
                     <td style="color: #666;">${discipline}</td>
                     <td style="color: #ffd700;">${packageName}</td>
@@ -4679,7 +4679,7 @@ let projectData = {
                             </td>
                             <td>${phase}</td>
                             <td style="font-weight: 600; color: #ffd700;">${discipline}</td>
-                            <td style="color: #888;">${projectData.packages.length} packages</td>
+                            <td style="color: #ffffff;">${projectData.packages.length} packages</td>
                             <td style="text-align: right;">
                                 <span class="wbs-editable" onclick="event.stopPropagation(); editDisciplineBudget('${discipline}', this)">
                                     $${Math.round(disciplineBudget).toLocaleString()}
@@ -4707,7 +4707,7 @@ let projectData = {
                                 <td>
                                     <button class="wbs-delete-btn" onclick="confirmDeletePackage('${packageName}')" title="Delete package">✕</button>
                                 </td>
-                                <td style="color: #888;">${wbsNumber}</td>
+                                <td style="color: #ffffff;">${wbsNumber}</td>
                                 <td style="color: #666;">${phase}</td>
                                 <td style="color: #666;">${discipline}</td>
                                 <td style="color: #ffd700;">${packageName}</td>
@@ -5334,7 +5334,7 @@ let projectData = {
             letter-spacing: 1px;
             color: #ffd700;
         }
-        .header .subtitle { font-size: 11pt; opacity: 0.8; margin-bottom: 20px; color: #ccc; }
+        .header .subtitle { font-size: 11pt; opacity: 0.8; margin-bottom: 20px; color: #ffffff; }
         .header-info {
             display: flex;
             gap: 50px;
@@ -5837,7 +5837,7 @@ let projectData = {
         }
         .cover-subtitle {
             font-size: 14pt;
-            color: #ccc;
+            color: #ffffff;
             margin-bottom: 40px;
             font-weight: 300;
         }
@@ -5884,7 +5884,7 @@ let projectData = {
             letter-spacing: 1px;
             color: #ffd700;
         }
-        .header .subtitle { font-size: 10pt; opacity: 0.7; color: #ccc; }
+        .header .subtitle { font-size: 10pt; opacity: 0.7; color: #ffffff; }
         
         h2 {
             color: #333;
@@ -11276,7 +11276,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             letter-spacing: 1px;
             color: #ffd700;
         }
-        .header .subtitle { font-size: 11pt; opacity: 0.8; margin-bottom: 20px; color: #ccc; }
+        .header .subtitle { font-size: 11pt; opacity: 0.8; margin-bottom: 20px; color: #ffffff; }
         .header-info {
             display: flex;
             flex-wrap: wrap;
@@ -11284,7 +11284,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             font-size: 10pt;
         }
         .header-info-item { }
-        .header-info-label { opacity: 0.6; font-size: 8pt; text-transform: uppercase; color: #ccc; letter-spacing: 0.5px; }
+        .header-info-label { opacity: 0.6; font-size: 8pt; text-transform: uppercase; color: #ffffff; letter-spacing: 0.5px; }
         .header-info-value { font-size: 13pt; font-weight: 600; margin-top: 2px; color: #fff; }
         
         h2 {
@@ -11460,7 +11460,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             line-height: 1.6;
             white-space: pre-wrap;
         }
-        .no-scope { color: #999; font-style: italic; font-size: 9pt; }
+        .no-scope { color: #ffffff; font-style: italic; font-size: 9pt; }
         
         .quantities-section {
             background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
@@ -11778,11 +11778,11 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         <div class="two-column">
             <div class="list-section">
                 <h3>Project Phases</h3>
-                ${phases.length > 0 ? '<ul>' + phases.map(p => `<li>${p}</li>`).join('') + '</ul>' : '<p style="color:#999;font-style:italic;">No phases extracted</p>'}
+                ${phases.length > 0 ? '<ul>' + phases.map(p => `<li>${p}</li>`).join('') + '</ul>' : '<p style="color:#ffffff;font-style:italic;">No phases extracted</p>'}
             </div>
             <div class="list-section">
                 <h3>Deliverable Packages</h3>
-                ${packages.length > 0 ? '<ul>' + packages.map(p => `<li>${p}</li>`).join('') + '</ul>' : '<p style="color:#999;font-style:italic;">No packages extracted</p>'}
+                ${packages.length > 0 ? '<ul>' + packages.map(p => `<li>${p}</li>`).join('') + '</ul>' : '<p style="color:#ffffff;font-style:italic;">No packages extracted</p>'}
             </div>
         </div>
         
@@ -11800,7 +11800,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             if (disciplines.length > 0) {
                 disciplines.forEach((disc, idx) => {
                     const scope = disciplineScopes[disc];
-                    const scopePreview = scope ? (scope.length > 150 ? scope.substring(0, 150) + '...' : scope) : '<em style="color:#999;">No scope extracted</em>';
+                    const scopePreview = scope ? (scope.length > 150 ? scope.substring(0, 150) + '...' : scope) : '<em style="color:#ffffff;">No scope extracted</em>';
                     html += `
                 <tr>
                     <td class="text-center">${idx + 1}</td>
@@ -11830,7 +11830,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
 `;
                 });
             } else {
-                html += `<p style="color:#999;font-style:italic;">No disciplines were extracted from the RFP document.</p>`;
+                html += `<p style="color:#ffffff;font-style:italic;">No disciplines were extracted from the RFP document.</p>`;
             }
 
             // AI Notes
