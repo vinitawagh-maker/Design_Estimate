@@ -1,6 +1,3 @@
-[Download the JSON file](sandbox:/mnt/data/ESDC_EngineeringServicesDuringConstruction.json)
-
-```json
 {
   "service_category": "ESDC",
   "discipline": "Engineering Services During Construction (ESDC)",
