@@ -1,0 +1,138 @@
+/* ===========================================
+   Claiming Preset Panel Styles
+   =========================================== */
+
+.claiming-preset-panel {
+    background-color: var(--color-bg-body);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.preset-header {
+    background-color: var(--color-bg-card);
+    padding: 12px 15px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--color-primary);
+    font-weight: bold;
+    font-size: 12px;
+    user-select: none;
+    border-bottom: 1px solid var(--color-primary);
+}
+
+.preset-header:hover {
+    background-color: var(--color-border-dark);
+}
+
+.preset-body {
+    padding: 20px;
+    display: block;
+}
+
+.preset-body.hidden {
+    display: none;
+}
+
+.preset-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.preset-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.preset-option:hover {
+    border-color: var(--color-primary);
+    background-color: var(--color-border-dark);
+}
+
+.preset-option input[type="radio"] {
+    margin-top: 2px;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+}
+
+.preset-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.preset-name {
+    color: var(--color-primary);
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.preset-desc {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.preset-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.preset-actions .btn {
+    flex: 1;
+    padding: 10px;
+    background-color: var(--color-bg-card);
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: all var(--transition-normal);
+}
+
+.preset-actions .btn:hover {
+    background-color: var(--color-primary);
+    color: var(--color-bg-body);
+}
+
+.preset-actions .btn-primary {
+    background-color: var(--color-primary);
+    color: var(--color-bg-body);
+}
+
+.preset-actions .btn-primary:hover {
+    background-color: #ffed4e;
+}
+
+.preset-preview {
+    padding: 15px;
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 11px;
+    color: var(--color-text-muted);
+    line-height: 1.6;
+}
+
+.preset-preview.hidden {
+    display: none;
+}
+
+.preset-preview strong {
+    color: var(--color-primary);
+}

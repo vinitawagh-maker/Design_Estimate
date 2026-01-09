@@ -1,0 +1,85 @@
+/* ===========================================
+   Budget Calculator Styles
+   =========================================== */
+
+.budget-calculator {
+    border: 1px solid var(--color-border-light);
+    margin-bottom: 20px;
+    background: #111;
+}
+
+.calculator-header {
+    background: var(--color-bg-highlight);
+    padding: 10px 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    transition: background var(--transition-normal);
+}
+
+.calculator-header:hover {
+    background: var(--color-bg-highlight-hover);
+}
+
+.calculator-header span:first-child {
+    color: var(--color-primary);
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.calculator-body {
+    padding: 16px;
+    display: block;
+    overflow: hidden;
+    max-height: 1000px;
+    transition: max-height var(--transition-slow) ease-out, padding var(--transition-slow) ease-out;
+}
+
+.calculator-body.collapsed {
+    max-height: 0;
+    padding: 0 16px;
+}
+
+.calc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.calc-group label {
+    display: block;
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-bottom: 6px;
+}
+
+.calc-group input,
+.calc-group select {
+    font-size: 13px;
+}
+
+.complexity-override-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.complexity-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.complexity-item label {
+    flex: 1;
+    color: #ccc;
+}
+
+.complexity-item select {
+    flex: 0 0 100px;
+    padding: 4px 8px;
+    font-size: 11px;
+}

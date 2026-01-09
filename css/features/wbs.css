@@ -1,0 +1,168 @@
+/* ===========================================
+   WBS Table and Editor Styles
+   =========================================== */
+
+/* WBS Edit Toolbar */
+.wbs-edit-toolbar {
+    background: linear-gradient(135deg, #1a2a1a 0%, #0d1a0d 100%);
+    border-top: 1px solid #2a4a2a;
+    border-bottom: 1px solid #2a4a2a;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.wbs-edit-toolbar.hidden {
+    display: none;
+}
+
+.wbs-edit-toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wbs-edit-toolbar .toolbar-label {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.wbs-edit-toolbar .toolbar-btn {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-light);
+    color: var(--color-primary);
+    padding: 6px 12px;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-normal);
+}
+
+.wbs-edit-toolbar .toolbar-btn:hover {
+    background: #2a2a2a;
+    border-color: var(--color-primary);
+}
+
+.wbs-edit-toolbar .toolbar-btn.danger {
+    color: var(--color-error-light);
+    border-color: #663333;
+}
+
+.wbs-edit-toolbar .toolbar-btn.danger:hover {
+    background: #3a1a1a;
+    border-color: var(--color-error-light);
+}
+
+.wbs-edit-toolbar-tip {
+    margin-left: auto;
+    color: var(--color-text-muted);
+    font-size: 11px;
+}
+
+/* Inline Editing */
+.wbs-editable {
+    cursor: pointer;
+    position: relative;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-normal);
+}
+
+.wbs-editable:hover {
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.wbs-editable.editing {
+    background: rgba(255, 215, 0, 0.2);
+}
+
+.wbs-delete-btn {
+    background: none;
+    border: none;
+    color: var(--color-error-light);
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+tr:hover .wbs-delete-btn {
+    opacity: 0.6;
+}
+
+.wbs-delete-btn:hover {
+    opacity: 1 !important;
+}
+
+/* Collapsible WBS Table */
+.wbs-discipline-row {
+    background: var(--color-bg-card);
+    cursor: pointer;
+    transition: background var(--transition-normal);
+}
+
+.wbs-discipline-row:hover {
+    background: #252525;
+}
+
+.wbs-discipline-row td {
+    font-weight: 600;
+    color: var(--color-primary);
+    padding: 12px 8px;
+}
+
+.wbs-discipline-row td:first-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wbs-expand-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    transition: transform var(--transition-normal);
+    color: var(--color-primary);
+}
+
+.wbs-expand-icon.expanded {
+    transform: rotate(90deg);
+}
+
+.wbs-package-row {
+    background: var(--color-bg-terminal);
+}
+
+.wbs-package-row.hidden {
+    display: none;
+}
+
+.wbs-package-row td:first-child {
+    padding-left: 32px;
+}
+
+.wbs-phase-header {
+    background: #2a2a00;
+    font-weight: 700;
+}
+
+.wbs-phase-header td {
+    color: var(--color-primary);
+    padding: 10px 8px;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+}
+
+.wbs-table-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}

@@ -1,0 +1,66 @@
+/* ===========================================
+   Tooltip Styles
+   =========================================== */
+
+.tooltip {
+    position: relative;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 220px;
+    background-color: var(--color-bg-card);
+    color: var(--color-primary);
+    text-align: left;
+    border: 1px solid var(--color-primary);
+    padding: 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -110px;
+    font-size: 11px;
+    line-height: 1.4;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Autosave Indicator */
+.autosave-indicator {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: 8px 16px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all var(--transition-slow);
+    z-index: 100;
+}
+
+.autosave-indicator.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.autosave-indicator.saving {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.autosave-indicator.saved {
+    color: var(--color-success);
+    border-color: var(--color-success);
+}

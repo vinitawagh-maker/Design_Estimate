@@ -1,0 +1,128 @@
+/* ===========================================
+   Quick Tags and Labels
+   =========================================== */
+
+.quick-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.quick-tag {
+    background: var(--color-bg-highlight);
+    border: 1px solid var(--color-border-light);
+    color: var(--color-primary);
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.quick-tag:hover {
+    background: var(--color-bg-highlight-hover);
+    border-color: var(--color-primary);
+}
+
+/* Budget Tag */
+.budget-tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 215, 0, 0.1);
+    color: var(--color-primary);
+}
+
+/* Confidence Tags */
+.rfp-confidence {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    font-weight: 400;
+}
+
+.rfp-confidence.high {
+    background: var(--color-success);
+    color: var(--color-text-dark);
+}
+
+.rfp-confidence.medium {
+    background: var(--color-primary);
+    color: var(--color-text-dark);
+}
+
+.rfp-confidence.low {
+    background: var(--color-error);
+    color: var(--color-text-white);
+}
+
+/* Risk Severity Tags */
+.rfp-risk-category {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-text-white);
+}
+
+.rfp-risk-severity {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.rfp-risk-severity.high {
+    background: var(--color-error);
+    color: var(--color-text-white);
+}
+
+.rfp-risk-severity.medium {
+    background: var(--color-warning);
+    color: var(--color-text-dark);
+}
+
+.rfp-risk-severity.low {
+    background: var(--color-primary);
+    color: var(--color-text-dark);
+}
+
+/* Industry Indicator */
+.industry-indicator {
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+    cursor: help;
+    font-weight: 700;
+    margin-left: 4px;
+}
+
+.industry-indicator.above {
+    color: #ff6666;
+}
+
+.industry-indicator.below {
+    color: #66ff66;
+}
+
+.industry-indicator.within {
+    color: var(--color-primary);
+}
+
+/* Discipline Toggle */
+.discipline-toggle {
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 10px;
+    background: var(--color-border);
+    border: 1px solid var(--color-border-light);
+    color: var(--color-text-muted);
+    border-radius: var(--radius-sm);
+}
+
+.discipline-toggle.active {
+    background: var(--color-bg-highlight);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}

@@ -1,0 +1,135 @@
+/* ===========================================
+   Responsive Breakpoints
+   =========================================== */
+
+@media (max-width: 768px) {
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .filters {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .disc-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .terminal-header {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 12px;
+    }
+
+    .terminal-header > span {
+        order: 2;
+        width: 100%;
+        text-align: center;
+        font-size: 13px;
+    }
+
+    .terminal-header .btn {
+        font-size: 11px;
+        padding: 4px 8px;
+        min-width: 60px;
+    }
+
+    .terminal-header > div {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .terminal-header #status-text {
+        font-size: 11px;
+    }
+
+    .terminal-header .btn-sm {
+        font-size: 10px;
+        padding: 3px 6px;
+        min-width: auto;
+    }
+
+    /* Results section header buttons on mobile */
+    #results-section .terminal-header > div {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    #results-section .terminal-header .btn-sm {
+        font-size: 9px;
+        padding: 3px 5px;
+        margin-right: 4px !important;
+    }
+
+    .calc-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .complexity-override-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .preset-options {
+        grid-template-columns: 1fr;
+    }
+
+    .preset-actions {
+        flex-direction: column;
+    }
+
+    .insights-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .gantt-label-col,
+    .gantt-row-label {
+        width: 140px;
+        min-width: 140px;
+    }
+
+    .gantt-row.package-row .gantt-row-label {
+        padding-left: 24px;
+    }
+
+    .rfp-preview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .rfp-preview-card.full-width {
+        grid-column: span 1;
+    }
+
+    .rfp-modal-content {
+        width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .rfp-modal-header {
+        border-radius: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    .reports-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .chat-panel {
+        right: 12px;
+        left: 12px;
+        width: auto;
+        bottom: 88px;
+        max-height: 60vh;
+    }
+
+    .chat-fab {
+        right: 16px;
+        bottom: 16px;
+    }
+}

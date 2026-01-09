@@ -1,0 +1,36 @@
+/* ===========================================
+   Progress Bar / Step Navigation
+   =========================================== */
+
+.progress-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    font-size: 12px;
+}
+
+.progress-step {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-dimmed);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.progress-step.active {
+    background: var(--color-primary);
+    color: var(--color-text-dark);
+    border-color: var(--color-primary);
+}
+
+.progress-step.completed {
+    background: var(--color-bg-highlight);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.progress-step:hover {
+    border-color: var(--color-primary);
+}

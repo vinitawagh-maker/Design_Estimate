@@ -1,0 +1,67 @@
+/* ===========================================
+   Table Styles
+   =========================================== */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+th {
+    background: var(--color-bg-highlight);
+    color: var(--color-primary);
+    text-align: left;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    font-weight: 600;
+}
+
+td {
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    color: #ccc;
+}
+
+tr:hover td {
+    background: var(--color-bg-highlight);
+}
+
+/* Results Table */
+.results-table {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+}
+
+.results-table thead {
+    position: sticky;
+    top: 0;
+}
+
+.results-table tfoot {
+    position: sticky;
+    bottom: 0;
+}
+
+.results-table tfoot td {
+    background: var(--color-primary);
+    color: var(--color-text-dark);
+    font-weight: 700;
+}
+
+/* Text alignment helpers */
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Numeric columns */
+td.numeric,
+th.numeric {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+}

@@ -1,0 +1,144 @@
+/* ===========================================
+   Button Styles
+   =========================================== */
+
+.btn {
+    background: transparent;
+    border: 2px solid var(--color-primary);
+    color: var(--color-primary);
+    padding: 12px 24px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all var(--transition-normal);
+}
+
+.btn:hover {
+    background: var(--color-primary);
+    color: var(--color-text-dark);
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: var(--color-text-dark);
+}
+
+.btn-primary:hover {
+    background: var(--color-text-white);
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-danger {
+    background: transparent;
+    border: 1px solid var(--color-error);
+    color: var(--color-error);
+}
+
+.btn-danger:hover {
+    background: var(--color-error);
+    color: var(--color-text-dark);
+}
+
+/* AI Button Style */
+.btn-ai {
+    background: var(--color-primary-gradient);
+    border: 1px solid var(--color-primary);
+    color: var(--color-text-dark);
+    padding: 12px 24px;
+    border-radius: var(--radius-xl);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all var(--transition-normal);
+}
+
+.btn-ai:hover {
+    background: linear-gradient(135deg, #ffdd33 0%, #ffd700 100%);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-gold);
+}
+
+.btn-ai:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.ai-btn-icon {
+    font-size: 16px;
+}
+
+/* MH Button Style */
+.btn-mh {
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+    color: var(--color-text-dark);
+    font-weight: 700;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.btn-mh:hover {
+    background: linear-gradient(135deg, #ffaa00 0%, #ff8800 100%);
+    transform: translateY(-1px);
+}
+
+/* RFP Header Button */
+.rfp-header-btn {
+    background: linear-gradient(135deg, #4a90d9 0%, #2c5aa0 100%);
+    color: var(--color-text-white);
+    border: none;
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.rfp-header-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(74, 144, 217, 0.4);
+}
+
+/* RFP Button */
+.rfp-btn {
+    padding: 12px 24px;
+    border-radius: var(--radius-lg);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    border: 1px solid var(--color-border-light);
+    background: var(--color-bg-card);
+    color: var(--color-primary);
+}
+
+.rfp-btn:hover {
+    border-color: var(--color-primary);
+}
+
+.rfp-btn-primary {
+    background: var(--color-primary-gradient);
+    color: var(--color-text-dark);
+    border: none;
+}
+
+.rfp-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-gold);
+}
+
+.rfp-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}

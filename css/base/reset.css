@@ -1,0 +1,40 @@
+/* ===========================================
+   CSS Reset and Base Styles
+   =========================================== */
+
+* {
+    font-family: var(--font-family);
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--color-bg-body);
+    color: var(--color-primary);
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #111;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-primary);
+}
+
+/* Hidden utility */
+.hidden {
+    display: none !important;
+}

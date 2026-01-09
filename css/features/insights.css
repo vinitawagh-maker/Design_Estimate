@@ -1,0 +1,173 @@
+/* ===========================================
+   AI Insights Panel Styles
+   =========================================== */
+
+.insights-panel {
+    background: linear-gradient(135deg, var(--color-bg-highlight) 0%, var(--color-bg-terminal) 100%);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-2xl);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.insights-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #2a2a00 0%, var(--color-bg-highlight) 100%);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.insights-header:hover {
+    background: linear-gradient(135deg, #3a3a00 0%, #2a2a00 100%);
+}
+
+.insights-header span:first-child {
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.insights-toggle-icon {
+    color: var(--color-primary);
+    font-size: 10px;
+    transition: transform var(--transition-slow);
+}
+
+.insights-panel.expanded .insights-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.insights-body {
+    padding: 20px;
+}
+
+.insights-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+/* Insight Card */
+.insight-card {
+    background: rgba(26, 26, 0, 0.5);
+    border-color: var(--color-border-light);
+}
+
+.insight-card:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.insight-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.insight-icon {
+    font-size: 16px;
+}
+
+.insight-title {
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.insight-value {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--color-text-white);
+}
+
+.insight-value.risk-low {
+    color: var(--color-success);
+}
+
+.insight-value.risk-medium {
+    color: var(--color-primary);
+}
+
+.insight-value.risk-high {
+    color: var(--color-error);
+}
+
+.insight-details {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+/* Suggestions Section */
+.insights-suggestions {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+}
+
+.suggestions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.suggestions-header span {
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.suggestions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.suggestion-placeholder {
+    color: var(--color-text-dimmed);
+    font-size: 12px;
+    text-align: center;
+    padding: 20px;
+}
+
+.suggestion-item {
+    background: rgba(26, 26, 0, 0.5);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.suggestion-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.suggestion-content {
+    flex: 1;
+}
+
+.suggestion-title {
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.suggestion-desc {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    line-height: 1.5;
+}

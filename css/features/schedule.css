@@ -1,0 +1,59 @@
+/* ===========================================
+   AI Schedule Generator Styles
+   =========================================== */
+
+.ai-schedule-section {
+    background: linear-gradient(135deg, var(--color-bg-highlight) 0%, var(--color-bg-terminal) 100%);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.ai-schedule-options {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.ai-schedule-options label {
+    color: var(--color-primary);
+    font-size: 11px;
+}
+
+.ai-schedule-options input,
+.ai-schedule-options select {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-light);
+    color: var(--color-primary);
+    padding: 8px 12px;
+    border-radius: var(--radius-lg);
+    font-size: 12px;
+}
+
+.ai-schedule-options input:focus,
+.ai-schedule-options select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.ai-schedule-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    color: var(--color-primary);
+    font-size: 12px;
+}
+
+.ai-loading-spinner {
+    animation: spin 1s linear infinite;
+    font-size: 16px;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

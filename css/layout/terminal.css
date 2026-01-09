@@ -1,0 +1,52 @@
+/* ===========================================
+   Terminal Window Layout
+   =========================================== */
+
+.terminal {
+    border: 2px solid var(--color-primary);
+    background: var(--color-bg-terminal);
+}
+
+.terminal-header {
+    background: var(--color-primary);
+    color: var(--color-text-dark);
+    padding: 8px 16px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.terminal-header .btn {
+    margin: 0;
+    font-size: 12px;
+    padding: 6px 12px;
+    white-space: nowrap;
+}
+
+.terminal-header .btn-primary {
+    background: var(--color-text-dark);
+    color: var(--color-primary);
+    border-color: var(--color-text-dark);
+}
+
+.terminal-header .btn-primary:hover {
+    background: var(--color-border);
+    border-color: var(--color-border);
+}
+
+.terminal-header .btn:not(.btn-primary) {
+    background: transparent;
+    color: var(--color-text-dark);
+    border-color: var(--color-text-dark);
+}
+
+.terminal-header .btn:not(.btn-primary):hover {
+    background: var(--color-text-dark);
+    color: var(--color-primary);
+}
+
+.terminal-body {
+    padding: 24px;
+}

@@ -1,0 +1,92 @@
+/* ===========================================
+   Input and Form Styles
+   =========================================== */
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select {
+    background: var(--color-bg-input);
+    border: 1px solid var(--color-border-light);
+    color: var(--color-primary);
+    padding: 12px;
+    width: 100%;
+    font-size: 14px;
+    outline: none;
+}
+
+input:focus,
+select:focus {
+    border-color: var(--color-primary);
+}
+
+input::placeholder {
+    color: #555;
+}
+
+/* Table Input */
+.table-input {
+    background: transparent;
+    border: none;
+    color: var(--color-primary);
+    width: 100%;
+    padding: 4px;
+    text-align: right;
+}
+
+.table-input:focus {
+    outline: 1px solid var(--color-primary);
+}
+
+/* Discipline Grid Selection */
+.disc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.disc-item {
+    border: 1px solid var(--color-border);
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--color-text-white);
+    transition: all var(--transition-normal);
+}
+
+.disc-item:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.disc-item.selected {
+    background: var(--color-primary);
+    color: var(--color-text-dark);
+    border-color: var(--color-primary);
+}
+
+.disc-item::before {
+    content: "[ ] ";
+}
+
+.disc-item.selected::before {
+    content: "[X] ";
+}
+
+/* Inline Editing Input */
+.wbs-inline-input {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-primary);
+    color: var(--color-text-white);
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: inherit;
+    width: 100%;
+    min-width: 80px;
+}
+
+.wbs-inline-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
+}

@@ -1,0 +1,53 @@
+/* ===========================================
+   Typography Styles
+   =========================================== */
+
+/* Section Headers */
+.section-title {
+    color: var(--color-text-white);
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.section-title::before {
+    content: ">";
+    color: var(--color-primary);
+}
+
+.section-desc {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* ASCII decorations */
+.ascii-line {
+    color: var(--color-border-light);
+    font-size: var(--font-size-sm);
+    margin: var(--spacing-lg) 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Blinking cursor */
+.cursor::after {
+    content: "_";
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* Status colors */
+.status-ok {
+    color: var(--color-success);
+}
+
+.status-err {
+    color: var(--color-error);
+}
