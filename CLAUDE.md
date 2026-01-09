@@ -12,8 +12,8 @@ This file provides guidance to Claude Code when working with the IPC Builder (WB
 
 ## Tech Stack
 
-- **HTML5** - Single-file application (~14,000+ lines)
-- **CSS3** - Terminal/console theme with dark background and gold accents
+- **HTML5** - Single-file application (~13,000 lines)
+- **CSS3** - Modular architecture with terminal/console theme and gold accents
 - **Vanilla JavaScript** - No frameworks
 - **Chart.js** (via CDN) - Data visualization
 - **PDF.js** (via CDN) - PDF parsing for RFP import
@@ -38,11 +38,49 @@ Or access the live deployment at: https://mjamiv.github.io/IPC-Builder/
 
 ## Application Architecture
 
-### Single-File Structure
-All code is contained in `index.html`:
-- Lines 1-2100: CSS styles (including modals, chat, Gantt, insights panels)
-- Lines 2100-3800: HTML markup (terminal UI, forms, tables, modals)
-- Lines 3800-14300+: JavaScript application logic
+### File Structure
+The application is organized into two main components:
+
+**`index.html`** (~13,000 lines):
+- Lines 1-100: HTML head (meta tags, CDN scripts, CSS link)
+- Lines 100-3000: HTML markup (terminal UI, forms, tables, modals)
+- Lines 3000-13000: JavaScript application logic
+
+**`css/`** - Modular CSS architecture:
+- **`main.css`** - Entry point with @import statements
+- **`base/`** - Foundation (variables.css, reset.css, typography.css)
+- **`layout/`** - Page structure (terminal.css, progress.css, responsive.css)
+- **`components/`** - Reusable UI (buttons.css, inputs.css, tables.css, cards.css, modals.css, tags.css, tooltips.css)
+- **`features/`** - Feature-specific styles (templates.css, calculator.css, mh-estimator.css, claiming.css, schedule.css, chart.css, wbs.css, gantt.css, chat.css, insights.css, rfp.css)
+
+**`benchmarking/`** - Historical project data:
+- 14 discipline-specific JSON files
+- Statistical benchmarking data from real infrastructure projects
+- Used by MH Benchmark Estimator
+
+### CSS Architecture Philosophy
+
+The CSS follows a **modular, component-based architecture** inspired by SMACSS and BEM methodologies:
+
+1. **Separation of Concerns**: Styles organized by function (base/layout/components/features)
+2. **Single Responsibility**: Each CSS file has one clear purpose
+3. **Cascading Imports**: Files imported in order of specificity (base → layout → components → features → responsive)
+4. **CSS Variables**: Centralized design tokens in `base/variables.css` for easy theming
+5. **Maintainability**: Easy to locate and modify styles without affecting other parts
+6. **Scalability**: New features can be added as separate CSS files without bloating existing files
+
+**Import Order in main.css:**
+```
+Base (variables, reset, typography)
+  ↓
+Layout (terminal, progress)
+  ↓
+Components (buttons, inputs, tables, etc.)
+  ↓
+Features (calculator, chat, gantt, etc.)
+  ↓
+Responsive (must be last for proper overrides)
+```
 
 ### Data Model
 
@@ -270,7 +308,17 @@ Multiple export formats from Reports panel:
 
 ## Recent Changes
 
-### Latest: Enhanced PDF Reports (January 2026)
+### Latest: CSS Modularization (January 2026)
+- **Refactored CSS into modular architecture** in `css/` folder
+- Extracted styles from inline to separate files for better maintainability
+- Organized into 4 categories: base, layout, components, features
+- 19 separate CSS files with clear separation of concerns
+- Uses @import in main.css for modular loading
+- Reduced index.html from ~14,000 to ~13,000 lines
+- Improved code organization while maintaining functionality
+- Sets foundation for future enhancements and team collaboration
+
+### Previous: Enhanced PDF Reports (January 2026)
 - **Comprehensive RFP Analysis Report** with all extracted data:
   - Executive summary with project scope
   - KPI grid showing disciplines, phases, packages, quantities
@@ -586,10 +634,12 @@ Breakpoint: `480px`
 ### Making Changes
 
 1. **UI Styling**
-   - All styles in `<style>` block (lines 11-2100)
-   - Use existing color variables
+   - All styles in `css/` folder (modular architecture)
+   - Edit appropriate CSS file based on component/feature
+   - Use existing color variables from `css/base/variables.css`
    - Maintain terminal aesthetic
    - Follow card-base and modal-base patterns
+   - Add new @import to `css/main.css` if creating new CSS file
 
 2. **Business Logic**
    - Modify functions in `<script>` block
@@ -665,7 +715,6 @@ Breakpoint: `480px`
 4. **API key exposure risk** - OpenAI key stored in localStorage
 5. **No real-time collaboration** - Single-user only
 6. **No undo/redo** - Changes are immediate
-7. **Large file size** - 14,000+ lines in single file
 
 ## Future Enhancement Ideas
 
@@ -678,8 +727,9 @@ Breakpoint: `480px`
 - Template library expansion
 - Print/PDF export improvements
 - Fix typo in default packages ("As-Buit" → "As-Built")
-- Split into multiple files for maintainability
-- Add unit tests
+- Further modularization: Extract JavaScript into separate modules
+- Add unit tests and end-to-end testing
+- TypeScript migration for type safety
 
 ## Performance Considerations
 
@@ -722,9 +772,13 @@ Breakpoint: `480px`
 
 ## Key Files
 
-- `index.html` - Complete application (only file needed)
-- `README.md` - Basic project description
-- `CLAUDE.md` - This documentation file
+- `index.html` - Main application HTML and JavaScript (~13,000 lines)
+- `css/` - Modular CSS architecture (19 files organized in 4 categories)
+- `benchmarking/` - Historical project data (14 JSON files)
+- `README.md` - Project overview and quick start guide
+- `CLAUDE.md` - Comprehensive developer documentation
+- `CODE_REVIEW_ANALYSIS.md` - Code quality audit and recommendations
+- `REORGANIZATION_PLAN.md` - Architecture improvement roadmap
 
 ## Security Considerations
 
