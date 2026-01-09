@@ -1650,6 +1650,225 @@
         // MH BENCHMARK COST ESTIMATOR CONFIGURATION
         // ============================================
         
+        // Mapping of discipline IDs to their JSON benchmark files
+        const BENCHMARK_FILE_MAPPING = {
+            drainage: 'benchmarking/benchmarking-drainage.json',
+            mot: 'benchmarking/benchmarking-mot.json',
+            roadway: 'benchmarking/benchmarking-roadway.json',
+            traffic: 'benchmarking/benchmarking-traffic.json',
+            utilities: 'benchmarking/benchmarking-utilities.json',
+            retainingWalls: 'benchmarking/benchmarking-retainingwalls.json',
+            bridgesPCGirder: 'benchmarking/benchmarking-bridges.json',
+            bridgesSteel: 'benchmarking/benchmarking-bridges.json',
+            bridgesRehab: 'benchmarking/benchmarking-bridges.json',
+            miscStructures: 'benchmarking/benchmarking-miscstructures.json',
+            geotechnical: 'benchmarking/benchmarking-geotechnical.json',
+            systems: 'benchmarking/benchmarking-systems.json',
+            track: 'benchmarking/benchmarking-track.json',
+            esdc: 'benchmarking/benchmarking-esdc.json',
+            tscd: 'benchmarking/benchmarking-tsdc.json'
+        };
+
+        // Cache for loaded benchmark data
+        let benchmarkDataCache = {};
+        let benchmarkDataLoaded = false;
+        let benchmarkLoadPromise = null;
+
+        /**
+         * Statistical calculation functions for benchmark analysis
+         */
+        const BenchmarkStats = {
+            /**
+             * Calculate mean (average) of an array of numbers
+             */
+            mean: function(values) {
+                if (!values || values.length === 0) return 0;
+                return values.reduce((sum, val) => sum + val, 0) / values.length;
+            },
+
+            /**
+             * Calculate standard deviation of an array of numbers
+             */
+            stdDev: function(values) {
+                if (!values || values.length < 2) return 0;
+                const avg = this.mean(values);
+                const squaredDiffs = values.map(val => Math.pow(val - avg, 2));
+                const avgSquaredDiff = this.mean(squaredDiffs);
+                return Math.sqrt(avgSquaredDiff);
+            },
+
+            /**
+             * Calculate the production rate with statistical bounds
+             * Returns { mean, stdDev, lower, upper } where bounds are mean ± stdDev
+             */
+            calculateRateStats: function(projects, rateField = 'production_mhrs_per_ea') {
+                if (!projects || projects.length === 0) {
+                    return { mean: 0, stdDev: 0, lower: 0, upper: 0, count: 0 };
+                }
+                
+                const rates = projects.map(p => p[rateField] || p.rate || 0).filter(r => r > 0);
+                if (rates.length === 0) {
+                    return { mean: 0, stdDev: 0, lower: 0, upper: 0, count: 0 };
+                }
+                
+                const mean = this.mean(rates);
+                const stdDev = this.stdDev(rates);
+                
+                return {
+                    mean: mean,
+                    stdDev: stdDev,
+                    lower: Math.max(0, mean - stdDev),
+                    upper: mean + stdDev,
+                    count: rates.length
+                };
+            },
+
+            /**
+             * Estimate MH using avg ± std_dev formula
+             * @param {number} quantity - The quantity to estimate for
+             * @param {Object} rateStats - Stats object from calculateRateStats
+             * @returns {Object} { estimate, lower, upper, range }
+             */
+            estimateWithBounds: function(quantity, rateStats) {
+                const estimate = Math.round(quantity * rateStats.mean);
+                const lower = Math.round(quantity * rateStats.lower);
+                const upper = Math.round(quantity * rateStats.upper);
+                
+                return {
+                    estimate: estimate,
+                    lower: lower,
+                    upper: upper,
+                    range: `${lower.toLocaleString()} - ${upper.toLocaleString()}`,
+                    mean: rateStats.mean,
+                    stdDev: rateStats.stdDev
+                };
+            }
+        };
+
+        /**
+         * Load benchmark data from JSON files
+         * @returns {Promise<Object>} The loaded benchmark data
+         */
+        async function loadBenchmarkData() {
+            if (benchmarkDataLoaded) {
+                return benchmarkDataCache;
+            }
+            
+            if (benchmarkLoadPromise) {
+                return benchmarkLoadPromise;
+            }
+            
+            benchmarkLoadPromise = (async () => {
+                console.log('Loading benchmark data from JSON files...');
+                const loadedData = {};
+                
+                // Load all unique JSON files
+                const uniqueFiles = [...new Set(Object.values(BENCHMARK_FILE_MAPPING))];
+                const fileDataMap = {};
+                
+                for (const filePath of uniqueFiles) {
+                    try {
+                        const response = await fetch(filePath);
+                        if (response.ok) {
+                            fileDataMap[filePath] = await response.json();
+                        } else {
+                            console.warn(`Failed to load benchmark file: ${filePath}`);
+                        }
+                    } catch (error) {
+                        console.warn(`Error loading benchmark file ${filePath}:`, error);
+                    }
+                }
+                
+                // Transform the loaded data to match the expected format
+                for (const [disciplineId, filePath] of Object.entries(BENCHMARK_FILE_MAPPING)) {
+                    const fileData = fileDataMap[filePath];
+                    if (!fileData) continue;
+                    
+                    const projects = fileData.projects || fileData.structures || fileData.project_structures || [];
+                    
+                    // Transform projects to the expected format
+                    const transformedProjects = projects.map((p, index) => {
+                        // Determine the rate field based on discipline type
+                        let rate = p.production_mhrs_per_ea || p.production_pct || p.rate || 0;
+                        let mh = p.fct_mhrs || p.mh || 0;
+                        let quantity = p.eqty || p.quantity || 0;
+                        
+                        // For ESDC/TSDC, handle percentage rates
+                        if (disciplineId === 'esdc' || disciplineId === 'tscd') {
+                            rate = p.production_pct ? p.production_pct / 100 : rate;
+                            mh = p.esdc_cost || p.cost || 0;
+                            quantity = p.eqty || p.projectCost || 0;
+                        }
+                        
+                        // For bridges, filter by type
+                        if (disciplineId === 'bridgesPCGirder' && p.notes && p.notes.includes('Steel')) {
+                            return null; // Skip steel bridges for PC Girder
+                        }
+                        if (disciplineId === 'bridgesSteel' && p.notes && !p.notes.includes('Steel')) {
+                            return null; // Skip non-steel bridges
+                        }
+                        if (disciplineId === 'bridgesRehab' && p.notes && !p.notes.toLowerCase().includes('rehab')) {
+                            return null; // Skip non-rehab bridges
+                        }
+                        
+                        return {
+                            id: p.project?.toLowerCase().replace(/\s+/g, '_').substring(0, 20) || `proj_${index}`,
+                            name: p.project || p.structure_name || 'Unknown Project',
+                            mh: mh,
+                            quantity: quantity,
+                            unit: p.uom || fileData.eqty_metric?.uom || '',
+                            rate: rate,
+                            type: p.market?.includes('Transit') ? 'transit' : 'highway',
+                            complexity: 'medium',
+                            applicable: p.applicable_job !== undefined ? p.applicable_job : true,
+                            // Additional metadata
+                            city: p.city,
+                            state: p.state,
+                            country: p.country,
+                            notes: p.notes
+                        };
+                    }).filter(p => p !== null);
+                    
+                    // Calculate statistical rates
+                    const rateStats = BenchmarkStats.calculateRateStats(transformedProjects);
+                    
+                    loadedData[disciplineId] = {
+                        projects: transformedProjects,
+                        defaultRate: rateStats.mean,
+                        customRate: rateStats.mean,
+                        rateStats: rateStats,
+                        metadata: {
+                            discipline: fileData.discipline,
+                            eqtyMetric: fileData.eqty_metric,
+                            serviceCategory: fileData.service_category
+                        }
+                    };
+                }
+                
+                benchmarkDataCache = loadedData;
+                benchmarkDataLoaded = true;
+                console.log('Benchmark data loaded successfully:', Object.keys(loadedData));
+                return loadedData;
+            })();
+            
+            return benchmarkLoadPromise;
+        }
+
+        /**
+         * Get benchmark data for a specific discipline (async)
+         */
+        async function getBenchmarkData(disciplineId) {
+            const data = await loadBenchmarkData();
+            return data[disciplineId] || null;
+        }
+
+        /**
+         * Get benchmark data synchronously (returns cached data or null)
+         */
+        function getBenchmarkDataSync(disciplineId) {
+            return benchmarkDataCache[disciplineId] || HISTORICAL_BENCHMARKS[disciplineId] || null;
+        }
+
         // Discipline configuration with account codes and units of measure
         const DISCIPLINE_CONFIG = {
             digitalDelivery: {
@@ -2104,13 +2323,15 @@
 
         /**
          * Get applicable projects for a discipline based on project type and complexity
+         * Uses dynamically loaded benchmark data from JSON files
          * @param {string} disciplineId - The discipline ID from DISCIPLINE_CONFIG
          * @param {string} projectType - 'highway', 'transit', 'utility', etc.
          * @param {string} complexity - 'low', 'medium', 'high'
          * @returns {Array} Array of applicable project objects
          */
         function getApplicableProjects(disciplineId, projectType = 'highway', complexity = null) {
-            const benchmarks = HISTORICAL_BENCHMARKS[disciplineId];
+            // First try dynamically loaded data, then fall back to static
+            const benchmarks = getBenchmarkDataSync(disciplineId);
             if (!benchmarks || !benchmarks.projects) return [];
             
             return benchmarks.projects.filter(project => {
@@ -2133,49 +2354,79 @@
         /**
          * Calculate weighted production rate from selected projects
          * @param {Array} projects - Array of project objects with mh, quantity, rate
-         * @param {string} method - 'average', 'weighted', 'median'
+         * @param {string} method - 'average', 'weighted', 'median', 'statistical'
          * @returns {number} Calculated production rate
          */
         function calculateWeightedRate(projects, method = 'weighted') {
             if (!projects || projects.length === 0) return 0;
             
             if (method === 'average') {
-                const sum = projects.reduce((acc, p) => acc + p.rate, 0);
+                const sum = projects.reduce((acc, p) => acc + (p.rate || 0), 0);
                 return sum / projects.length;
             }
             
             if (method === 'median') {
-                const sorted = [...projects].sort((a, b) => a.rate - b.rate);
+                const sorted = [...projects].sort((a, b) => (a.rate || 0) - (b.rate || 0));
                 const mid = Math.floor(sorted.length / 2);
                 return sorted.length % 2 ? sorted[mid].rate : (sorted[mid - 1].rate + sorted[mid].rate) / 2;
             }
             
+            if (method === 'statistical') {
+                // Use mean from statistical analysis
+                const stats = BenchmarkStats.calculateRateStats(projects);
+                return stats.mean;
+            }
+            
             // Weighted by quantity (default)
-            const totalQuantity = projects.reduce((acc, p) => acc + p.quantity, 0);
-            const totalMH = projects.reduce((acc, p) => acc + p.mh, 0);
+            const totalQuantity = projects.reduce((acc, p) => acc + (p.quantity || 0), 0);
+            const totalMH = projects.reduce((acc, p) => acc + (p.mh || 0), 0);
             return totalQuantity > 0 ? totalMH / totalQuantity : 0;
         }
 
         /**
          * Estimate MH for a discipline based on quantity and benchmark rate
+         * Uses avg ± std_dev formula for statistical estimation
          * @param {string} disciplineId - The discipline ID
          * @param {number} quantity - The quantity in the discipline's UOM
          * @param {Array} selectedProjects - Optional specific projects to use for rate
-         * @returns {Object} { mh: number, rate: number, projects: Array }
+         * @param {boolean} useStatistical - If true, use statistical bounds (avg ± std_dev)
+         * @returns {Object} { mh: number, rate: number, projects: Array, bounds?: Object }
          */
-        function estimateMH(disciplineId, quantity, selectedProjects = null) {
+        function estimateMH(disciplineId, quantity, selectedProjects = null, useStatistical = true) {
             const config = DISCIPLINE_CONFIG[disciplineId];
-            const benchmarks = HISTORICAL_BENCHMARKS[disciplineId];
+            // Use dynamic benchmark data (loaded from JSON)
+            const benchmarks = getBenchmarkDataSync(disciplineId);
             
-            if (!config || !benchmarks) {
+            if (!config) {
                 return { mh: 0, rate: 0, projects: [], error: 'Unknown discipline' };
+            }
+            
+            // If benchmark data hasn't loaded yet, return placeholder
+            if (!benchmarks) {
+                return { 
+                    mh: 0, 
+                    rate: 0, 
+                    projects: [], 
+                    loading: true,
+                    error: 'Benchmark data loading...' 
+                };
             }
             
             // Get projects to use for rate calculation
             const projects = selectedProjects || getApplicableProjects(disciplineId);
             
-            // Calculate rate
-            const rate = projects.length > 0 ? calculateWeightedRate(projects) : benchmarks.customRate || benchmarks.defaultRate;
+            // Calculate rate and statistical bounds
+            let rate, bounds = null;
+            
+            if (useStatistical && projects.length >= 2) {
+                // Use statistical analysis with avg ± std_dev
+                const rateStats = BenchmarkStats.calculateRateStats(projects);
+                rate = rateStats.mean;
+                bounds = BenchmarkStats.estimateWithBounds(quantity, rateStats);
+            } else {
+                // Fall back to weighted rate calculation
+                rate = projects.length > 0 ? calculateWeightedRate(projects) : benchmarks.customRate || benchmarks.defaultRate;
+            }
             
             // Calculate MH
             const mh = quantity * rate;
@@ -2185,7 +2436,16 @@
                 rate: rate,
                 projects: projects,
                 quantity: quantity,
-                unit: config.unit
+                unit: config.unit,
+                bounds: bounds,
+                // Include statistical info
+                rateStats: bounds ? {
+                    mean: bounds.mean,
+                    stdDev: bounds.stdDev,
+                    range: bounds.range,
+                    lower: bounds.lower,
+                    upper: bounds.upper
+                } : null
             };
         }
 
@@ -2243,7 +2503,7 @@
          * @returns {Object} { mh: number, rate: number, costK: number }
          */
         function calculateServicesMH(disciplineId, projectCostK, selectedProjects = null) {
-            const benchmarks = HISTORICAL_BENCHMARKS[disciplineId];
+            const benchmarks = getBenchmarkDataSync(disciplineId);
             if (!benchmarks) return { mh: 0, rate: 0, costK: 0 };
             
             const projects = selectedProjects || getApplicableProjects(disciplineId);
@@ -2273,18 +2533,26 @@
          * @returns {Object} { mh: number, rate: number, baseMH: number }
          */
         function calculateMiscStructuresMH(roadwayMH, drainageMH, trafficMH, selectedProjects = null) {
-            const benchmarks = HISTORICAL_BENCHMARKS.miscStructures;
+            const benchmarks = getBenchmarkDataSync('miscStructures');
             if (!benchmarks) return { mh: 0, rate: 0, baseMH: 0 };
             
             const baseMH = roadwayMH + drainageMH + trafficMH;
             const projects = selectedProjects || getApplicableProjects('miscStructures');
             const rate = projects.length > 0 ? calculateWeightedRate(projects) : benchmarks.customRate;
             
+            // Calculate statistical bounds for the estimate
+            let mhBounds = null;
+            if (projects.length >= 2) {
+                const rateStats = BenchmarkStats.calculateRateStats(projects);
+                mhBounds = BenchmarkStats.estimateWithBounds(baseMH, rateStats);
+            }
+            
             return {
                 mh: Math.round(baseMH * rate),
                 rate: rate,
                 baseMH: baseMH,
-                projects: projects
+                projects: projects,
+                mhBounds: mhBounds
             };
         }
 
@@ -2443,7 +2711,7 @@
                 const config = DISCIPLINE_CONFIG[discId];
                 if (!config) continue;
                 
-                const benchmarks = HISTORICAL_BENCHMARKS[discId];
+                const benchmarks = getBenchmarkDataSync(discId);
                 const defaultRate = benchmarks ? (benchmarks.customRate || benchmarks.defaultRate) : 0;
                 
                 // Initialize state
@@ -2556,23 +2824,25 @@
                 
                 // ESDC
                 const esdcState = mhEstimateState.disciplines.esdc;
+                const esdcBenchmarks = getBenchmarkDataSync('esdc');
                 if (esdcState) {
                     esdcState.active = true;
                     esdcState.quantity = costK;
                     const esdcResult = calculateServicesMH('esdc', costK);
                     esdcState.mh = esdcResult.mh;
-                    esdcState.rate = HISTORICAL_BENCHMARKS.esdc.customRate;
+                    esdcState.rate = esdcBenchmarks?.customRate || 0.0103;
                     updateMHRowDisplay('esdc', esdcState);
                 }
                 
                 // TSCD
                 const tscdState = mhEstimateState.disciplines.tscd;
+                const tscdBenchmarks = getBenchmarkDataSync('tscd');
                 if (tscdState) {
                     tscdState.active = true;
                     tscdState.quantity = costK;
                     const tscdResult = calculateServicesMH('tscd', costK);
                     tscdState.mh = tscdResult.mh;
-                    tscdState.rate = HISTORICAL_BENCHMARKS.tscd.customRate;
+                    tscdState.rate = tscdBenchmarks?.customRate || 0.0031;
                     updateMHRowDisplay('tscd', tscdState);
                 }
             }
@@ -2602,15 +2872,32 @@
             
             qtyInput.value = state.quantity.toLocaleString('en-US');
             document.getElementById(`mh-rate-${discId}`).textContent = formatRate(state.rate, config.unit);
-            document.getElementById(`mh-value-${discId}`).textContent = formatMH(state.mh);
             
-            // Show projects used
-            const benchmarks = HISTORICAL_BENCHMARKS[discId];
+            // Display MH with statistical range if available
+            const mhValueEl = document.getElementById(`mh-value-${discId}`);
+            if (state.mhBounds && state.mhBounds.lower !== state.mhBounds.upper) {
+                // Show estimate with range tooltip
+                mhValueEl.textContent = formatMH(state.mh);
+                mhValueEl.title = `Range: ${state.mhBounds.range} MH (avg ± std dev)`;
+                mhValueEl.style.cursor = 'help';
+            } else {
+                mhValueEl.textContent = formatMH(state.mh);
+                mhValueEl.title = '';
+            }
+            
+            // Show projects used with statistical info
+            const benchmarks = getBenchmarkDataSync(discId);
             if (benchmarks) {
                 const applicableProjects = getApplicableProjects(discId);
                 const projectNames = applicableProjects.slice(0, 3).map(p => p.name.split(' ')[0]).join(', ');
                 const suffix = applicableProjects.length > 3 ? ` +${applicableProjects.length - 3}` : '';
-                document.getElementById(`mh-projects-${discId}`).textContent = projectNames + suffix || '—';
+                const projectsEl = document.getElementById(`mh-projects-${discId}`);
+                projectsEl.textContent = projectNames + suffix || '—';
+                
+                // Add tooltip showing rate statistics if available
+                if (state.rateStats && state.rateStats.stdDev > 0) {
+                    projectsEl.title = `Rate: ${state.rateStats.mean.toFixed(3)} ± ${state.rateStats.stdDev.toFixed(3)} ${config.unit}/MH (${applicableProjects.length} projects)`;
+                }
             }
         }
 
@@ -2698,9 +2985,39 @@
                 }
             }
             
-            document.getElementById('mh-total-display').textContent = formatMH(total);
-            document.getElementById('mh-estimator-status').textContent = 
-                total > 0 ? `${formatMH(total)} MH estimated` : 'Configure project parameters';
+            // Calculate total range from all disciplines with bounds
+            let totalLower = 0;
+            let totalUpper = 0;
+            let hasStatisticalData = false;
+            
+            for (const discId of Object.keys(mhEstimateState.disciplines)) {
+                const state = mhEstimateState.disciplines[discId];
+                if (state.active && state.mhBounds) {
+                    totalLower += state.mhBounds.lower || state.mh || 0;
+                    totalUpper += state.mhBounds.upper || state.mh || 0;
+                    hasStatisticalData = true;
+                } else if (state.active) {
+                    totalLower += state.mh || 0;
+                    totalUpper += state.mh || 0;
+                }
+            }
+            
+            const totalDisplayEl = document.getElementById('mh-total-display');
+            totalDisplayEl.textContent = formatMH(total);
+            
+            // Show range tooltip on total if statistical data is available
+            if (hasStatisticalData && totalLower !== totalUpper) {
+                totalDisplayEl.title = `Range: ${formatMH(totalLower)} - ${formatMH(totalUpper)} MH (avg ± std dev)`;
+                totalDisplayEl.style.cursor = 'help';
+            }
+            
+            // Update status with range info
+            const statusText = total > 0 
+                ? (hasStatisticalData 
+                    ? `${formatMH(total)} MH estimated (range: ${formatMH(totalLower)} - ${formatMH(totalUpper)})` 
+                    : `${formatMH(total)} MH estimated`)
+                : 'Configure project parameters';
+            document.getElementById('mh-estimator-status').textContent = statusText;
         }
 
         /**
@@ -2765,7 +3082,7 @@
             } else {
                 for (const discId of activeDisciplines) {
                     const config = DISCIPLINE_CONFIG[discId];
-                    const benchmarks = HISTORICAL_BENCHMARKS[discId];
+                    const benchmarks = getBenchmarkDataSync(discId);
                     
                     if (!config || !benchmarks || !benchmarks.projects) continue;
                     
@@ -2843,7 +3160,7 @@
          * Toggle a specific benchmark project on/off
          */
         function toggleBenchmarkProject(discId, projectId) {
-            const benchmarks = HISTORICAL_BENCHMARKS[discId];
+            const benchmarks = getBenchmarkDataSync(discId);
             if (!benchmarks) return;
             
             const project = benchmarks.projects.find(p => p.id === projectId);
@@ -2880,10 +3197,18 @@
                     
                     if (config.calculationType === 'benchmark') {
                         const applicableProjects = getApplicableProjects(discId);
-                        const rate = applicableProjects.length > 0 ? calculateWeightedRate(applicableProjects) : HISTORICAL_BENCHMARKS[discId]?.customRate || 0;
+                        const benchmarks = getBenchmarkDataSync(discId);
+                        const rate = applicableProjects.length > 0 ? calculateWeightedRate(applicableProjects) : benchmarks?.customRate || 0;
                         
                         state.rate = rate;
                         state.mh = Math.round(state.quantity * rate);
+                        
+                        // Store statistical bounds if available
+                        if (applicableProjects.length >= 2) {
+                            const rateStats = BenchmarkStats.calculateRateStats(applicableProjects);
+                            state.rateStats = rateStats;
+                            state.mhBounds = BenchmarkStats.estimateWithBounds(state.quantity, rateStats);
+                        }
                         
                         updateMHRowDisplay(discId, state);
                     }
@@ -2962,8 +3287,18 @@
         }
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             initDisciplines();
+            
+            // Load benchmark data from JSON files before initializing MH estimator
+            updateStatus('LOADING BENCHMARKS...');
+            try {
+                await loadBenchmarkData();
+                console.log('Benchmark data loaded from JSON files');
+            } catch (error) {
+                console.warn('Failed to load benchmark data from JSON files, using fallback:', error);
+            }
+            
             initMHEstimator();
             updateStatus('READY');
             

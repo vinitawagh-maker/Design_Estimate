@@ -127,11 +127,54 @@ Save and manage multiple projects:
 
 **Features:**
 - 17 discipline categories with account codes
-- Historical benchmark data from 10+ major projects
+- Historical benchmark data loaded from external JSON files (`benchmarking/` folder)
+- **Statistical estimation using avg ± std_dev formula**
 - Multiple calculation types: matrix, benchmark, percentage
 - Quantity-based estimation (LF, AC, SF, EA, etc.)
 - Project selection for custom rate calculation
 - Export to budget table with configurable hourly rate
+- MH range tooltips showing confidence bounds
+
+**Benchmarking Data Files:**
+Located in `benchmarking/` folder:
+- `benchmarking-bridges.json` - Bridge deck area (SF)
+- `benchmarking-drainage.json` - Project area (AC)
+- `benchmarking-roadway.json` - Alignment length (LF)
+- `benchmarking-traffic.json` - Alignment length (LF)
+- `benchmarking-utilities.json` - Relocation count (EA)
+- `benchmarking-retainingwalls.json` - Wall area (SF)
+- `benchmarking-geotechnical.json` - Structure count (EA)
+- `benchmarking-mot.json` - Alignment length (LF)
+- `benchmarking-miscstructures.json` - Based on RDWY+DRN+TRF MH
+- `benchmarking-systems.json` - Track alignment (TF)
+- `benchmarking-track.json` - Track alignment (TF)
+- `benchmarking-esdc.json` - Project cost percentage (K$)
+- `benchmarking-tsdc.json` - Project cost percentage (K$)
+- `benchmarking-template.json` - Empty template for new disciplines
+
+**JSON Structure:**
+```json
+{
+  "discipline": "Discipline Name",
+  "eqty_metric": { "name": "Quantity Description", "uom": "Unit" },
+  "projects": [
+    {
+      "project": "Project Name",
+      "fct_mhrs": 12345,
+      "eqty": 100,
+      "uom": "UOM",
+      "production_mhrs_per_ea": 123.45
+    }
+  ]
+}
+```
+
+**Statistical Calculation:**
+- Mean rate = average of all project production rates
+- Std Dev = standard deviation of production rates
+- Lower bound = quantity × (mean - std_dev)
+- Upper bound = quantity × (mean + std_dev)
+- Estimate = quantity × mean
 
 **Disciplines Covered:**
 - Digital Delivery, Drainage, Environmental, MOT
@@ -224,7 +267,19 @@ Multiple export formats from Reports panel:
 
 ## Recent Changes
 
-### Latest: MH Benchmark Cost Estimator (January 2026)
+### Latest: External Benchmarking Data & Statistical Estimation (January 2026)
+- **Refactored benchmarking data to external JSON files** in `benchmarking/` folder
+- 14 discipline-specific JSON files with historical project data
+- **Statistical estimation using avg ± std_dev formula**:
+  - Mean and standard deviation calculated from applicable projects
+  - MH estimates include confidence range (lower/upper bounds)
+  - Tooltips show statistical range on MH values
+- Dynamic loading of benchmark data at application startup
+- Backward compatible with static fallback data
+- New `BenchmarkStats` utility for statistical calculations
+- Enhanced UI showing estimation ranges in status bar
+
+### Previous: MH Benchmark Cost Estimator (January 2026)
 - Added comprehensive man-hour estimation system
 - Historical benchmark data from 10+ major infrastructure projects
 - 17 discipline categories with quantity-based calculation
@@ -320,12 +375,20 @@ Terminal/console theme with gold accents:
 - `updateCalculatorTotal()` - Calculate total design fee
 
 ### MH Benchmark Estimator
+- `loadBenchmarkData()` - Async load benchmark data from JSON files
+- `getBenchmarkDataSync(disciplineId)` - Get cached benchmark data
 - `initMHEstimator()` - Initialize MH estimator UI
-- `estimateMH(disciplineId, quantity)` - Calculate man-hours
-- `calculateWeightedRate(projects)` - Calculate weighted rate from projects
+- `estimateMH(disciplineId, quantity, selectedProjects, useStatistical)` - Calculate man-hours with statistical bounds
+- `calculateWeightedRate(projects, method)` - Calculate rate ('average', 'weighted', 'median', 'statistical')
 - `generateFullMHEstimate(quantities)` - Full project MH estimate
 - `applyMHEstimate()` - Apply to budget table
 - `showBenchmarkSelection()` - Show project selection modal
+
+### Statistical Functions (BenchmarkStats)
+- `BenchmarkStats.mean(values)` - Calculate average
+- `BenchmarkStats.stdDev(values)` - Calculate standard deviation
+- `BenchmarkStats.calculateRateStats(projects)` - Get rate mean, stdDev, lower, upper
+- `BenchmarkStats.estimateWithBounds(quantity, rateStats)` - Estimate MH with range
 
 ### Claiming Presets
 - `toggleClaimingPresets()` - Show/hide presets panel
