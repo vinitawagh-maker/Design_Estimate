@@ -7702,8 +7702,8 @@ Be helpful, friendly, and context-aware. When users are on the Results page, you
             fab.classList.remove('has-unread');
             
             if (chatState.isOpen && chatState.messages.length === 0) {
-                // Check for API key first
-                if (!localStorage.getItem('wbs_openai_key')) {
+                // Check for valid API key first
+                if (!getValidApiKey()) {
                     showApiKeyModal();
                 } else {
                     addWelcomeMessage();
@@ -7751,11 +7751,60 @@ Be helpful, friendly, and context-aware. When users are on the Results page, you
          */
         function saveApiKey() {
             const key = document.getElementById('api-key-input').value.trim();
-            if (key) {
-                localStorage.setItem('wbs_openai_key', key);
-                hideApiKeyModal();
-                addWelcomeMessage();
+            
+            // Validate key format
+            if (!key) {
+                alert('Please enter an API key.');
+                return;
             }
+            
+            if (!key.startsWith('sk-')) {
+                alert('Invalid API key format. OpenAI API keys should start with "sk-".');
+                return;
+            }
+            
+            if (key.length < 20) {
+                alert('API key appears to be too short. Please check and try again.');
+                return;
+            }
+            
+            localStorage.setItem('wbs_openai_key', key);
+            console.log('API Key saved:', `${key.substring(0, 7)}...${key.substring(key.length - 4)} (${key.length} chars)`);
+            hideApiKeyModal();
+            addWelcomeMessage();
+        }
+        
+        /**
+         * Validates the stored API key and returns it if valid
+         * @returns {string|null} The API key if valid, null otherwise
+         */
+        function getValidApiKey() {
+            const apiKey = localStorage.getItem('wbs_openai_key');
+            
+            // Debug logging (masked for security)
+            if (apiKey) {
+                console.log('API Key status:', `Present (${apiKey.length} chars, starts with "${apiKey.substring(0, 7)}...")`);
+            } else {
+                console.log('API Key status: MISSING or empty');
+            }
+            
+            // Validate key exists and has correct format
+            if (!apiKey || apiKey.trim() === '') {
+                console.warn('API Key is missing or empty');
+                return null;
+            }
+            
+            if (!apiKey.startsWith('sk-')) {
+                console.warn('API Key has invalid format (should start with sk-)');
+                return null;
+            }
+            
+            if (apiKey.length < 20) {
+                console.warn('API Key is too short');
+                return null;
+            }
+            
+            return apiKey;
         }
 
         /**
@@ -8680,7 +8729,7 @@ Be helpful, friendly, and context-aware. When users are on the Results page, you
          * Generates AI-powered insights and optimization suggestions
          */
         async function generateAIInsights() {
-            const apiKey = localStorage.getItem('wbs_openai_key');
+            const apiKey = getValidApiKey();
             if (!apiKey) {
                 alert('Please set your OpenAI API key first. Click the chat button and enter your key.');
                 return;
@@ -8784,7 +8833,7 @@ Return ONLY the JSON array, no markdown.`;
          * Generates an AI-powered schedule based on project scope and disciplines
          */
         async function generateAISchedule() {
-            const apiKey = localStorage.getItem('wbs_openai_key');
+            const apiKey = getValidApiKey();
             if (!apiKey) {
                 alert('Please set your OpenAI API key first. Click the chat button and enter your key.');
                 return;
@@ -8950,7 +8999,7 @@ Return ONLY the JSON, no markdown formatting.`;
             
             if (!message || chatState.isLoading) return;
             
-            const apiKey = localStorage.getItem('wbs_openai_key');
+            const apiKey = getValidApiKey();
             if (!apiKey) {
                 showApiKeyModal();
                 return;
@@ -10039,7 +10088,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
          * Analyzes the RFP document with OpenAI (with chunking support)
          */
         async function analyzeRfpDocument() {
-            const apiKey = localStorage.getItem('wbs_openai_key');
+            const apiKey = getValidApiKey();
             if (!apiKey) {
                 alert('Please set your OpenAI API key first. Click the chat button and enter your key.');
                 return;
