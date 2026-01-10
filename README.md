@@ -82,9 +82,17 @@ Estimates man-hours based on historical project data:
 
 ### Export & Sharing
 
-- **Comprehensive Project Report** - Professional PDF with cover page, executive summary, discipline details, schedule charts, and full WBS
-- **RFP Analysis Report** - PDF export of all extracted RFP data including quantities, AI reasoning, and confidence scores
-- CSV Export (WBS table or full project data)
+- **Design Fee Book** - Professional PDF report (black/white, print-ready) including:
+  - Cover page with key project metrics
+  - Executive Summary with KPIs and project structure
+  - RFP Analysis Summary (if RFP data available)
+  - Cost Estimate Details with discipline allocation
+  - MH Benchmark Analysis with quantity backup
+  - Discipline Details with package breakdown
+  - Schedule Analysis with AI rationale
+  - Risk Register sorted by severity
+  - AI Insights and recommendations
+  - Complete WBS Table
 - Import from CSV
 - Shareable URL generation
 

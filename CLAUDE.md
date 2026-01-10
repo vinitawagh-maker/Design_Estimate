@@ -163,8 +163,8 @@ projectData = {
 - **RFP Wizard** - PDF import with quantity extraction
 
 ### Export Options
-- CSV (WBS table or full data)
-- PDF reports (comprehensive project report, RFP analysis)
+- **Design Fee Book** - Professional PDF with all project data (B/W, print-ready)
+- Import from CSV
 - Shareable URL
 
 ## Key Functions
@@ -196,9 +196,9 @@ projectData = {
 - `openRfpWizard()` - RFP import
 
 ### Export
-- `exportCSV()` - WBS table
-- `generateComprehensiveReport()` - PDF report
+- `generateDesignFeeBook()` - Professional PDF report (Design Fee Book)
 - `shareProjectUrl()` - URL sharing
+- `importData()` - Import from CSV
 
 ## Development Guidelines
 
