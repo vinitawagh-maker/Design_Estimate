@@ -9685,7 +9685,10 @@ Return ONLY the JSON, no markdown formatting.`;
             // Get page count
             try {
                 const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const pdf = await pdfjsLib.getDocument({ 
+                    data: arrayBuffer,
+                    standardFontDataUrl: window.PDFJS_STANDARD_FONT_DATA_URL
+                }).promise;
                 rfpState.pageCount = pdf.numPages;
                 document.getElementById('rfp-page-count').textContent = pdf.numPages;
                 document.getElementById('rfp-next-1').disabled = false;
@@ -9768,7 +9771,10 @@ Return ONLY the JSON, no markdown formatting.`;
          */
         async function extractPdfText(file, pageNumbers) {
             const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const pdf = await pdfjsLib.getDocument({ 
+                data: arrayBuffer,
+                standardFontDataUrl: window.PDFJS_STANDARD_FONT_DATA_URL
+            }).promise;
             
             let fullText = '';
             

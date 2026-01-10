@@ -11,10 +11,14 @@ import Chart from 'chart.js/auto';
 import * as pdfjsLib from 'pdfjs-dist';
 import html2pdf from 'html2pdf.js';
 
-// Configure PDF.js worker
+// Configure PDF.js worker and standard fonts
 // Use CDN for the worker to avoid bundling/path issues
 const PDFJS_VERSION = '3.11.174'; // Match installed version
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+
+// Configure standard font data URL for PDF.js (fixes font loading warnings)
+// Note: This is set as a default for getDocument() calls in legacy code
+window.PDFJS_STANDARD_FONT_DATA_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/standard_fonts/`;
 
 // Make libraries available globally for legacy code compatibility
 window.Chart = Chart;
