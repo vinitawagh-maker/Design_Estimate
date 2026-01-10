@@ -793,7 +793,7 @@
 
                         <div class="rfp-modal-actions">
                             <button class="rfp-btn" onclick="goToRfpStage(2)">← Re-analyze</button>
-                            <button class="rfp-btn" onclick="exportRfpData()">📥 Export</button>
+                            <button class="rfp-btn" onclick="generateDesignFeeBook()">📥 Export</button>
                             <button class="rfp-btn rfp-btn-primary" onclick="applyRfpData()">Apply to Project ✓</button>
                         </div>
                     </div>
@@ -1045,7 +1045,7 @@
                     <!-- Actions -->
                     <div class="rfp-result-actions">
                         <button class="btn btn-sm" onclick="closeRfpResultsPanel(); openRfpWizard();">Re-analyze RFP</button>
-                        <button class="btn btn-sm btn-primary" onclick="closeRfpResultsPanel(); openRfpWizard(); setTimeout(exportRfpData, 100);">Export PDF Report</button>
+                        <button class="btn btn-sm btn-primary" onclick="closeRfpResultsPanel(); generateDesignFeeBook();">Export PDF Report</button>
                     </div>
                 </div>
             </div>
