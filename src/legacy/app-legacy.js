@@ -5276,1493 +5276,6 @@ ${reasoning}`;
         }
 
         /**
-         * Exports WBS structure to CSV (output format)
-         */
-        function exportCSV() {
-            let csv = 'WBS,Phase,Discipline,Package,Budget,Claim%,Start,End,Actual,Variance\n';
-            
-            projectData.phases.forEach((phase, pi) => {
-                projectData.disciplines.forEach((disc, di) => {
-                    const discBudget = projectData.budgets[disc] || 0;
-                    
-                    projectData.packages.forEach((pkg, ki) => {
-                        const key = `${disc}-${pkg}`;
-                        const claimPct = projectData.claiming[key] || 0;
-                        const pkgBudget = discBudget * (claimPct / 100);
-                        const dates = projectData.dates[key] || { start: '', end: '' };
-                        
-                        csv += `${pi+1}.${di+1}.${ki+1},"${phase}","${disc}","${pkg}",${pkgBudget},${claimPct},${dates.start},${dates.end},0,${pkgBudget}\n`;
-                    });
-                });
-            });
-            
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'wbs_structure.csv';
-            a.click();
-        }
-
-        /**
-         * Exports all input data to CSV in a format that can be imported back
-         * Includes: phases, disciplines, packages, budgets, claiming, dates, calculator settings
-         */
-        function exportAllDataCSV() {
-            let csv = '# IPC Builder Project Data Export\n';
-            csv += '# This file can be imported to restore project settings\n';
-            csv += '# Format: Section,Key,Value\n\n';
-            
-            // Phases
-            csv += '[PHASES]\n';
-            projectData.phases.forEach(phase => {
-                csv += `Phase,${phase}\n`;
-            });
-            csv += '\n';
-            
-            // Disciplines
-            csv += '[DISCIPLINES]\n';
-            projectData.disciplines.forEach(discipline => {
-                csv += `Discipline,${discipline}\n`;
-            });
-            csv += '\n';
-            
-            // Packages
-            csv += '[PACKAGES]\n';
-            projectData.packages.forEach(packageName => {
-                csv += `Package,${packageName}\n`;
-            });
-            csv += '\n';
-            
-            // Budgets
-            csv += '[BUDGETS]\n';
-            csv += 'Discipline,Budget\n';
-            projectData.disciplines.forEach(discipline => {
-                const budget = projectData.budgets[discipline] || 0;
-                csv += `${discipline},${budget}\n`;
-            });
-            csv += '\n';
-            
-            // Claiming Percentages
-            csv += '[CLAIMING]\n';
-            csv += 'Discipline,Package,Percentage\n';
-            projectData.disciplines.forEach(discipline => {
-                projectData.packages.forEach(packageName => {
-                    const key = `${discipline}-${packageName}`;
-                    const percentage = projectData.claiming[key] || 0;
-                    csv += `${discipline},${packageName},${percentage}\n`;
-                });
-            });
-            csv += '\n';
-            
-            // Dates
-            csv += '[DATES]\n';
-            csv += 'Discipline,Package,Start,End\n';
-            projectData.disciplines.forEach(discipline => {
-                projectData.packages.forEach(packageName => {
-                    const key = `${discipline}-${packageName}`;
-                    const dates = projectData.dates[key] || { start: '', end: '' };
-                    csv += `${discipline},${packageName},${dates.start},${dates.end}\n`;
-                });
-            });
-            csv += '\n';
-            
-            // Calculator Settings
-            csv += '[CALCULATOR]\n';
-            csv += 'Setting,Value\n';
-            csv += `TotalConstructionCost,${projectData.calculator.totalConstructionCost}\n`;
-            csv += `DesignFeePercent,${projectData.calculator.designFeePercent}\n`;
-            csv += `ProjectType,${projectData.calculator.projectType}\n`;
-            csv += `TotalDesignFee,${projectData.calculator.totalDesignFee}\n`;
-            csv += `IsCalculated,${projectData.calculator.isCalculated}\n`;
-            
-            // Complexity Overrides
-            if (Object.keys(projectData.calculator.complexityOverrides).length > 0) {
-                csv += '\n[COMPLEXITY_OVERRIDES]\n';
-                csv += 'Discipline,Complexity\n';
-                Object.entries(projectData.calculator.complexityOverrides).forEach(([disc, complexity]) => {
-                    csv += `${disc},${complexity}\n`;
-                });
-            }
-            
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'ipc_builder_project_data.csv';
-            a.click();
-        }
-
-        /**
-         * Exports a comprehensive project summary with scope, disciplines, and WBS breakdown
-         * Formatted as a professional PDF document
-         */
-        function exportProjectSummary() {
-            const today = new Date().toLocaleDateString();
-            const assumptions = getCostEstimateAssumptions();
-            
-            // Calculate totals
-            let totalBudget = 0;
-            projectData.disciplines.forEach(disc => {
-                totalBudget += projectData.budgets[disc] || 0;
-            });
-            
-            // Find date range
-            let minDate = null, maxDate = null;
-            Object.values(projectData.dates).forEach(d => {
-                if (d.start && (!minDate || d.start < minDate)) minDate = d.start;
-                if (d.end && (!maxDate || d.end > maxDate)) maxDate = d.end;
-            });
-            
-            let durationMonths = 0;
-            if (minDate && maxDate) {
-                durationMonths = Math.ceil((new Date(maxDate) - new Date(minDate)) / (1000 * 60 * 60 * 24 * 30));
-            }
-            
-            let html = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Project Summary Report</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-            color: #333;
-            background: #fff;
-            font-size: 11pt;
-            line-height: 1.5;
-        }
-        .page { padding: 40px; max-width: 8.5in; }
-        .header {
-            background: linear-gradient(135deg, #1a1a00 0%, #0d0d0d 100%);
-            color: #ffd700;
-            padding: 35px 40px;
-            margin: -40px -40px 30px -40px;
-            border-bottom: 4px solid #ffd700;
-        }
-        .header h1 {
-            font-size: 26pt;
-            font-weight: 300;
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-            color: #ffd700;
-        }
-        .header .subtitle { font-size: 11pt; opacity: 0.8; margin-bottom: 20px; color: #ccc; }
-        .header-info {
-            display: flex;
-            gap: 50px;
-            font-size: 10pt;
-        }
-        .header-info-item { }
-        .header-info-label { opacity: 0.6; font-size: 9pt; text-transform: uppercase; }
-        .header-info-value { font-size: 13pt; font-weight: 600; margin-top: 2px; }
-        
-        h2 {
-            color: #333;
-            font-size: 14pt;
-            font-weight: 600;
-            margin: 28px 0 14px 0;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #ffd700;
-        }
-        h3 {
-            color: #444;
-            font-size: 12pt;
-            font-weight: 600;
-            margin: 18px 0 10px 0;
-        }
-        
-        .kpi-row {
-            display: flex;
-            gap: 15px;
-            margin: 20px 0;
-        }
-        .kpi-box {
-            flex: 1;
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 16px;
-            text-align: center;
-        }
-        .kpi-box .value { font-size: 20pt; font-weight: 700; color: #333; }
-        .kpi-box .label { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
-        
-        .scope-box {
-            background: #fffef0;
-            border: 1px solid #e6d9a8;
-            border-radius: 6px;
-            padding: 18px;
-            margin: 18px 0;
-        }
-        .scope-box h3 { color: #856404; margin-top: 0; }
-        .scope-text { color: #444; }
-        
-        .assumptions-box {
-            background: linear-gradient(135deg, #fffde7 0%, #fff9c4 100%);
-            border: 1px solid #e6d9a8;
-            border-radius: 6px;
-            padding: 18px;
-            margin: 18px 0;
-        }
-        .assumptions-box h3 { color: #856404; margin-top: 0; font-size: 11pt; }
-        .assumptions-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-top: 12px;
-        }
-        .assumption-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 10px;
-            background: rgba(255,255,255,0.7);
-            border-radius: 4px;
-            font-size: 10pt;
-        }
-        .assumption-label { color: #666; }
-        .assumption-value { font-weight: 600; }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 12px 0;
-            font-size: 10pt;
-        }
-        thead th {
-            background: #333;
-            color: #ffd700;
-            padding: 10px 8px;
-            text-align: left;
-            font-weight: 500;
-            font-size: 9pt;
-            text-transform: uppercase;
-        }
-        tbody td {
-            padding: 8px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        tbody tr:nth-child(even) { background: #f8f9fa; }
-        tfoot th {
-            background: #f8f9fa;
-            padding: 10px 8px;
-            font-weight: 600;
-            border-top: 2px solid #ffd700;
-        }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        
-        .complexity-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 9pt;
-            font-weight: 500;
-        }
-        .complexity-low { background: #d4edda; color: #155724; }
-        .complexity-medium { background: #fff3cd; color: #856404; }
-        .complexity-high { background: #f8d7da; color: #721c24; }
-        
-        .discipline-card {
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 16px;
-            margin: 14px 0;
-            page-break-inside: avoid;
-        }
-        .discipline-card h3 {
-            margin: 0 0 10px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .discipline-card .budget-tag {
-            font-size: 12pt;
-            color: #333;
-            font-weight: 700;
-        }
-        .discipline-scope {
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 12px;
-            margin: 10px 0;
-            font-size: 10pt;
-            color: #555;
-        }
-        
-        .list-section { margin: 12px 0; }
-        .list-section ul { margin: 0; padding-left: 20px; }
-        .list-section li { margin: 4px 0; }
-        
-        .footer {
-            margin-top: 30px;
-            padding-top: 15px;
-            border-top: 1px solid #e0e0e0;
-            font-size: 9pt;
-            color: #888;
-            text-align: center;
-        }
-        
-        .page-break { page-break-before: always; }
-    </style>
-</head>
-<body>
-    <div class="page">
-        <div class="header">
-            <h1>Project Summary Report</h1>
-            <div class="subtitle">Comprehensive Work Breakdown Structure Analysis</div>
-            <div class="header-info">
-                <div class="header-info-item">
-                    <div class="header-info-label">Report Date</div>
-                    <div class="header-info-value">${today}</div>
-                </div>
-                <div class="header-info-item">
-                    <div class="header-info-label">Total Budget</div>
-                    <div class="header-info-value">${formatCurrency(totalBudget)}</div>
-                </div>
-                <div class="header-info-item">
-                    <div class="header-info-label">Duration</div>
-                    <div class="header-info-value">${durationMonths > 0 ? durationMonths + ' Months' : 'Not Set'}</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="kpi-row">
-            <div class="kpi-box">
-                <div class="value">${formatCurrency(totalBudget)}</div>
-                <div class="label">Total Design Fee</div>
-            </div>
-            <div class="kpi-box">
-                <div class="value">${projectData.disciplines.length}</div>
-                <div class="label">Disciplines</div>
-            </div>
-            <div class="kpi-box">
-                <div class="value">${projectData.phases.length}</div>
-                <div class="label">Phases</div>
-            </div>
-            <div class="kpi-box">
-                <div class="value">${projectData.packages.length}</div>
-                <div class="label">Packages</div>
-            </div>
-        </div>
-`;
-
-            // Project Scope
-            if (projectData.projectScope) {
-                html += `
-        <div class="scope-box">
-            <h3>Project Scope</h3>
-            <div class="scope-text">${projectData.projectScope.replace(/\n/g, '<br>')}</div>
-        </div>
-`;
-            }
-
-            // Cost Estimate Assumptions
-            if (assumptions.isCalculated) {
-                html += `
-        <div class="assumptions-box">
-            <h3>📊 Cost Estimate Assumptions</h3>
-            <div class="assumptions-grid">
-                <div class="assumption-item">
-                    <span class="assumption-label">Construction Cost</span>
-                    <span class="assumption-value">${formatCurrency(assumptions.constructionCost)}</span>
-                </div>
-                <div class="assumption-item">
-                    <span class="assumption-label">Design Fee %</span>
-                    <span class="assumption-value">${assumptions.designFeePercent}%</span>
-                </div>
-                <div class="assumption-item">
-                    <span class="assumption-label">Total Design Fee</span>
-                    <span class="assumption-value">${formatCurrency(assumptions.totalDesignFee)}</span>
-                </div>
-                <div class="assumption-item">
-                    <span class="assumption-label">Project Type</span>
-                    <span class="assumption-value">${assumptions.projectType}</span>
-                </div>
-            </div>
-        </div>
-`;
-            }
-
-            // Project Structure
-            html += `
-        <h2>Project Structure</h2>
-        <div class="list-section">
-            <h3>Phases</h3>
-            <ul>${projectData.phases.map(p => `<li>${p}</li>`).join('')}</ul>
-        </div>
-        <div class="list-section">
-            <h3>Deliverable Packages</h3>
-            <ul>${projectData.packages.map(p => `<li>${p}</li>`).join('')}</ul>
-        </div>
-        
-        <h2>Discipline Budget Summary</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Discipline</th>
-                    <th class="text-center">Complexity</th>
-                    <th class="text-right">Industry %</th>
-                    <th class="text-right">Actual %</th>
-                    <th class="text-right">Budget</th>
-                </tr>
-            </thead>
-            <tbody>
-`;
-
-            assumptions.disciplines.forEach(disc => {
-                const complexityClass = disc.complexity.toLowerCase();
-                html += `
-                <tr>
-                    <td><strong>${disc.name}</strong></td>
-                    <td class="text-center"><span class="complexity-badge complexity-${complexityClass}">${disc.complexity}</span></td>
-                    <td class="text-right">${disc.industryBasePct}%</td>
-                    <td class="text-right">${disc.percentOfTotal}%</td>
-                    <td class="text-right"><strong>${formatCurrency(disc.budget)}</strong></td>
-                </tr>`;
-            });
-
-            html += `
-            </tbody>
-            <tfoot>
-                <tr>
-                    <th colspan="3">Total</th>
-                    <th class="text-right">100%</th>
-                    <th class="text-right">${formatCurrency(totalBudget)}</th>
-                </tr>
-            </tfoot>
-        </table>
-        
-        <div class="page-break"></div>
-        <h2>Discipline Details</h2>
-`;
-
-            // Discipline Cards with Scope
-            projectData.disciplines.forEach(disc => {
-                const budget = projectData.budgets[disc] || 0;
-                const pct = totalBudget > 0 ? ((budget / totalBudget) * 100).toFixed(1) : 0;
-                const scope = projectData.disciplineScopes && projectData.disciplineScopes[disc] ? projectData.disciplineScopes[disc] : null;
-                const discAssumption = assumptions.disciplines.find(d => d.name === disc);
-                
-                html += `
-        <div class="discipline-card">
-            <h3>
-                <span>${disc}</span>
-                <span class="budget-tag">${formatCurrency(budget)} (${pct}%)</span>
-            </h3>
-`;
-                if (scope) {
-                    html += `
-            <div class="discipline-scope">
-                <strong>Scope of Work:</strong><br>
-                ${scope.replace(/\n/g, '<br>')}
-            </div>
-`;
-                }
-                
-                if (discAssumption) {
-                    html += `
-            <div style="font-size: 9pt; color: #666; margin-bottom: 10px;">
-                Complexity: <span class="complexity-badge complexity-${discAssumption.complexity.toLowerCase()}">${discAssumption.complexity}</span>
-                &nbsp;|&nbsp; Industry Base: ${discAssumption.industryBasePct}%
-                ${discAssumption.hasComplexityOverride ? '&nbsp;|&nbsp; <em>Complexity Override Applied</em>' : ''}
-                ${discAssumption.isManualEdit ? '&nbsp;|&nbsp; <em>Manually Edited</em>' : ''}
-            </div>
-`;
-                }
-
-                html += `
-            <table style="font-size: 9pt;">
-                <thead>
-                    <tr>
-                        <th>Package</th>
-                        <th class="text-center">Claim %</th>
-                        <th class="text-right">Budget</th>
-                        <th>Start</th>
-                        <th>End</th>
-                    </tr>
-                </thead>
-                <tbody>
-`;
-                projectData.packages.forEach(pkg => {
-                    const key = `${disc}-${pkg}`;
-                    const claimPct = projectData.claiming[key] || 0;
-                    const pkgBudget = budget * (claimPct / 100);
-                    const dates = projectData.dates[key] || {};
-                    
-                    html += `
-                    <tr>
-                        <td>${pkg}</td>
-                        <td class="text-center">${claimPct}%</td>
-                        <td class="text-right">${formatCurrency(pkgBudget)}</td>
-                        <td>${dates.start || '—'}</td>
-                        <td>${dates.end || '—'}</td>
-                    </tr>`;
-                });
-
-                html += `
-                </tbody>
-            </table>
-        </div>
-`;
-            });
-
-            html += `
-        <div class="footer">
-            Generated by WBS Terminal • ${today} • Industry-standard cost distributions based on ${assumptions.projectType} project benchmarks
-        </div>
-    </div>
-</body>
-</html>`;
-
-            // Generate PDF
-            const container = document.createElement('div');
-            container.innerHTML = html;
-            document.body.appendChild(container);
-            
-            const filename = `project_summary_${new Date().toISOString().split('T')[0]}.pdf`;
-            const opt = {
-                margin: [0.25, 0.25, 0.25, 0.25],
-                filename: filename,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, willReadFrequently: true },
-                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
-                pagebreak: { mode: ['css', 'legacy'] }
-            };
-            
-            // Use outputPdf to get blob, then trigger download with correct filename
-            html2pdf().set(opt).from(container).outputPdf('blob').then(blob => {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                document.body.removeChild(container);
-            }).catch(err => {
-                console.error('PDF generation failed:', err);
-                document.body.removeChild(container);
-                alert('PDF generation failed. Please try again.');
-            });
-        }
-
-        /**
-         * Generates a comprehensive professional project report combining all project data
-         */
-        function generateComprehensiveReport() {
-            const today = new Date().toLocaleDateString();
-            const todayFull = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const assumptions = getCostEstimateAssumptions();
-            const totalBudget = calculateTotalBudget();
-            
-            // Capture the Performance Chart as an image
-            let performanceChartImg = '';
-            const chartCanvas = document.getElementById('performance-chart');
-            if (chartCanvas && chart) {
-                try {
-                    performanceChartImg = chartCanvas.toDataURL('image/png');
-                } catch (e) {
-                    console.error('Could not capture chart:', e);
-                }
-            }
-            
-            // Capture the Gantt chart HTML
-            const ganttContainer = document.getElementById('gantt-container');
-            let ganttHtml = '';
-            if (ganttContainer) {
-                ganttHtml = ganttContainer.innerHTML;
-            }
-            
-            // Calculate date range
-            let minDate = null, maxDate = null;
-            Object.values(projectData.dates).forEach(d => {
-                if (d.start && (!minDate || d.start < minDate)) minDate = d.start;
-                if (d.end && (!maxDate || d.end > maxDate)) maxDate = d.end;
-            });
-            
-            let durationMonths = 0;
-            let durationDays = 0;
-            if (minDate && maxDate) {
-                durationDays = Math.ceil((new Date(maxDate) - new Date(minDate)) / (1000 * 60 * 60 * 24));
-                durationMonths = Math.ceil(durationDays / 30);
-            }
-            
-            // Calculate WBS element count
-            const wbsCount = projectData.phases.length * projectData.disciplines.length * projectData.packages.length;
-            
-            let html = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Comprehensive Project Report</title>
-    <style>
-        @media print {
-            @page { margin: 0.5in; size: letter; }
-            .page-break { page-break-before: always; }
-            .no-break { page-break-inside: avoid; }
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-            color: #333;
-            background: #fff;
-            font-size: 10pt;
-            line-height: 1.5;
-        }
-        
-        /* Cover Page Styles */
-        .cover-page {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 50%, #0d0d0d 100%);
-            color: #fff;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-        .cover-page::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 8px;
-            background: linear-gradient(90deg, #ffd700, #ffed4a, #ffd700);
-        }
-        .cover-page::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 8px;
-            background: linear-gradient(90deg, #ffd700, #ffed4a, #ffd700);
-        }
-        .cover-logo {
-            font-size: 48pt;
-            margin-bottom: 20px;
-        }
-        .cover-title {
-            font-size: 32pt;
-            font-weight: 300;
-            color: #ffd700;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-        .cover-subtitle {
-            font-size: 14pt;
-            color: #ccc;
-            margin-bottom: 40px;
-            font-weight: 300;
-        }
-        .cover-meta {
-            display: flex;
-            gap: 60px;
-            margin-top: 40px;
-        }
-        .cover-meta-item {
-            text-align: center;
-        }
-        .cover-meta-label {
-            font-size: 9pt;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-        }
-        .cover-meta-value {
-            font-size: 18pt;
-            font-weight: 600;
-            color: #ffd700;
-        }
-        .cover-date {
-            position: absolute;
-            bottom: 40px;
-            font-size: 11pt;
-            color: #666;
-        }
-        
-        /* Content Styles */
-        .page { padding: 40px; max-width: 8.5in; }
-        .header {
-            background: linear-gradient(135deg, #1a1a00 0%, #0d0d0d 100%);
-            color: #ffd700;
-            padding: 25px 40px;
-            margin: -40px -40px 25px -40px;
-            border-bottom: 4px solid #ffd700;
-        }
-        .header h1 {
-            font-size: 22pt;
-            font-weight: 400;
-            margin-bottom: 5px;
-            letter-spacing: 1px;
-            color: #ffd700;
-        }
-        .header .subtitle { font-size: 10pt; opacity: 0.7; color: #ccc; }
-        
-        h2 {
-            color: #333;
-            font-size: 14pt;
-            font-weight: 600;
-            margin: 25px 0 12px 0;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #ffd700;
-        }
-        h3 {
-            color: #444;
-            font-size: 11pt;
-            font-weight: 600;
-            margin: 16px 0 8px 0;
-        }
-        
-        .executive-summary {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-left: 4px solid #ffd700;
-            padding: 18px 22px;
-            margin: 18px 0;
-            border-radius: 0 8px 8px 0;
-        }
-        .executive-summary h3 { color: #333; margin-top: 0; font-size: 12pt; }
-        .executive-summary p { color: #444; margin: 8px 0 0 0; line-height: 1.7; }
-        
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 12px;
-            margin: 18px 0;
-        }
-        .kpi-card {
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 14px 10px;
-            text-align: center;
-        }
-        .kpi-card .value {
-            font-size: 18pt;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 3px;
-        }
-        .kpi-card .label {
-            font-size: 7pt;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .kpi-card.highlight {
-            background: linear-gradient(135deg, #fffef0 0%, #fff9e6 100%);
-            border-color: #e6d9a8;
-        }
-        .kpi-card.highlight .value { color: #856404; }
-        
-        .assumptions-box {
-            background: linear-gradient(135deg, #fff9e6 0%, #fff5d6 100%);
-            border: 1px solid #e6d9a8;
-            border-radius: 6px;
-            padding: 16px;
-            margin: 16px 0;
-        }
-        .assumptions-box h3 { color: #856404; margin-top: 0; font-size: 10pt; }
-        .assumptions-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .assumption-item {
-            display: flex;
-            flex-direction: column;
-            padding: 8px 10px;
-            background: rgba(255,255,255,0.7);
-            border-radius: 4px;
-            font-size: 9pt;
-        }
-        .assumption-label { color: #666; font-size: 8pt; margin-bottom: 2px; }
-        .assumption-value { font-weight: 600; color: #333; font-size: 11pt; }
-        
-        .scope-box {
-            background: #fffef0;
-            border: 1px solid #e6d9a8;
-            border-radius: 6px;
-            padding: 16px;
-            margin: 16px 0;
-        }
-        .scope-box h3 { color: #856404; margin-top: 0; font-size: 10pt; }
-        .scope-text { color: #444; line-height: 1.7; font-size: 9pt; }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 12px 0;
-            font-size: 9pt;
-        }
-        thead th {
-            background: #333;
-            color: #ffd700;
-            padding: 10px 8px;
-            text-align: left;
-            font-weight: 500;
-            font-size: 8pt;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        tbody td {
-            padding: 8px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        tbody tr:nth-child(even) { background: #f8f9fa; }
-        tbody tr:hover { background: #f0f4f8; }
-        tfoot th {
-            background: #f8f9fa;
-            padding: 10px 8px;
-            font-weight: 600;
-            border-top: 2px solid #ffd700;
-        }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        
-        .complexity-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 8pt;
-            font-weight: 500;
-        }
-        .complexity-low { background: #d4edda; color: #155724; }
-        .complexity-medium { background: #fff3cd; color: #856404; }
-        .complexity-high { background: #f8d7da; color: #721c24; }
-        
-        .discipline-card {
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 14px;
-            margin: 10px 0;
-            page-break-inside: avoid;
-        }
-        .discipline-card h4 {
-            margin: 0 0 8px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 10pt;
-        }
-        .discipline-card .budget-tag {
-            font-size: 11pt;
-            color: #333;
-            font-weight: 700;
-        }
-        .discipline-scope {
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 10px;
-            margin: 8px 0;
-            font-size: 9pt;
-            color: #555;
-            line-height: 1.5;
-        }
-        .discipline-meta {
-            font-size: 8pt;
-            color: #666;
-            margin-bottom: 8px;
-        }
-        
-        .chart-section {
-            margin: 20px 0;
-            padding: 16px;
-            background: #f8f9fa;
-            border-radius: 6px;
-        }
-        .chart-section h3 { margin-top: 0; font-size: 11pt; }
-        .chart-section img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 4px;
-        }
-        .chart-legend {
-            display: flex;
-            gap: 25px;
-            margin-top: 12px;
-            font-size: 9pt;
-            color: #666;
-        }
-        
-        /* Gantt chart print styles */
-        .gantt-header { display: flex; background: #333; color: #ffd700; font-size: 8pt; border-radius: 4px 4px 0 0; }
-        .gantt-header-label { width: 140px; padding: 6px 10px; font-weight: 500; }
-        .gantt-header-months { display: flex; flex: 1; }
-        .gantt-month { flex: 1; padding: 6px 3px; text-align: center; border-left: 1px solid rgba(255,255,255,0.2); font-size: 7pt; }
-        .gantt-row { display: flex; background: #fff; border-bottom: 1px solid #e0e0e0; min-height: 24px; }
-        .gantt-row-label { width: 140px; padding: 5px 10px; font-weight: 500; background: #f8f9fa; border-right: 1px solid #e0e0e0; font-size: 9pt; }
-        .gantt-row-timeline { display: flex; flex: 1; position: relative; align-items: center; }
-        .gantt-bar { height: 14px; border-radius: 3px; position: absolute; }
-        .gantt-bar.discipline { background: linear-gradient(90deg, #4a90d9, #357abd); }
-        .gantt-bar.package { background: linear-gradient(90deg, #ffd700, #e6c200); height: 8px; }
-        .gantt-packages { display: none; }
-        .gantt-package-row { display: flex; background: #fafafa; border-bottom: 1px solid #eee; min-height: 20px; }
-        .gantt-package-label { width: 140px; padding: 3px 10px 3px 20px; font-size: 8pt; background: #fafafa; border-right: 1px solid #e0e0e0; }
-        .gantt-no-data { padding: 25px; text-align: center; color: #888; font-style: italic; }
-        .gantt-legend { display: flex; gap: 25px; margin-top: 12px; font-size: 9pt; }
-        .gantt-legend-item { display: flex; align-items: center; gap: 6px; }
-        .gantt-legend-color { width: 20px; height: 10px; border-radius: 3px; }
-        .gantt-legend-color.discipline { background: linear-gradient(90deg, #4a90d9, #357abd); }
-        .gantt-legend-color.package { background: linear-gradient(90deg, #ffd700, #e6c200); }
-        
-        .two-column {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-        
-        .list-section { margin: 12px 0; }
-        .list-section ul { margin: 0; padding-left: 18px; }
-        .list-section li { margin: 4px 0; font-size: 9pt; }
-        
-        .footer {
-            margin-top: 30px;
-            padding-top: 15px;
-            border-top: 1px solid #e0e0e0;
-            font-size: 8pt;
-            color: #888;
-            text-align: center;
-        }
-        
-        .page-break { page-break-before: always; }
-        .no-break { page-break-inside: avoid; }
-        
-        /* Risk Register Styles */
-        .risk-register-section {
-            margin: 20px 0;
-        }
-        .risk-card {
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 14px;
-            margin: 10px 0;
-            page-break-inside: avoid;
-            border-left: 4px solid #ffd700;
-        }
-        .risk-card.severity-high { border-left-color: #dc3545; }
-        .risk-card.severity-medium { border-left-color: #ffc107; }
-        .risk-card.severity-low { border-left-color: #28a745; }
-        .risk-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .risk-category {
-            font-weight: 600;
-            font-size: 10pt;
-            color: #333;
-        }
-        .risk-severity {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 8pt;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .risk-severity.high { background: #f8d7da; color: #721c24; }
-        .risk-severity.medium { background: #fff3cd; color: #856404; }
-        .risk-severity.low { background: #d4edda; color: #155724; }
-        .risk-description {
-            font-size: 9pt;
-            color: #444;
-            line-height: 1.5;
-            margin-bottom: 8px;
-        }
-        .risk-mitigation {
-            font-size: 8pt;
-            color: #666;
-            font-style: italic;
-            padding: 8px 10px;
-            background: #f8f9fa;
-            border-radius: 4px;
-        }
-        .risk-mitigation::before {
-            content: "Mitigation: ";
-            font-weight: 600;
-            font-style: normal;
-        }
-        .risk-summary-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin: 15px 0;
-        }
-        .risk-summary-card {
-            text-align: center;
-            padding: 12px;
-            border-radius: 6px;
-            background: #f8f9fa;
-        }
-        .risk-summary-card.high { background: #f8d7da; }
-        .risk-summary-card.medium { background: #fff3cd; }
-        .risk-summary-card.low { background: #d4edda; }
-        .risk-summary-count { font-size: 20pt; font-weight: 700; }
-        .risk-summary-label { font-size: 8pt; text-transform: uppercase; color: #666; }
-    </style>
-</head>
-<body>
-    <!-- Cover Page -->
-    <div class="cover-page">
-        <div class="cover-logo">📊</div>
-        <div class="cover-title">Project Report</div>
-        <div class="cover-subtitle">Comprehensive Work Breakdown Structure Analysis</div>
-        <div class="cover-meta">
-            <div class="cover-meta-item">
-                <div class="cover-meta-label">Total Budget</div>
-                <div class="cover-meta-value">${formatCurrency(totalBudget)}</div>
-            </div>
-            <div class="cover-meta-item">
-                <div class="cover-meta-label">Disciplines</div>
-                <div class="cover-meta-value">${projectData.disciplines.length}</div>
-            </div>
-            <div class="cover-meta-item">
-                <div class="cover-meta-label">Duration</div>
-                <div class="cover-meta-value">${durationMonths > 0 ? durationMonths + ' Months' : 'TBD'}</div>
-            </div>
-            <div class="cover-meta-item">
-                <div class="cover-meta-label">WBS Elements</div>
-                <div class="cover-meta-value">${wbsCount}</div>
-            </div>
-        </div>
-        <div class="cover-date">${todayFull}</div>
-    </div>
-
-    <!-- Executive Summary Page -->
-    <div class="page-break"></div>
-    <div class="page">
-        <div class="header">
-            <h1>Executive Summary</h1>
-            <div class="subtitle">Project Overview & Key Metrics</div>
-        </div>
-        
-        <div class="kpi-grid no-break">
-            <div class="kpi-card highlight">
-                <div class="value">${formatCurrency(totalBudget)}</div>
-                <div class="label">Total Design Fee</div>
-            </div>
-            <div class="kpi-card">
-                <div class="value">${projectData.disciplines.length}</div>
-                <div class="label">Disciplines</div>
-            </div>
-            <div class="kpi-card">
-                <div class="value">${projectData.phases.length}</div>
-                <div class="label">Phases</div>
-            </div>
-            <div class="kpi-card">
-                <div class="value">${projectData.packages.length}</div>
-                <div class="label">Packages</div>
-            </div>
-            <div class="kpi-card">
-                <div class="value">${wbsCount}</div>
-                <div class="label">WBS Elements</div>
-            </div>
-        </div>
-`;
-
-            // Project Scope
-            if (projectData.projectScope) {
-                html += `
-        <div class="executive-summary no-break">
-            <h3>📋 Project Scope</h3>
-            <p>${projectData.projectScope.replace(/\n/g, '<br>')}</p>
-        </div>
-`;
-            }
-
-            // Cost Estimate Assumptions
-            if (assumptions.isCalculated) {
-                html += `
-        <div class="assumptions-box no-break">
-            <h3>💰 Cost Estimate Basis</h3>
-            <div class="assumptions-grid">
-                <div class="assumption-item">
-                    <span class="assumption-label">Construction Cost</span>
-                    <span class="assumption-value">${formatCurrency(assumptions.constructionCost)}</span>
-                </div>
-                <div class="assumption-item">
-                    <span class="assumption-label">Design Fee %</span>
-                    <span class="assumption-value">${assumptions.designFeePercent}%</span>
-                </div>
-                <div class="assumption-item">
-                    <span class="assumption-label">Total Design Fee</span>
-                    <span class="assumption-value">${formatCurrency(assumptions.totalDesignFee)}</span>
-                </div>
-                <div class="assumption-item">
-                    <span class="assumption-label">Project Type</span>
-                    <span class="assumption-value">${assumptions.projectType}</span>
-                </div>
-            </div>
-        </div>
-`;
-            }
-
-            // Project Structure
-            html += `
-        <div class="two-column no-break">
-            <div class="list-section">
-                <h3>Project Phases</h3>
-                <ul>${projectData.phases.map(p => `<li>${p}</li>`).join('')}</ul>
-            </div>
-            <div class="list-section">
-                <h3>Deliverable Packages</h3>
-                <ul>${projectData.packages.map(p => `<li>${p}</li>`).join('')}</ul>
-            </div>
-        </div>
-        
-        <h2>Discipline Budget Summary</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Discipline</th>
-                    <th class="text-center">Complexity</th>
-                    <th class="text-right">Industry %</th>
-                    <th class="text-right">Actual %</th>
-                    <th class="text-right">Budget</th>
-                </tr>
-            </thead>
-            <tbody>
-`;
-            assumptions.disciplines.forEach(disc => {
-                const complexityClass = disc.complexity.toLowerCase();
-                html += `
-                <tr>
-                    <td><strong>${disc.name}</strong></td>
-                    <td class="text-center"><span class="complexity-badge complexity-${complexityClass}">${disc.complexity}</span></td>
-                    <td class="text-right">${disc.industryBasePct}%</td>
-                    <td class="text-right">${disc.percentOfTotal}%</td>
-                    <td class="text-right"><strong>${formatCurrency(disc.budget)}</strong></td>
-                </tr>`;
-            });
-            html += `
-            </tbody>
-            <tfoot>
-                <tr>
-                    <th colspan="3">Total</th>
-                    <th class="text-right">100%</th>
-                    <th class="text-right">${formatCurrency(totalBudget)}</th>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-`;
-
-            // Discipline Details Page
-            html += `
-    <div class="page-break"></div>
-    <div class="page">
-        <div class="header">
-            <h1>Discipline Details</h1>
-            <div class="subtitle">Scope of Work & Budget Allocation by Discipline</div>
-        </div>
-`;
-            projectData.disciplines.forEach(disc => {
-                const budget = projectData.budgets[disc] || 0;
-                const pct = totalBudget > 0 ? ((budget / totalBudget) * 100).toFixed(1) : 0;
-                const scope = projectData.disciplineScopes && projectData.disciplineScopes[disc] ? projectData.disciplineScopes[disc] : null;
-                const discAssumption = assumptions.disciplines.find(d => d.name === disc);
-                
-                html += `
-        <div class="discipline-card no-break">
-            <h4>
-                <span>📌 ${disc}</span>
-                <span class="budget-tag">${formatCurrency(budget)} (${pct}%)</span>
-            </h4>
-`;
-                if (discAssumption) {
-                    html += `
-            <div class="discipline-meta">
-                Complexity: <span class="complexity-badge complexity-${discAssumption.complexity.toLowerCase()}">${discAssumption.complexity}</span>
-                &nbsp;|&nbsp; Industry Base: ${discAssumption.industryBasePct}%
-                ${discAssumption.hasComplexityOverride ? '&nbsp;|&nbsp; <em>Complexity Override</em>' : ''}
-                ${discAssumption.isManualEdit ? '&nbsp;|&nbsp; <em>Manual Edit</em>' : ''}
-            </div>
-`;
-                }
-                if (scope) {
-                    html += `
-            <div class="discipline-scope">${scope.replace(/\n/g, '<br>')}</div>
-`;
-                }
-                
-                // Package breakdown for this discipline
-                html += `
-            <table style="font-size: 8pt; margin-top: 8px;">
-                <thead>
-                    <tr>
-                        <th>Package</th>
-                        <th class="text-center">Claim %</th>
-                        <th class="text-right">Budget</th>
-                        <th>Start</th>
-                        <th>End</th>
-                    </tr>
-                </thead>
-                <tbody>
-`;
-                projectData.packages.forEach(pkg => {
-                    const key = `${disc}-${pkg}`;
-                    const claimPct = projectData.claiming[key] || 0;
-                    const pkgBudget = budget * (claimPct / 100);
-                    const dates = projectData.dates[key] || {};
-                    
-                    html += `
-                    <tr>
-                        <td>${pkg}</td>
-                        <td class="text-center">${claimPct}%</td>
-                        <td class="text-right">${formatCurrency(pkgBudget)}</td>
-                        <td>${dates.start || '—'}</td>
-                        <td>${dates.end || '—'}</td>
-                    </tr>`;
-                });
-                html += `
-                </tbody>
-            </table>
-        </div>
-`;
-            });
-            html += `
-    </div>
-`;
-
-            // Risk Register Page (if risks exist from RFP analysis)
-            const risks = rfpState && rfpState.extractedData && rfpState.extractedData.risks ? rfpState.extractedData.risks : [];
-            if (risks.length > 0) {
-                const highRisks = risks.filter(r => (r.severity || '').toLowerCase() === 'high').length;
-                const mediumRisks = risks.filter(r => (r.severity || '').toLowerCase() === 'medium').length;
-                const lowRisks = risks.filter(r => (r.severity || '').toLowerCase() === 'low' || !r.severity).length;
-                
-                html += `
-    <div class="page-break"></div>
-    <div class="page">
-        <div class="header">
-            <h1>Risk Register</h1>
-            <div class="subtitle">Identified Project Risks & Mitigation Strategies</div>
-        </div>
-        
-        <div class="risk-summary-grid no-break">
-            <div class="risk-summary-card high">
-                <div class="risk-summary-count">${highRisks}</div>
-                <div class="risk-summary-label">High Severity</div>
-            </div>
-            <div class="risk-summary-card medium">
-                <div class="risk-summary-count">${mediumRisks}</div>
-                <div class="risk-summary-label">Medium Severity</div>
-            </div>
-            <div class="risk-summary-card low">
-                <div class="risk-summary-count">${lowRisks}</div>
-                <div class="risk-summary-label">Low Severity</div>
-            </div>
-        </div>
-        
-        <div class="risk-register-section">
-`;
-                // Sort risks by severity (high first, then medium, then low)
-                const severityOrder = { high: 0, medium: 1, low: 2 };
-                const sortedRisks = [...risks].sort((a, b) => {
-                    const aSev = (a.severity || 'low').toLowerCase();
-                    const bSev = (b.severity || 'low').toLowerCase();
-                    return (severityOrder[aSev] || 2) - (severityOrder[bSev] || 2);
-                });
-                
-                sortedRisks.forEach((risk, idx) => {
-                    const severity = (risk.severity || 'Medium').toLowerCase();
-                    const category = risk.category || 'General';
-                    const description = risk.description || (typeof risk === 'string' ? risk : '');
-                    const mitigation = risk.mitigation || '';
-                    
-                    html += `
-            <div class="risk-card severity-${severity} no-break">
-                <div class="risk-header">
-                    <span class="risk-category">${idx + 1}. ${category}</span>
-                    <span class="risk-severity ${severity}">${severity}</span>
-                </div>
-                <div class="risk-description">${description}</div>
-                ${mitigation ? `<div class="risk-mitigation">${mitigation}</div>` : ''}
-            </div>
-`;
-                });
-                
-                html += `
-        </div>
-    </div>
-`;
-            }
-
-            // Schedule & Charts Page
-            if (performanceChartImg || (ganttHtml && !ganttHtml.includes('No schedule data'))) {
-                html += `
-    <div class="page-break"></div>
-    <div class="page">
-        <div class="header">
-            <h1>Project Schedule & Performance</h1>
-            <div class="subtitle">${minDate && maxDate ? minDate + ' to ' + maxDate + ' (' + durationMonths + ' months)' : 'Schedule Timeline'}</div>
-        </div>
-`;
-                if (performanceChartImg) {
-                    html += `
-        <div class="chart-section no-break">
-            <h3>📈 Budget Distribution Over Time (BCWS)</h3>
-            <img src="${performanceChartImg}" alt="Performance Chart" />
-            <div class="chart-legend">
-                <span>━━ <strong>BCWS</strong> - Budgeted Cost of Work Scheduled (Planned Value)</span>
-            </div>
-        </div>
-`;
-                }
-                
-                if (ganttHtml && !ganttHtml.includes('No schedule data')) {
-                    html += `
-        <div class="chart-section">
-            <h3>📅 Project Schedule (Gantt View)</h3>
-            ${ganttHtml}
-            <div class="gantt-legend">
-                <div class="gantt-legend-item">
-                    <div class="gantt-legend-color discipline"></div>
-                    <span>Discipline Timeline</span>
-                </div>
-                <div class="gantt-legend-item">
-                    <div class="gantt-legend-color package"></div>
-                    <span>Package Deliverable</span>
-                </div>
-            </div>
-        </div>
-`;
-                }
-                html += `
-    </div>
-`;
-            }
-
-            // Complete WBS Page
-            html += `
-    <div class="page-break"></div>
-    <div class="page">
-        <div class="header">
-            <h1>Complete Work Breakdown Structure</h1>
-            <div class="subtitle">${wbsCount} WBS Elements • ${projectData.phases.length} Phases × ${projectData.disciplines.length} Disciplines × ${projectData.packages.length} Packages</div>
-        </div>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 55px;">WBS #</th>
-                    <th>Phase</th>
-                    <th>Discipline</th>
-                    <th>Package</th>
-                    <th class="text-right" style="width: 90px;">Budget</th>
-                    <th class="text-center" style="width: 50px;">Claim %</th>
-                    <th style="width: 80px;">Start</th>
-                    <th style="width: 80px;">End</th>
-                </tr>
-            </thead>
-            <tbody>
-`;
-            let grandTotal = 0;
-            projectData.phases.forEach((phase, pi) => {
-                projectData.disciplines.forEach((discipline, di) => {
-                    const discBudget = projectData.budgets[discipline] || 0;
-                    projectData.packages.forEach((packageName, ki) => {
-                        const key = `${discipline}-${packageName}`;
-                        const claimPct = projectData.claiming[key] || 0;
-                        const pkgBudget = discBudget * (claimPct / 100);
-                        const dates = projectData.dates[key] || { start: '—', end: '—' };
-                        const wbs = `${pi+1}.${di+1}.${ki+1}`;
-                        grandTotal += pkgBudget;
-                        
-                        html += `
-                <tr>
-                    <td><strong>${wbs}</strong></td>
-                    <td>${phase}</td>
-                    <td>${discipline}</td>
-                    <td>${packageName}</td>
-                    <td class="text-right">${formatCurrency(pkgBudget)}</td>
-                    <td class="text-center">${claimPct}%</td>
-                    <td>${dates.start || '—'}</td>
-                    <td>${dates.end || '—'}</td>
-                </tr>`;
-                    });
-                });
-            });
-            
-            html += `
-            </tbody>
-            <tfoot>
-                <tr>
-                    <th colspan="4">Grand Total</th>
-                    <th class="text-right">${formatCurrency(grandTotal)}</th>
-                    <th colspan="3"></th>
-                </tr>
-            </tfoot>
-        </table>
-        
-        <div class="footer">
-            <strong>Comprehensive Project Report</strong> • Generated by WBS Terminal<br>
-            ${todayFull} • Industry-standard cost distributions based on ${assumptions.projectType} project benchmarks
-        </div>
-    </div>
-</body>
-</html>`;
-            
-            // Create a temporary container for PDF generation
-            const container = document.createElement('div');
-            container.innerHTML = html;
-            document.body.appendChild(container);
-            
-            // Configure PDF options
-            const filename = `project_report_${new Date().toISOString().split('T')[0]}.pdf`;
-            const opt = {
-                margin: [0.25, 0.25, 0.25, 0.25],
-                filename: filename,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                    scale: 2, 
-                    useCORS: true,
-                    letterRendering: true,
-                    willReadFrequently: true
-                },
-                jsPDF: { 
-                    unit: 'in', 
-                    format: 'letter', 
-                    orientation: 'portrait' 
-                },
-                pagebreak: { mode: ['css', 'legacy'] }
-            };
-            
-            // Use outputPdf to get blob, then trigger download with correct filename
-            html2pdf().set(opt).from(container).outputPdf('blob').then(blob => {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                document.body.removeChild(container);
-            }).catch(err => {
-                console.error('PDF generation failed:', err);
-                document.body.removeChild(container);
-                alert('PDF generation failed. Please try again.');
-            });
-        }
-
-        /**
          * Imports project data from CSV file
          */
         function importData() {
@@ -11488,839 +10001,6 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             console.log(`reapplyRfpQuantitiesToMHEstimator: Updated ${updatedCount} disciplines`);
         }
 
-        /**
-         * Exports the RFP extracted data as a comprehensive professional PDF
-         */
-        function exportRfpData() {
-            const today = new Date().toLocaleDateString();
-            const todayFull = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            
-            // Get current values from preview fields
-            const phasesStr = document.getElementById('rfp-preview-phases').value;
-            const disciplinesStr = document.getElementById('rfp-preview-disciplines').value;
-            const packagesStr = document.getElementById('rfp-preview-packages').value;
-            const scopeStr = document.getElementById('rfp-preview-scope').value;
-            const scheduleStr = document.getElementById('rfp-preview-schedule').value;
-            
-            // Get discipline scopes from textarea fields
-            const disciplineScopes = {};
-            document.querySelectorAll('.rfp-discipline-scope-textarea').forEach(textarea => {
-                const disc = textarea.getAttribute('data-discipline');
-                const scope = textarea.value.trim();
-                if (disc && scope) {
-                    disciplineScopes[disc] = scope;
-                }
-            });
-            
-            // Get notes
-            const notesEl = document.getElementById('rfp-notes-text');
-            const notes = notesEl ? notesEl.textContent : '';
-            
-            // Parse data
-            const phases = phasesStr.split(',').map(s => s.trim()).filter(s => s);
-            const disciplines = disciplinesStr.split(',').map(s => s.trim()).filter(s => s);
-            const packages = packagesStr.split(',').map(s => s.trim()).filter(s => s);
-            const stats = rfpState.usageStats;
-            
-            // Get quantities and project info from rfpState
-            const quantities = rfpState.quantities || {};
-            const projectInfo = rfpState.projectInfo || {};
-            const quantityReasoning = rfpState.quantityReasoning || {};
-            const projectInfoReasoning = rfpState.projectInfoReasoning || {};
-            const extractedData = rfpState.extractedData || {};
-            
-            // Quantity labels for display
-            const quantityLabels = {
-                roadwayLengthLF: { label: 'Roadway Length', unit: 'LF' },
-                projectAreaAC: { label: 'Project Area', unit: 'AC' },
-                wallAreaSF: { label: 'Retaining Wall Area', unit: 'SF' },
-                noiseWallAreaSF: { label: 'Noise Wall Area', unit: 'SF' },
-                bridgeDeckAreaSF: { label: 'Bridge Deck Area', unit: 'SF' },
-                bridgeCount: { label: 'Number of Bridges', unit: '' },
-                structureCount: { label: 'Number of Structures', unit: '' },
-                utilityRelocations: { label: 'Utility Relocations', unit: '' },
-                permitCount: { label: 'Permits Required', unit: '' },
-                trackLengthTF: { label: 'Track Length', unit: 'TF' }
-            };
-            
-            let html = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>RFP Analysis Report</title>
-    <style>
-        @media print {
-            @page { margin: 0.5in; size: letter; }
-            .page-break { page-break-before: always; }
-            .no-break { page-break-inside: avoid; }
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-            color: #333;
-            background: #fff;
-            font-size: 10pt;
-            line-height: 1.5;
-        }
-        .page { padding: 40px; max-width: 8.5in; }
-        .header {
-            background: linear-gradient(135deg, #1a1a00 0%, #0d0d0d 100%);
-            color: #ffd700;
-            padding: 35px 40px;
-            margin: -40px -40px 30px -40px;
-            border-bottom: 4px solid #ffd700;
-        }
-        .header h1 {
-            font-size: 26pt;
-            font-weight: 300;
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-            color: #ffd700;
-        }
-        .header .subtitle { font-size: 11pt; opacity: 0.8; margin-bottom: 20px; color: #ccc; }
-        .header-info {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 30px;
-            font-size: 10pt;
-        }
-        .header-info-item { }
-        .header-info-label { opacity: 0.6; font-size: 8pt; text-transform: uppercase; color: #ccc; letter-spacing: 0.5px; }
-        .header-info-value { font-size: 13pt; font-weight: 600; margin-top: 2px; color: #fff; }
-        
-        h2 {
-            color: #333;
-            font-size: 14pt;
-            font-weight: 600;
-            margin: 28px 0 14px 0;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #ffd700;
-        }
-        h3 {
-            color: #444;
-            font-size: 11pt;
-            font-weight: 600;
-            margin: 16px 0 10px 0;
-        }
-        h4 {
-            color: #555;
-            font-size: 10pt;
-            font-weight: 600;
-            margin: 12px 0 8px 0;
-        }
-        
-        .executive-summary {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-left: 4px solid #ffd700;
-            padding: 20px 24px;
-            margin: 20px 0;
-            border-radius: 0 8px 8px 0;
-        }
-        .executive-summary h3 { color: #333; margin-top: 0; font-size: 12pt; }
-        .executive-summary p { color: #444; margin: 10px 0 0 0; line-height: 1.7; }
-        
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin: 20px 0;
-        }
-        .kpi-card {
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 16px;
-            text-align: center;
-        }
-        .kpi-card .value {
-            font-size: 20pt;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 4px;
-        }
-        .kpi-card .label {
-            font-size: 8pt;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .kpi-card.highlight {
-            background: linear-gradient(135deg, #fffef0 0%, #fff9e6 100%);
-            border-color: #e6d9a8;
-        }
-        .kpi-card.highlight .value { color: #856404; }
-        
-        .stats-box {
-            background: linear-gradient(135deg, #fffef0 0%, #fff9e6 100%);
-            border: 1px solid #e6d9a8;
-            border-radius: 6px;
-            padding: 18px;
-            margin: 18px 0;
-        }
-        .stats-box h3 { color: #856404; margin-top: 0; font-size: 11pt; }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 12px;
-        }
-        .stat-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 10px;
-            background: rgba(255,255,255,0.7);
-            border-radius: 4px;
-            font-size: 9pt;
-        }
-        .stat-label { color: #666; }
-        .stat-value { font-weight: 600; color: #333; }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin: 15px 0;
-        }
-        .info-card {
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 16px;
-        }
-        .info-card h4 { margin: 0 0 8px 0; color: #333; font-size: 10pt; }
-        .info-card .value { font-size: 18pt; font-weight: 700; color: #333; }
-        .info-card .unit { font-size: 10pt; color: #666; margin-left: 4px; }
-        .info-card .reasoning { font-size: 9pt; color: #666; margin-top: 8px; line-height: 1.5; font-style: italic; }
-        
-        .scope-box {
-            background: #f5f5f5;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 18px;
-            margin: 18px 0;
-        }
-        .scope-box h3 { color: #333; margin-top: 0; }
-        .scope-text { color: #444; white-space: pre-wrap; line-height: 1.7; }
-        
-        .schedule-box {
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            border: 1px solid #90caf9;
-            border-radius: 6px;
-            padding: 18px;
-            margin: 18px 0;
-        }
-        .schedule-box h3 { color: #1565c0; margin-top: 0; }
-        .schedule-text { color: #333; white-space: pre-wrap; line-height: 1.7; }
-        
-        .list-section { margin: 15px 0; }
-        .list-section ul { margin: 0; padding-left: 20px; }
-        .list-section li { margin: 5px 0; color: #444; }
-        
-        .two-column {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 12px 0;
-            font-size: 9pt;
-        }
-        thead th {
-            background: #333;
-            color: #ffd700;
-            padding: 10px 8px;
-            text-align: left;
-            font-weight: 500;
-            font-size: 8pt;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        tbody td {
-            padding: 8px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        tbody tr:nth-child(even) { background: #f8f9fa; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        
-        .discipline-card {
-            background: #fafafa;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 16px;
-            margin: 12px 0;
-            page-break-inside: avoid;
-        }
-        .discipline-card h3 { margin: 0 0 10px 0; color: #333; font-size: 11pt; }
-        .discipline-scope {
-            color: #555;
-            font-size: 9pt;
-            line-height: 1.6;
-            white-space: pre-wrap;
-        }
-        .no-scope { color: #999; font-style: italic; font-size: 9pt; }
-        
-        .quantities-section {
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            border: 1px solid #a5d6a7;
-            border-radius: 6px;
-            padding: 18px;
-            margin: 18px 0;
-        }
-        .quantities-section h3 { color: #2e7d32; margin-top: 0; }
-        .quantity-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-top: 12px;
-        }
-        .quantity-item {
-            background: rgba(255,255,255,0.8);
-            border-radius: 6px;
-            padding: 12px;
-        }
-        .quantity-item .label { font-size: 9pt; color: #666; margin-bottom: 4px; }
-        .quantity-item .value { font-size: 16pt; font-weight: 700; color: #2e7d32; }
-        .quantity-item .unit { font-size: 9pt; color: #666; margin-left: 4px; }
-        .quantity-item .reasoning { font-size: 8pt; color: #666; margin-top: 6px; font-style: italic; line-height: 1.4; }
-        
-        .project-info-box {
-            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-            border: 1px solid #ffcc80;
-            border-radius: 6px;
-            padding: 18px;
-            margin: 18px 0;
-        }
-        .project-info-box h3 { color: #e65100; margin-top: 0; }
-        .project-info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-top: 12px;
-        }
-        .project-info-item {
-            background: rgba(255,255,255,0.8);
-            border-radius: 6px;
-            padding: 12px;
-        }
-        .project-info-item .label { font-size: 9pt; color: #666; margin-bottom: 4px; }
-        .project-info-item .value { font-size: 16pt; font-weight: 700; color: #e65100; }
-        .project-info-item .reasoning { font-size: 8pt; color: #666; margin-top: 6px; font-style: italic; line-height: 1.4; }
-        
-        .notes-box {
-            background: #fff8e1;
-            border: 1px solid #ffe082;
-            border-radius: 6px;
-            padding: 16px;
-            margin: 18px 0;
-        }
-        .notes-box h3 { color: #f57c00; margin-top: 0; }
-        .notes-text { color: #444; line-height: 1.6; }
-        
-        .confidence-box {
-            background: linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%);
-            border: 1px solid #9fa8da;
-            border-radius: 6px;
-            padding: 18px;
-            margin: 18px 0;
-        }
-        .confidence-box h3 { color: #3949ab; margin-top: 0; }
-        .confidence-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-top: 12px;
-        }
-        .confidence-item {
-            background: rgba(255,255,255,0.8);
-            border-radius: 6px;
-            padding: 12px;
-            text-align: center;
-        }
-        .confidence-item .label { font-size: 9pt; color: #666; margin-bottom: 4px; }
-        .confidence-item .value { font-size: 14pt; font-weight: 700; }
-        .confidence-item .value.high { color: #2e7d32; }
-        .confidence-item .value.medium { color: #f57c00; }
-        .confidence-item .value.low { color: #c62828; }
-        
-        .footer {
-            margin-top: 30px;
-            padding-top: 15px;
-            border-top: 1px solid #e0e0e0;
-            font-size: 8pt;
-            color: #888;
-            text-align: center;
-        }
-        
-        .page-break { page-break-before: always; }
-        .no-break { page-break-inside: avoid; }
-        
-        /* Risk Register Styles */
-        .risk-register-box {
-            background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
-            border: 1px solid #f48fb1;
-            border-radius: 6px;
-            padding: 18px;
-            margin: 18px 0;
-        }
-        .risk-register-box h3 { color: #c2185b; margin-top: 0; }
-        .risk-summary-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin: 15px 0;
-        }
-        .risk-summary-card {
-            text-align: center;
-            padding: 12px;
-            border-radius: 6px;
-            background: rgba(255,255,255,0.8);
-        }
-        .risk-summary-card.high { background: #f8d7da; }
-        .risk-summary-card.medium { background: #fff3cd; }
-        .risk-summary-card.low { background: #d4edda; }
-        .risk-summary-count { font-size: 18pt; font-weight: 700; }
-        .risk-summary-label { font-size: 8pt; text-transform: uppercase; color: #666; }
-        .risk-card {
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 14px;
-            margin: 10px 0;
-            page-break-inside: avoid;
-            border-left: 4px solid #ffd700;
-        }
-        .risk-card.severity-high { border-left-color: #dc3545; }
-        .risk-card.severity-medium { border-left-color: #ffc107; }
-        .risk-card.severity-low { border-left-color: #28a745; }
-        .risk-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .risk-category {
-            font-weight: 600;
-            font-size: 10pt;
-            color: #333;
-        }
-        .risk-severity {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 8pt;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .risk-severity.high { background: #f8d7da; color: #721c24; }
-        .risk-severity.medium { background: #fff3cd; color: #856404; }
-        .risk-severity.low { background: #d4edda; color: #155724; }
-        .risk-description {
-            font-size: 9pt;
-            color: #444;
-            line-height: 1.5;
-            margin-bottom: 8px;
-        }
-        .risk-mitigation {
-            font-size: 8pt;
-            color: #666;
-            font-style: italic;
-            padding: 8px 10px;
-            background: #f8f9fa;
-            border-radius: 4px;
-        }
-        .risk-mitigation::before {
-            content: "Mitigation: ";
-            font-weight: 600;
-            font-style: normal;
-        }
-    </style>
-</head>
-<body>
-    <div class="page">
-        <div class="header">
-            <h1>RFP Analysis Report</h1>
-            <div class="subtitle">Comprehensive AI-Extracted Project Information</div>
-            <div class="header-info">
-                <div class="header-info-item">
-                    <div class="header-info-label">Report Date</div>
-                    <div class="header-info-value">${today}</div>
-                </div>
-                <div class="header-info-item">
-                    <div class="header-info-label">Disciplines</div>
-                    <div class="header-info-value">${disciplines.length}</div>
-                </div>
-                <div class="header-info-item">
-                    <div class="header-info-label">Phases</div>
-                    <div class="header-info-value">${phases.length}</div>
-                </div>
-                <div class="header-info-item">
-                    <div class="header-info-label">Packages</div>
-                    <div class="header-info-value">${packages.length}</div>
-                </div>
-                ${projectInfo.projectCostM ? `
-                <div class="header-info-item">
-                    <div class="header-info-label">Est. Project Cost</div>
-                    <div class="header-info-value">$${projectInfo.projectCostM}M</div>
-                </div>` : ''}
-                ${projectInfo.designDurationMonths ? `
-                <div class="header-info-item">
-                    <div class="header-info-label">Design Duration</div>
-                    <div class="header-info-value">${projectInfo.designDurationMonths} months</div>
-                </div>` : ''}
-            </div>
-        </div>
-`;
-
-            // Executive Summary
-            if (scopeStr) {
-                html += `
-        <div class="executive-summary no-break">
-            <h3>📋 Executive Summary</h3>
-            <p>${scopeStr.replace(/\n/g, '<br>')}</p>
-        </div>
-`;
-            }
-
-            // Key Metrics KPI Grid
-            const activeQuantities = Object.entries(quantities).filter(([k, v]) => v > 0);
-            html += `
-        <div class="kpi-grid no-break">
-            <div class="kpi-card highlight">
-                <div class="value">${disciplines.length}</div>
-                <div class="label">Disciplines</div>
-            </div>
-            <div class="kpi-card">
-                <div class="value">${phases.length}</div>
-                <div class="label">Phases</div>
-            </div>
-            <div class="kpi-card">
-                <div class="value">${packages.length}</div>
-                <div class="label">Packages</div>
-            </div>
-            <div class="kpi-card">
-                <div class="value">${activeQuantities.length}</div>
-                <div class="label">Quantities Identified</div>
-            </div>
-        </div>
-`;
-
-            // Project Information Section
-            if (projectInfo.projectCostM > 0 || projectInfo.designDurationMonths > 0 || projectInfo.projectType || projectInfo.complexity) {
-                html += `
-        <div class="project-info-box no-break">
-            <h3>📊 Project Information (AI Estimated)</h3>
-            <div class="project-info-grid">
-`;
-                if (projectInfo.projectCostM > 0) {
-                    html += `
-                <div class="project-info-item">
-                    <div class="label">Estimated Project Cost</div>
-                    <div class="value">$${projectInfo.projectCostM.toLocaleString()}M</div>
-                    ${projectInfoReasoning.projectCostReasoning ? `<div class="reasoning">${projectInfoReasoning.projectCostReasoning}</div>` : ''}
-                </div>`;
-                }
-                if (projectInfo.designDurationMonths) {
-                    html += `
-                <div class="project-info-item">
-                    <div class="label">Design Duration</div>
-                    <div class="value">${projectInfo.designDurationMonths} <span style="font-size: 10pt; font-weight: normal;">months</span></div>
-                    ${projectInfoReasoning.scheduleReasoning ? `<div class="reasoning">${projectInfoReasoning.scheduleReasoning}</div>` : ''}
-                </div>`;
-                }
-                if (projectInfo.projectType) {
-                    html += `
-                <div class="project-info-item">
-                    <div class="label">Project Type</div>
-                    <div class="value" style="font-size: 12pt;">${projectInfo.projectType.charAt(0).toUpperCase() + projectInfo.projectType.slice(1)}</div>
-                </div>`;
-                }
-                if (projectInfo.complexity) {
-                    html += `
-                <div class="project-info-item">
-                    <div class="label">Complexity Level</div>
-                    <div class="value" style="font-size: 12pt;">${projectInfo.complexity}</div>
-                </div>`;
-                }
-                html += `
-            </div>
-        </div>
-`;
-            }
-
-            // Extracted Quantities Section
-            if (activeQuantities.length > 0) {
-                html += `
-        <div class="quantities-section">
-            <h3>📐 Key Engineering Quantities</h3>
-            <div class="quantity-grid">
-`;
-                activeQuantities.forEach(([key, value]) => {
-                    const info = quantityLabels[key] || { label: key, unit: '' };
-                    const reasoning = quantityReasoning[key] || '';
-                    html += `
-                <div class="quantity-item">
-                    <div class="label">${info.label}</div>
-                    <div class="value">${value.toLocaleString()}<span class="unit">${info.unit}</span></div>
-                    ${reasoning ? `<div class="reasoning">${reasoning}</div>` : ''}
-                </div>`;
-                });
-                html += `
-            </div>
-        </div>
-`;
-            }
-
-            // Schedule Information
-            if (scheduleStr) {
-                html += `
-        <div class="schedule-box no-break">
-            <h3>📅 Schedule Information</h3>
-            <div class="schedule-text">${scheduleStr.replace(/\n/g, '<br>')}</div>
-        </div>
-`;
-            }
-
-            // Usage Statistics
-            if (stats && stats.totalTokens > 0) {
-                const processingTime = stats.endTime && stats.startTime ? ((stats.endTime - stats.startTime) / 1000).toFixed(1) + 's' : 'N/A';
-                html += `
-        <div class="stats-box no-break">
-            <h3>🤖 AI Analysis Statistics</h3>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <span class="stat-label">API Calls</span>
-                    <span class="stat-value">${stats.apiCalls}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Model</span>
-                    <span class="stat-value">${stats.model || 'gpt-5.2'}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Tokens</span>
-                    <span class="stat-value">${formatNumber(stats.totalTokens)}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Processing Time</span>
-                    <span class="stat-value">${processingTime}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Estimated Cost</span>
-                    <span class="stat-value">$${stats.estimatedCost.toFixed(4)}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Document Pages</span>
-                    <span class="stat-value">${rfpState.pageCount || 'N/A'}</span>
-                </div>
-            </div>
-        </div>
-`;
-            }
-
-            // Confidence Scores (if available)
-            if (extractedData.confidence && Object.keys(extractedData.confidence).length > 0) {
-                html += `
-        <div class="confidence-box no-break">
-            <h3>📈 Extraction Confidence Scores</h3>
-            <div class="confidence-grid">
-`;
-                const confidenceLabels = {
-                    scope: 'Scope',
-                    phases: 'Phases',
-                    disciplines: 'Disciplines',
-                    packages: 'Packages',
-                    schedule: 'Schedule',
-                    quantities: 'Quantities'
-                };
-                Object.entries(extractedData.confidence).forEach(([key, value]) => {
-                    const label = confidenceLabels[key] || key;
-                    let confidenceClass = 'medium';
-                    if (value === 'High' || value === 'high') confidenceClass = 'high';
-                    if (value === 'Low' || value === 'low') confidenceClass = 'low';
-                    html += `
-                <div class="confidence-item">
-                    <div class="label">${label}</div>
-                    <div class="value ${confidenceClass}">${value}</div>
-                </div>`;
-                });
-                html += `
-            </div>
-        </div>
-`;
-            }
-
-            // Page Break - Project Structure Section
-            html += `
-        <div class="page-break"></div>
-        <h2>Project Structure</h2>
-        <div class="two-column">
-            <div class="list-section">
-                <h3>Project Phases</h3>
-                ${phases.length > 0 ? '<ul>' + phases.map(p => `<li>${p}</li>`).join('') + '</ul>' : '<p style="color:#999;font-style:italic;">No phases extracted</p>'}
-            </div>
-            <div class="list-section">
-                <h3>Deliverable Packages</h3>
-                ${packages.length > 0 ? '<ul>' + packages.map(p => `<li>${p}</li>`).join('') + '</ul>' : '<p style="color:#999;font-style:italic;">No packages extracted</p>'}
-            </div>
-        </div>
-        
-        <h3>Engineering Disciplines</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 30px;">#</th>
-                    <th>Discipline</th>
-                    <th>Scope Summary</th>
-                </tr>
-            </thead>
-            <tbody>
-`;
-            if (disciplines.length > 0) {
-                disciplines.forEach((disc, idx) => {
-                    const scope = disciplineScopes[disc];
-                    const scopePreview = scope ? (scope.length > 150 ? scope.substring(0, 150) + '...' : scope) : '<em style="color:#999;">No scope extracted</em>';
-                    html += `
-                <tr>
-                    <td class="text-center">${idx + 1}</td>
-                    <td><strong>${disc}</strong></td>
-                    <td style="font-size: 9pt;">${scopePreview.replace(/\n/g, ' ')}</td>
-                </tr>`;
-                });
-            }
-            html += `
-            </tbody>
-        </table>
-`;
-
-            // Detailed Discipline Scopes
-            html += `
-        <div class="page-break"></div>
-        <h2>Discipline Scope of Work Details</h2>
-`;
-            if (disciplines.length > 0) {
-                disciplines.forEach(disc => {
-                    const scope = disciplineScopes[disc];
-                    html += `
-        <div class="discipline-card no-break">
-            <h3>📌 ${disc}</h3>
-            ${scope ? `<div class="discipline-scope">${scope.replace(/\n/g, '<br>')}</div>` : '<div class="no-scope">No specific scope of work was extracted for this discipline from the RFP document.</div>'}
-        </div>
-`;
-                });
-            } else {
-                html += `<p style="color:#999;font-style:italic;">No disciplines were extracted from the RFP document.</p>`;
-            }
-
-            // AI Notes
-            if (notes && notes !== 'Analysis notes will appear here...') {
-                html += `
-        <div class="notes-box">
-            <h3>📝 AI Analysis Notes & Observations</h3>
-            <div class="notes-text">${notes.replace(/\n/g, '<br>')}</div>
-        </div>
-`;
-            }
-
-            // Risk Register (if available)
-            if (extractedData.risks && extractedData.risks.length > 0) {
-                const highRisks = extractedData.risks.filter(r => (r.severity || '').toLowerCase() === 'high').length;
-                const mediumRisks = extractedData.risks.filter(r => (r.severity || '').toLowerCase() === 'medium').length;
-                const lowRisks = extractedData.risks.filter(r => (r.severity || '').toLowerCase() === 'low' || !r.severity).length;
-                
-                html += `
-        <div class="page-break"></div>
-        <h2>⚠️ Risk Register</h2>
-        <div class="risk-register-box">
-            <h3>Risk Summary</h3>
-            <div class="risk-summary-grid">
-                <div class="risk-summary-card high">
-                    <div class="risk-summary-count">${highRisks}</div>
-                    <div class="risk-summary-label">High Severity</div>
-                </div>
-                <div class="risk-summary-card medium">
-                    <div class="risk-summary-count">${mediumRisks}</div>
-                    <div class="risk-summary-label">Medium Severity</div>
-                </div>
-                <div class="risk-summary-card low">
-                    <div class="risk-summary-count">${lowRisks}</div>
-                    <div class="risk-summary-label">Low Severity</div>
-                </div>
-            </div>
-        </div>
-`;
-                // Sort risks by severity (high first, then medium, then low)
-                const severityOrder = { high: 0, medium: 1, low: 2 };
-                const sortedRisks = [...extractedData.risks].sort((a, b) => {
-                    const aSev = (a.severity || 'low').toLowerCase();
-                    const bSev = (b.severity || 'low').toLowerCase();
-                    return (severityOrder[aSev] || 2) - (severityOrder[bSev] || 2);
-                });
-                
-                sortedRisks.forEach((risk, idx) => {
-                    const severity = (risk.severity || 'Medium').toLowerCase();
-                    const category = risk.category || 'General';
-                    const description = typeof risk === 'string' ? risk : (risk.description || '');
-                    const mitigation = risk.mitigation || '';
-                    
-                    html += `
-        <div class="risk-card severity-${severity} no-break">
-            <div class="risk-header">
-                <span class="risk-category">${idx + 1}. ${category}</span>
-                <span class="risk-severity ${severity}">${severity}</span>
-            </div>
-            <div class="risk-description">${description}</div>
-            ${mitigation ? `<div class="risk-mitigation">${mitigation}</div>` : ''}
-        </div>
-`;
-                });
-            }
-
-            html += `
-        <div class="footer">
-            <strong>RFP Analysis Report</strong> • Generated by WBS Terminal RFP Wizard<br>
-            ${todayFull} • Powered by AI Document Analysis
-        </div>
-    </div>
-</body>
-</html>`;
-
-            // Generate PDF
-            const container = document.createElement('div');
-            container.innerHTML = html;
-            document.body.appendChild(container);
-            
-            const filename = `rfp_analysis_${new Date().toISOString().split('T')[0]}.pdf`;
-            const opt = {
-                margin: [0.25, 0.25, 0.25, 0.25],
-                filename: filename,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, willReadFrequently: true },
-                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
-                pagebreak: { mode: ['css', 'legacy'] }
-            };
-            
-            // Use outputPdf to get blob, then trigger download with correct filename
-            html2pdf().set(opt).from(container).outputPdf('blob').then(blob => {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                document.body.removeChild(container);
-            }).catch(err => {
-                console.error('PDF generation failed:', err);
-                document.body.removeChild(container);
-                alert('PDF generation failed. Please try again.');
-            });
-        }
-
         // ============================================
         // MASTER REPORT DATA HELPERS
         // ============================================
@@ -12509,16 +10189,18 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         }
 
         // ============================================
-        // MASTER PROJECT REPORT
+        // DESIGN FEE BOOK REPORT
         // ============================================
 
         /**
-         * Generates a comprehensive Master Project Report PDF
-         * Combines all project data, RFP analysis, AI insights, MH estimates, and more
+         * Generates the Design Fee Book - a comprehensive professional report
+         * Black and white theme optimized for printing
          */
-        function generateMasterReport() {
+        function generateDesignFeeBook() {
             const today = new Date().toLocaleDateString();
-            const todayFull = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const todayFull = new Date().toLocaleDateString('en-US', { 
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+            });
             
             // Collect all data
             const assumptions = getCostEstimateAssumptions();
@@ -12528,6 +10210,9 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             const scheduleData = getScheduleAnalysisData();
             const rfpData = getRfpAnalysisData();
             const wbsCount = projectData.phases.length * projectData.disciplines.length * projectData.packages.length;
+            
+            // Get quantity reasoning for MH backup
+            const quantityReasoning = rfpState?.quantityReasoning || {};
             
             // Capture performance chart
             let performanceChartImg = '';
@@ -12546,20 +10231,20 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Master Project Report</title>
+    <title>Design Fee Book</title>
     <style>
         @media print {
-            @page { margin: 0.5in; size: letter; }
+            @page { margin: 0.75in; size: letter; }
             .page-break { page-break-before: always; }
             .no-break { page-break-inside: avoid; }
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-            color: #2d3748;
-            background: #ffffff;
+            font-family: Georgia, 'Times New Roman', Times, serif;
+            color: #000;
+            background: #fff;
             font-size: 10pt;
-            line-height: 1.6;
+            line-height: 1.5;
         }
         
         /* Cover Page */
@@ -12569,366 +10254,240 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
-            color: #fff;
             text-align: center;
-            position: relative;
+            border: 3px solid #000;
+            padding: 60px;
         }
-        .cover-accent {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 8px;
-            background: linear-gradient(90deg, #c9a227, #d4af37, #c9a227);
-        }
-        .cover-accent-bottom {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 8px;
-            background: linear-gradient(90deg, #c9a227, #d4af37, #c9a227);
-        }
-        .cover-logo { font-size: 64px; margin-bottom: 24px; }
         .cover-title {
-            font-size: 36pt;
-            font-weight: 300;
-            letter-spacing: 3px;
-            margin-bottom: 12px;
+            font-size: 32pt;
+            font-weight: bold;
+            margin-bottom: 20px;
             text-transform: uppercase;
-            color: #fff;
+            letter-spacing: 2px;
         }
         .cover-subtitle {
             font-size: 14pt;
-            color: #c9a227;
-            margin-bottom: 48px;
-            font-weight: 500;
+            margin-bottom: 60px;
+            font-style: italic;
         }
-        .cover-kpi-grid {
+        .cover-metrics {
             display: flex;
+            justify-content: center;
             gap: 40px;
-            margin-top: 24px;
+            margin: 40px 0;
         }
-        .cover-kpi {
+        .cover-metric {
             text-align: center;
-            padding: 16px 24px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #000;
+            min-width: 120px;
         }
-        .cover-kpi-value {
-            font-size: 28pt;
-            font-weight: 700;
-            color: #c9a227;
+        .cover-metric-value {
+            font-size: 24pt;
+            font-weight: bold;
         }
-        .cover-kpi-label {
-            font-size: 10pt;
+        .cover-metric-label {
+            font-size: 9pt;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.9;
-            margin-top: 4px;
+            margin-top: 5px;
         }
         .cover-date {
             position: absolute;
-            bottom: 40px;
-            font-size: 12pt;
-            opacity: 0.8;
+            bottom: 60px;
+            font-size: 11pt;
         }
         
         /* Page Layout */
         .page {
-            padding: 40px;
+            padding: 40px 50px;
             max-width: 8.5in;
-            min-height: 100vh;
         }
         
-        /* Section Headers */
-        .section-header {
-            background: #1a365d;
-            color: #ffffff;
-            padding: 16px 24px;
-            margin: -40px -40px 24px -40px;
-            border-bottom: 4px solid #c9a227;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        /* Chapter Headers */
+        .chapter-header {
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
         }
-        .section-number {
-            background: #c9a227;
-            color: #1a365d;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 14pt;
-        }
-        .section-title {
-            font-size: 18pt;
-            font-weight: 400;
+        .chapter-number {
+            font-size: 11pt;
+            font-weight: normal;
+            text-transform: uppercase;
             letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .chapter-title {
+            font-size: 18pt;
+            font-weight: bold;
         }
         
         /* Typography */
         h2 {
-            color: #1a365d;
-            font-size: 14pt;
-            font-weight: 600;
-            margin: 24px 0 12px 0;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #c9a227;
+            font-size: 13pt;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
         }
         h3 {
-            color: #2d3748;
             font-size: 11pt;
-            font-weight: 600;
-            margin: 16px 0 8px 0;
+            font-weight: bold;
+            margin: 15px 0 8px 0;
         }
-        h4 {
-            color: #4a5568;
-            font-size: 10pt;
-            font-weight: 600;
-            margin: 12px 0 6px 0;
-        }
-        p { margin: 8px 0; line-height: 1.7; }
-        
-        /* Cards and Boxes */
-        .summary-box {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-left: 4px solid #c9a227;
-            border-radius: 0 8px 8px 0;
-            padding: 16px 20px;
-            margin: 16px 0;
-        }
-        .summary-box h3 { margin-top: 0; color: #1a365d; }
-        
-        .info-box {
-            background: #ebf8ff;
-            border: 1px solid #90cdf4;
-            border-radius: 6px;
-            padding: 14px 18px;
-            margin: 12px 0;
-        }
-        .info-box.warning {
-            background: #fffaf0;
-            border-color: #fbd38d;
-        }
-        .info-box.success {
-            background: #f0fff4;
-            border-color: #9ae6b4;
-        }
+        p { margin: 8px 0; line-height: 1.6; }
         
         /* KPI Grid */
         .kpi-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 12px;
-            margin: 16px 0;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
         }
         .kpi-card {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 16px;
+            border: 1px solid #000;
+            padding: 12px;
             text-align: center;
         }
-        .kpi-card.highlight {
-            background: linear-gradient(135deg, #fffff0 0%, #fefcbf 100%);
-            border-color: #d69e2e;
-        }
         .kpi-value {
-            font-size: 20pt;
-            font-weight: 700;
-            color: #1a365d;
+            font-size: 18pt;
+            font-weight: bold;
         }
-        .kpi-card.highlight .kpi-value { color: #744210; }
         .kpi-label {
             font-size: 8pt;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #718096;
-            margin-top: 4px;
+            margin-top: 3px;
         }
         
         /* Tables */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 12px 0;
+            margin: 15px 0;
             font-size: 9pt;
         }
         thead th {
-            background: #1a365d;
-            color: #ffffff;
-            padding: 10px 8px;
+            background: #e5e5e5;
+            border: 1px solid #000;
+            padding: 8px 6px;
             text-align: left;
-            font-weight: 500;
+            font-weight: bold;
             font-size: 8pt;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
         tbody td {
-            padding: 10px 8px;
-            border-bottom: 1px solid #e2e8f0;
+            border: 1px solid #000;
+            padding: 6px;
         }
-        tbody tr:nth-child(even) { background: #f7fafc; }
-        tbody tr:nth-child(odd) { background: #ffffff; }
+        tbody tr:nth-child(even) { background: #f5f5f5; }
+        tbody tr:nth-child(odd) { background: #fff; }
         tfoot th {
-            background: #edf2f7;
-            padding: 10px 8px;
-            font-weight: 600;
-            border-top: 2px solid #c9a227;
+            background: #e5e5e5;
+            border: 1px solid #000;
+            padding: 8px 6px;
+            font-weight: bold;
         }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         
-        /* Badges */
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 8pt;
-            font-weight: 600;
+        /* Info Boxes */
+        .info-box {
+            border: 1px solid #000;
+            padding: 12px 15px;
+            margin: 12px 0;
+            background: #f9f9f9;
         }
-        .badge-high { background: #fed7d7; color: #c53030; }
-        .badge-medium { background: #fefcbf; color: #744210; }
-        .badge-low { background: #c6f6d5; color: #276749; }
-        .badge-info { background: #bee3f8; color: #2b6cb0; }
+        .info-box h3 { margin-top: 0; }
         
         /* Risk Cards */
-        .risk-card {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 12px 14px;
+        .risk-item {
+            border: 1px solid #000;
+            padding: 10px 12px;
             margin: 8px 0;
-            border-left: 4px solid #e2e8f0;
         }
-        .risk-card.severity-high { border-left-color: #c53030; background: #fff5f5; }
-        .risk-card.severity-medium { border-left-color: #d69e2e; background: #fffff0; }
-        .risk-card.severity-low { border-left-color: #38a169; background: #f0fff4; }
+        .risk-item.severity-high { border-left: 4px solid #000; background: #f5f5f5; }
+        .risk-item.severity-medium { border-left: 4px solid #666; }
+        .risk-item.severity-low { border-left: 4px solid #999; }
         .risk-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
         }
-        .risk-category { font-weight: 600; color: #2d3748; font-size: 10pt; }
-        .risk-description { font-size: 9pt; color: #4a5568; line-height: 1.5; margin-bottom: 6px; }
+        .risk-category { font-weight: bold; }
+        .risk-severity { 
+            font-size: 8pt; 
+            text-transform: uppercase;
+            border: 1px solid #000;
+            padding: 1px 6px;
+        }
+        .risk-description { font-size: 9pt; margin-bottom: 5px; }
         .risk-mitigation {
             font-size: 8pt;
-            color: #718096;
             font-style: italic;
-            padding: 8px;
-            background: rgba(0,0,0,0.03);
-            border-radius: 4px;
+            padding: 6px;
+            background: #f0f0f0;
         }
-        .risk-mitigation::before { content: "Mitigation: "; font-weight: 600; font-style: normal; }
         
         /* Insight Cards */
-        .insight-card {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 14px 16px;
-            margin: 10px 0;
+        .insight-item {
+            border: 1px solid #000;
+            padding: 10px 12px;
+            margin: 8px 0;
             display: flex;
-            gap: 12px;
+            gap: 10px;
         }
-        .insight-icon { font-size: 24px; }
+        .insight-icon { font-size: 18px; }
         .insight-content { flex: 1; }
-        .insight-title { font-weight: 600; color: #1a365d; font-size: 10pt; margin-bottom: 4px; }
-        .insight-desc { font-size: 9pt; color: #4a5568; line-height: 1.5; }
+        .insight-title { font-weight: bold; font-size: 10pt; }
+        .insight-desc { font-size: 9pt; margin-top: 3px; }
         
         /* Discipline Cards */
         .discipline-card {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 14px;
-            margin: 10px 0;
-            page-break-inside: avoid;
+            border: 1px solid #000;
+            padding: 12px;
+            margin: 12px 0;
         }
         .discipline-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
         }
-        .discipline-name { font-weight: 600; color: #1a365d; font-size: 11pt; }
-        .discipline-budget { font-weight: 700; color: #2d3748; font-size: 12pt; }
+        .discipline-name { font-weight: bold; font-size: 11pt; }
+        .discipline-budget { font-weight: bold; }
         .discipline-scope {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 10px;
             font-size: 9pt;
-            color: #4a5568;
-            line-height: 1.5;
+            padding: 8px;
+            background: #f9f9f9;
             margin-top: 8px;
         }
         
-        /* Quantity Grid */
-        .quantity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 12px;
-        }
-        .quantity-card {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 12px;
-        }
-        .quantity-label { font-size: 9pt; color: #718096; margin-bottom: 4px; }
-        .quantity-value { font-size: 16pt; font-weight: 700; color: #2b6cb0; }
-        .quantity-unit { font-size: 10pt; color: #718096; margin-left: 4px; }
-        .quantity-reasoning {
+        /* Quantity Backup */
+        .quantity-backup {
             font-size: 8pt;
-            color: #718096;
             font-style: italic;
-            margin-top: 6px;
-            padding: 6px;
-            background: #ebf8ff;
-            border-radius: 4px;
+            color: #444;
+            padding: 4px 8px;
+            background: #f5f5f5;
+            margin-top: 2px;
         }
         
-        /* Two Column Layout */
-        .two-column {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        /* Lists */
-        .list-section ul { margin: 0; padding-left: 20px; }
-        .list-section li { margin: 4px 0; font-size: 9pt; }
-        
-        /* Chart Section */
-        .chart-section {
+        /* Chart */
+        .chart-container {
             margin: 20px 0;
-            padding: 16px;
-            background: #f7fafc;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
+            text-align: center;
         }
-        .chart-section h3 { margin-top: 0; }
-        .chart-section img {
+        .chart-container img {
             max-width: 100%;
-            height: auto;
-            border-radius: 4px;
+            border: 1px solid #000;
         }
         
         /* Footer */
         .page-footer {
             margin-top: 30px;
-            padding-top: 15px;
-            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+            border-top: 1px solid #000;
             font-size: 8pt;
-            color: #a0aec0;
             text-align: center;
         }
         
@@ -12939,42 +10498,39 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
 <body>
     <!-- Cover Page -->
     <div class="cover-page">
-        <div class="cover-accent"></div>
-        <div class="cover-logo">📊</div>
-        <div class="cover-title">Master Project Report</div>
-        <div class="cover-subtitle">Comprehensive Work Breakdown Structure Analysis</div>
-        <div class="cover-kpi-grid">
-            <div class="cover-kpi">
-                <div class="cover-kpi-value">${formatCurrency(totalBudget)}</div>
-                <div class="cover-kpi-label">Total Design Fee</div>
+        <div class="cover-title">Design Fee Book</div>
+        <div class="cover-subtitle">Project Cost Estimate Documentation</div>
+        <div class="cover-metrics">
+            <div class="cover-metric">
+                <div class="cover-metric-value">${formatCurrency(totalBudget)}</div>
+                <div class="cover-metric-label">Total Design Fee</div>
             </div>
-            <div class="cover-kpi">
-                <div class="cover-kpi-value">${projectData.disciplines.length}</div>
-                <div class="cover-kpi-label">Disciplines</div>
+            <div class="cover-metric">
+                <div class="cover-metric-value">${projectData.disciplines.length}</div>
+                <div class="cover-metric-label">Disciplines</div>
             </div>
-            <div class="cover-kpi">
-                <div class="cover-kpi-value">${scheduleData.totalMonths > 0 ? scheduleData.totalMonths + ' mo' : 'TBD'}</div>
-                <div class="cover-kpi-label">Duration</div>
+            <div class="cover-metric">
+                <div class="cover-metric-value">${scheduleData.totalMonths || 'TBD'}</div>
+                <div class="cover-metric-label">Duration (Months)</div>
             </div>
-            <div class="cover-kpi">
-                <div class="cover-kpi-value">${wbsCount}</div>
-                <div class="cover-kpi-label">WBS Elements</div>
+            <div class="cover-metric">
+                <div class="cover-metric-value">${wbsCount}</div>
+                <div class="cover-metric-label">WBS Elements</div>
             </div>
         </div>
         <div class="cover-date">${todayFull}</div>
-        <div class="cover-accent-bottom"></div>
     </div>
 
-    <!-- Section 1: Executive Summary -->
+    <!-- Chapter 1: Executive Summary -->
     <div class="page-break"></div>
     <div class="page">
-        <div class="section-header">
-            <div class="section-number">1</div>
-            <div class="section-title">Executive Summary</div>
+        <div class="chapter-header">
+            <div class="chapter-number">Chapter 1</div>
+            <div class="chapter-title">Executive Summary</div>
         </div>
         
         <div class="kpi-grid no-break">
-            <div class="kpi-card highlight">
+            <div class="kpi-card">
                 <div class="kpi-value">${formatCurrency(totalBudget)}</div>
                 <div class="kpi-label">Total Design Fee</div>
             </div>
@@ -13006,28 +10562,24 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             const scope = rfpData.hasRfpData ? rfpData.scope : projectData.projectScope;
             if (scope) {
                 html += `
-        <div class="summary-box no-break">
+        <div class="info-box no-break">
             <h3>Project Scope</h3>
             <p>${scope.replace(/\n/g, '<br>')}</p>
         </div>
 `;
             }
 
-            // Cost Basis
+            // Cost Estimate Basis
             if (assumptions.isCalculated) {
                 html += `
-        <div class="summary-box no-break">
+        <div class="info-box no-break">
             <h3>Cost Estimate Basis</h3>
-            <div class="two-column" style="margin-top: 12px;">
-                <div>
-                    <p><strong>Construction Cost:</strong> ${formatCurrency(assumptions.constructionCost)}</p>
-                    <p><strong>Design Fee %:</strong> ${assumptions.designFeePercent}%</p>
-                </div>
-                <div>
-                    <p><strong>Total Design Fee:</strong> ${formatCurrency(assumptions.totalDesignFee)}</p>
-                    <p><strong>Project Type:</strong> ${assumptions.projectType}</p>
-                </div>
-            </div>
+            <table>
+                <tr><td><strong>Construction Cost:</strong></td><td class="text-right">${formatCurrency(assumptions.constructionCost)}</td></tr>
+                <tr><td><strong>Design Fee Percentage:</strong></td><td class="text-right">${assumptions.designFeePercent}%</td></tr>
+                <tr><td><strong>Total Design Fee:</strong></td><td class="text-right">${formatCurrency(assumptions.totalDesignFee)}</td></tr>
+                <tr><td><strong>Project Type:</strong></td><td class="text-right">${assumptions.projectType}</td></tr>
+            </table>
         </div>
 `;
             }
@@ -13035,32 +10587,32 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             // Project Structure
             html += `
         <h2>Project Structure</h2>
-        <div class="two-column no-break">
-            <div class="list-section">
-                <h3>Project Phases</h3>
-                <ul>${projectData.phases.map(p => `<li>${p}</li>`).join('')}</ul>
-            </div>
-            <div class="list-section">
-                <h3>Deliverable Packages</h3>
-                <ul>${projectData.packages.map(p => `<li>${p}</li>`).join('')}</ul>
-            </div>
-        </div>
+        <table>
+            <tr>
+                <th style="width: 50%">Project Phases</th>
+                <th style="width: 50%">Deliverable Packages</th>
+            </tr>
+            <tr>
+                <td>${projectData.phases.map((p, i) => `${i+1}. ${p}`).join('<br>')}</td>
+                <td>${projectData.packages.map((p, i) => `${i+1}. ${p}`).join('<br>')}</td>
+            </tr>
+        </table>
     </div>
 `;
 
-            // Section 2: RFP Analysis (if available)
+            // Chapter 2: RFP Analysis (if available)
             if (rfpData.hasRfpData) {
                 html += `
     <div class="page-break"></div>
     <div class="page">
-        <div class="section-header">
-            <div class="section-number">2</div>
-            <div class="section-title">RFP Analysis Summary</div>
+        <div class="chapter-header">
+            <div class="chapter-number">Chapter 2</div>
+            <div class="chapter-title">RFP Analysis Summary</div>
         </div>
         
         <div class="kpi-grid no-break">
             ${rfpData.projectInfo.projectCostM ? `
-            <div class="kpi-card highlight">
+            <div class="kpi-card">
                 <div class="kpi-value">$${rfpData.projectInfo.projectCostM}M</div>
                 <div class="kpi-label">Est. Construction Cost</div>
             </div>` : ''}
@@ -13071,43 +10623,53 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             </div>` : ''}
             ${rfpData.projectInfo.projectType ? `
             <div class="kpi-card">
-                <div class="kpi-value" style="font-size: 14pt;">${rfpData.projectInfo.projectType}</div>
+                <div class="kpi-value" style="font-size: 12pt;">${rfpData.projectInfo.projectType}</div>
                 <div class="kpi-label">Project Type</div>
             </div>` : ''}
             ${rfpData.projectInfo.complexity ? `
             <div class="kpi-card">
-                <div class="kpi-value" style="font-size: 14pt;">${rfpData.projectInfo.complexity}</div>
+                <div class="kpi-value">${rfpData.projectInfo.complexity}</div>
                 <div class="kpi-label">Complexity</div>
             </div>` : ''}
         </div>
 `;
-                // AI Reasoning for cost/schedule
-                if (rfpData.projectInfoReasoning.projectCostReasoning) {
+                // AI Cost Reasoning
+                if (rfpData.projectInfoReasoning?.projectCostReasoning) {
                     html += `
         <div class="info-box no-break">
-            <h4>AI Cost Estimate Reasoning</h4>
+            <h3>AI Cost Estimate Reasoning</h3>
             <p style="font-size: 9pt;">${rfpData.projectInfoReasoning.projectCostReasoning}</p>
         </div>
 `;
                 }
 
-                // Quantities
+                // Key Quantities
                 if (rfpData.quantities.length > 0) {
                     html += `
         <h2>Key Engineering Quantities</h2>
-        <div class="quantity-grid">
+        <table>
+            <thead>
+                <tr>
+                    <th>Quantity</th>
+                    <th class="text-right">Value</th>
+                    <th>Unit</th>
+                    <th>Source/Reasoning</th>
+                </tr>
+            </thead>
+            <tbody>
 `;
                     rfpData.quantities.forEach(qty => {
                         html += `
-            <div class="quantity-card no-break">
-                <div class="quantity-label">${qty.label}</div>
-                <div class="quantity-value">${formatNumber(qty.value)}<span class="quantity-unit">${qty.unit}</span></div>
-                ${qty.reasoning ? `<div class="quantity-reasoning">${qty.reasoning}</div>` : ''}
-            </div>
-`;
+                <tr>
+                    <td>${qty.label}</td>
+                    <td class="text-right">${formatNumber(qty.value)}</td>
+                    <td>${qty.unit}</td>
+                    <td style="font-size: 8pt; font-style: italic;">${qty.reasoning || 'From RFP'}</td>
+                </tr>`;
                     });
                     html += `
-        </div>
+            </tbody>
+        </table>
 `;
                 }
 
@@ -13117,22 +10679,16 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         <h2>AI Extraction Confidence</h2>
         <table>
             <thead>
-                <tr>
-                    <th>Category</th>
-                    <th class="text-center">Confidence Level</th>
-                </tr>
+                <tr><th>Category</th><th class="text-center">Confidence Level</th></tr>
             </thead>
             <tbody>
 `;
                     Object.entries(rfpData.confidence).forEach(([key, value]) => {
-                        const level = (value || 'medium').toLowerCase();
-                        const badgeClass = level === 'high' ? 'badge-low' : level === 'low' ? 'badge-high' : 'badge-medium';
                         html += `
                 <tr>
                     <td>${key.charAt(0).toUpperCase() + key.slice(1)}</td>
-                    <td class="text-center"><span class="badge ${badgeClass}">${value}</span></td>
-                </tr>
-`;
+                    <td class="text-center">${value}</td>
+                </tr>`;
                     });
                     html += `
             </tbody>
@@ -13142,13 +10698,14 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
                 }
             }
 
-            // Section 3: Cost Estimate Details
+            // Chapter 3: Cost Estimate Details
+            const chapterNum3 = rfpData.hasRfpData ? '3' : '2';
             html += `
     <div class="page-break"></div>
     <div class="page">
-        <div class="section-header">
-            <div class="section-number">${rfpData.hasRfpData ? '3' : '2'}</div>
-            <div class="section-title">Cost Estimate Details</div>
+        <div class="chapter-header">
+            <div class="chapter-number">Chapter ${chapterNum3}</div>
+            <div class="chapter-title">Cost Estimate Details</div>
         </div>
         
         <h2>Discipline Budget Allocation</h2>
@@ -13165,12 +10722,10 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             <tbody>
 `;
             assumptions.disciplines.forEach(disc => {
-                const complexityClass = disc.complexity.toLowerCase() === 'high' ? 'badge-high' : 
-                                        disc.complexity.toLowerCase() === 'low' ? 'badge-low' : 'badge-medium';
                 html += `
                 <tr>
                     <td><strong>${disc.name}</strong></td>
-                    <td class="text-center"><span class="badge ${complexityClass}">${disc.complexity}</span></td>
+                    <td class="text-center">${disc.complexity}</td>
                     <td class="text-right">${disc.industryBasePct}%</td>
                     <td class="text-right">${disc.percentOfTotal}%</td>
                     <td class="text-right"><strong>${formatCurrency(disc.budget)}</strong></td>
@@ -13180,8 +10735,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             </tbody>
             <tfoot>
                 <tr>
-                    <th colspan="3">Total Design Fee</th>
-                    <th class="text-right">100%</th>
+                    <th colspan="4">Total Design Fee</th>
                     <th class="text-right">${formatCurrency(totalBudget)}</th>
                 </tr>
             </tfoot>
@@ -13189,19 +10743,19 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
     </div>
 `;
 
-            // Section 4: MH Benchmark Analysis (if available)
+            // Chapter 4: MH Benchmark Analysis (if available)
             if (mhData.hasMHData) {
-                const sectionNum = rfpData.hasRfpData ? '4' : '3';
+                const chapterNum4 = rfpData.hasRfpData ? '4' : '3';
                 html += `
     <div class="page-break"></div>
     <div class="page">
-        <div class="section-header">
-            <div class="section-number">${sectionNum}</div>
-            <div class="section-title">Man-Hour Benchmark Analysis</div>
+        <div class="chapter-header">
+            <div class="chapter-number">Chapter ${chapterNum4}</div>
+            <div class="chapter-title">Man-Hour Benchmark Analysis</div>
         </div>
         
         <div class="kpi-grid no-break">
-            <div class="kpi-card highlight">
+            <div class="kpi-card">
                 <div class="kpi-value">${formatMH(mhData.totalMH)}</div>
                 <div class="kpi-label">Total Man-Hours</div>
             </div>
@@ -13211,7 +10765,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             </div>
             <div class="kpi-card">
                 <div class="kpi-value">${mhData.disciplines.length}</div>
-                <div class="kpi-label">Disciplines Estimated</div>
+                <div class="kpi-label">Disciplines</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value">${mhData.complexity}</div>
@@ -13219,7 +10773,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             </div>
         </div>
         
-        <h2>Discipline Breakdown</h2>
+        <h2>Discipline Man-Hour Breakdown</h2>
         <table>
             <thead>
                 <tr>
@@ -13233,9 +10787,13 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             <tbody>
 `;
                 mhData.disciplines.forEach(disc => {
+                    const reasoning = quantityReasoning[disc.id] || '';
                     html += `
                 <tr>
-                    <td><strong>${disc.name}</strong></td>
+                    <td>
+                        <strong>${disc.name}</strong>
+                        ${reasoning ? `<div class="quantity-backup">Source: ${reasoning}</div>` : ''}
+                    </td>
                     <td class="text-right">${formatNumber(disc.quantity)}</td>
                     <td class="text-right">${disc.rate.toFixed(2)}</td>
                     <td class="text-right">${formatMH(disc.mh)}</td>
@@ -13254,26 +10812,26 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         </table>
         
         <div class="info-box">
-            <p><strong>Note:</strong> Man-hour estimates are based on historical benchmark data from similar infrastructure projects. Budget calculated using $${mhData.hourlyRate}/hour blended rate.</p>
+            <p><strong>Note:</strong> Man-hour estimates based on historical benchmark data. Budget calculated using $${mhData.hourlyRate}/hour blended rate.</p>
         </div>
     </div>
 `;
             }
 
-            // Section 5: Discipline Details
-            const disciplineSectionNum = rfpData.hasRfpData ? (mhData.hasMHData ? '5' : '4') : (mhData.hasMHData ? '4' : '3');
+            // Chapter 5: Discipline Details
+            let chapterNum5 = rfpData.hasRfpData ? (mhData.hasMHData ? '5' : '4') : (mhData.hasMHData ? '4' : '3');
             html += `
     <div class="page-break"></div>
     <div class="page">
-        <div class="section-header">
-            <div class="section-number">${disciplineSectionNum}</div>
-            <div class="section-title">Discipline Details</div>
+        <div class="chapter-header">
+            <div class="chapter-number">Chapter ${chapterNum5}</div>
+            <div class="chapter-title">Discipline Details</div>
         </div>
 `;
             projectData.disciplines.forEach(disc => {
                 const budget = projectData.budgets[disc] || 0;
                 const pct = totalBudget > 0 ? ((budget / totalBudget) * 100).toFixed(1) : 0;
-                const scope = projectData.disciplineScopes && projectData.disciplineScopes[disc] ? projectData.disciplineScopes[disc] : null;
+                const scope = projectData.disciplineScopes?.[disc] || '';
                 
                 html += `
         <div class="discipline-card no-break">
@@ -13283,14 +10841,11 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             </div>
 `;
                 if (scope) {
-                    html += `
-            <div class="discipline-scope">${scope.replace(/\n/g, '<br>')}</div>
-`;
+                    html += `<div class="discipline-scope">${scope.replace(/\n/g, '<br>')}</div>`;
                 }
                 
-                // Package breakdown
                 html += `
-            <table style="font-size: 8pt; margin-top: 10px;">
+            <table style="margin-top: 10px; font-size: 8pt;">
                 <thead>
                     <tr>
                         <th>Package</th>
@@ -13327,19 +10882,19 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
     </div>
 `;
 
-            // Section 6: Schedule Analysis
+            // Chapter 6: Schedule Analysis (if available)
             if (scheduleData.hasSchedule) {
-                const scheduleSectionNum = parseInt(disciplineSectionNum) + 1;
+                let chapterNum6 = parseInt(chapterNum5) + 1;
                 html += `
     <div class="page-break"></div>
     <div class="page">
-        <div class="section-header">
-            <div class="section-number">${scheduleSectionNum}</div>
-            <div class="section-title">Schedule Analysis</div>
+        <div class="chapter-header">
+            <div class="chapter-number">Chapter ${chapterNum6}</div>
+            <div class="chapter-title">Schedule Analysis</div>
         </div>
         
         <div class="kpi-grid no-break">
-            <div class="kpi-card highlight">
+            <div class="kpi-card">
                 <div class="kpi-value">${scheduleData.totalMonths}</div>
                 <div class="kpi-label">Total Months</div>
             </div>
@@ -13357,77 +10912,69 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             </div>
         </div>
 `;
-                // AI Schedule Rationale
                 if (scheduleData.aiScheduleRationale) {
                     html += `
         <div class="info-box no-break">
-            <h4>AI Schedule Rationale</h4>
+            <h3>AI Schedule Rationale</h3>
             <p style="font-size: 9pt;">${scheduleData.aiScheduleRationale}</p>
         </div>
 `;
                 }
-
-                // Schedule notes
                 if (scheduleData.scheduleNotes) {
                     html += `
-        <div class="summary-box no-break">
+        <div class="info-box no-break">
             <h3>Schedule Notes</h3>
             <p>${scheduleData.scheduleNotes.replace(/\n/g, '<br>')}</p>
         </div>
 `;
                 }
-
-                // Performance Chart
                 if (performanceChartImg) {
                     html += `
-        <div class="chart-section no-break">
+        <div class="chart-container no-break">
             <h3>Budget Distribution Over Time</h3>
             <img src="${performanceChartImg}" alt="Performance Chart" />
         </div>
 `;
                 }
-
                 html += `
     </div>
 `;
             }
 
-            // Section 7: Risk Register
+            // Chapter 7: Risk Register (if risks exist)
             if (rfpData.hasRfpData && rfpData.risks.length > 0) {
-                const riskSectionNum = scheduleData.hasSchedule ? parseInt(disciplineSectionNum) + 2 : parseInt(disciplineSectionNum) + 1;
+                let chapterNum7 = parseInt(chapterNum5) + (scheduleData.hasSchedule ? 2 : 1);
                 const highRisks = rfpData.risks.filter(r => (r.severity || '').toLowerCase() === 'high').length;
                 const mediumRisks = rfpData.risks.filter(r => (r.severity || '').toLowerCase() === 'medium').length;
-                const lowRisks = rfpData.risks.filter(r => (r.severity || '').toLowerCase() === 'low' || !r.severity).length;
+                const lowRisks = rfpData.risks.filter(r => !r.severity || (r.severity || '').toLowerCase() === 'low').length;
                 
                 html += `
     <div class="page-break"></div>
     <div class="page">
-        <div class="section-header">
-            <div class="section-number">${riskSectionNum}</div>
-            <div class="section-title">Risk Register</div>
+        <div class="chapter-header">
+            <div class="chapter-number">Chapter ${chapterNum7}</div>
+            <div class="chapter-title">Risk Register</div>
         </div>
         
         <div class="kpi-grid no-break">
-            <div class="kpi-card" style="background: #fff5f5; border-color: #fc8181;">
-                <div class="kpi-value" style="color: #c53030;">${highRisks}</div>
+            <div class="kpi-card">
+                <div class="kpi-value">${highRisks}</div>
                 <div class="kpi-label">High Severity</div>
             </div>
-            <div class="kpi-card" style="background: #fffff0; border-color: #f6e05e;">
-                <div class="kpi-value" style="color: #744210;">${mediumRisks}</div>
+            <div class="kpi-card">
+                <div class="kpi-value">${mediumRisks}</div>
                 <div class="kpi-label">Medium Severity</div>
             </div>
-            <div class="kpi-card" style="background: #f0fff4; border-color: #9ae6b4;">
-                <div class="kpi-value" style="color: #276749;">${lowRisks}</div>
+            <div class="kpi-card">
+                <div class="kpi-value">${lowRisks}</div>
                 <div class="kpi-label">Low Severity</div>
             </div>
         </div>
 `;
-                // Sort risks by severity
                 const severityOrder = { high: 0, medium: 1, low: 2 };
                 const sortedRisks = [...rfpData.risks].sort((a, b) => {
-                    const aSev = (a.severity || 'low').toLowerCase();
-                    const bSev = (b.severity || 'low').toLowerCase();
-                    return (severityOrder[aSev] || 2) - (severityOrder[bSev] || 2);
+                    return (severityOrder[(a.severity || 'low').toLowerCase()] || 2) - 
+                           (severityOrder[(b.severity || 'low').toLowerCase()] || 2);
                 });
                 
                 sortedRisks.forEach((risk, idx) => {
@@ -13435,44 +10982,42 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
                     const category = risk.category || 'General';
                     const description = typeof risk === 'string' ? risk : (risk.description || '');
                     const mitigation = risk.mitigation || '';
-                    const badgeClass = severity === 'high' ? 'badge-high' : severity === 'low' ? 'badge-low' : 'badge-medium';
                     
                     html += `
-        <div class="risk-card severity-${severity} no-break">
+        <div class="risk-item severity-${severity} no-break">
             <div class="risk-header">
                 <span class="risk-category">${idx + 1}. ${category}</span>
-                <span class="badge ${badgeClass}">${severity.toUpperCase()}</span>
+                <span class="risk-severity">${severity.toUpperCase()}</span>
             </div>
             <div class="risk-description">${description}</div>
-            ${mitigation ? `<div class="risk-mitigation">${mitigation}</div>` : ''}
+            ${mitigation ? `<div class="risk-mitigation">Mitigation: ${mitigation}</div>` : ''}
         </div>
 `;
                 });
-                
                 html += `
     </div>
 `;
             }
 
-            // Section 8: AI Insights
+            // Chapter 8: AI Insights (if available)
             if (aiInsights.hasInsights) {
-                let insightSectionNum = parseInt(disciplineSectionNum) + 1;
-                if (scheduleData.hasSchedule) insightSectionNum++;
-                if (rfpData.hasRfpData && rfpData.risks.length > 0) insightSectionNum++;
+                let chapterNum8 = parseInt(chapterNum5) + 1;
+                if (scheduleData.hasSchedule) chapterNum8++;
+                if (rfpData.hasRfpData && rfpData.risks.length > 0) chapterNum8++;
                 
                 html += `
     <div class="page-break"></div>
     <div class="page">
-        <div class="section-header">
-            <div class="section-number">${insightSectionNum}</div>
-            <div class="section-title">AI Insights & Recommendations</div>
+        <div class="chapter-header">
+            <div class="chapter-number">Chapter ${chapterNum8}</div>
+            <div class="chapter-title">AI Insights & Recommendations</div>
         </div>
         
-        <p style="margin-bottom: 16px;">The following optimization suggestions were generated by AI analysis of the project data:</p>
+        <p>The following optimization suggestions were generated by AI analysis of the project data:</p>
 `;
                 aiInsights.suggestions.forEach(insight => {
                     html += `
-        <div class="insight-card no-break">
+        <div class="insight-item no-break">
             <div class="insight-icon">${insight.icon}</div>
             <div class="insight-content">
                 <div class="insight-title">${insight.title}</div>
@@ -13481,39 +11026,38 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         </div>
 `;
                 });
-                
                 html += `
     </div>
 `;
             }
 
-            // Final Section: Complete WBS Table
-            let wbsSectionNum = parseInt(disciplineSectionNum) + 1;
-            if (scheduleData.hasSchedule) wbsSectionNum++;
-            if (rfpData.hasRfpData && rfpData.risks.length > 0) wbsSectionNum++;
-            if (aiInsights.hasInsights) wbsSectionNum++;
+            // Chapter 9: Complete WBS Table
+            let chapterNum9 = parseInt(chapterNum5) + 1;
+            if (scheduleData.hasSchedule) chapterNum9++;
+            if (rfpData.hasRfpData && rfpData.risks.length > 0) chapterNum9++;
+            if (aiInsights.hasInsights) chapterNum9++;
             
             html += `
     <div class="page-break"></div>
     <div class="page">
-        <div class="section-header">
-            <div class="section-number">${wbsSectionNum}</div>
-            <div class="section-title">Complete Work Breakdown Structure</div>
+        <div class="chapter-header">
+            <div class="chapter-number">Chapter ${chapterNum9}</div>
+            <div class="chapter-title">Complete Work Breakdown Structure</div>
         </div>
         
-        <p style="margin-bottom: 12px;">${wbsCount} WBS Elements: ${projectData.phases.length} Phases × ${projectData.disciplines.length} Disciplines × ${projectData.packages.length} Packages</p>
+        <p style="margin-bottom: 15px;">${wbsCount} WBS Elements: ${projectData.phases.length} Phases × ${projectData.disciplines.length} Disciplines × ${projectData.packages.length} Packages</p>
         
         <table>
             <thead>
                 <tr>
-                    <th style="width: 55px;">WBS #</th>
+                    <th style="width: 50px;">WBS #</th>
                     <th>Phase</th>
                     <th>Discipline</th>
                     <th>Package</th>
-                    <th class="text-right" style="width: 90px;">Budget</th>
+                    <th class="text-right" style="width: 80px;">Budget</th>
                     <th class="text-center" style="width: 50px;">Claim %</th>
-                    <th style="width: 80px;">Start</th>
-                    <th style="width: 80px;">End</th>
+                    <th style="width: 75px;">Start</th>
+                    <th style="width: 75px;">End</th>
                 </tr>
             </thead>
             <tbody>
@@ -13557,8 +11101,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         </table>
         
         <div class="page-footer">
-            <strong>Master Project Report</strong> | Generated by WBS Terminal<br>
-            ${todayFull}
+            <strong>Design Fee Book</strong> — Generated ${todayFull}
         </div>
     </div>
 </body>
@@ -13569,9 +11112,9 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             container.innerHTML = html;
             document.body.appendChild(container);
             
-            const filename = `master_project_report_${new Date().toISOString().split('T')[0]}.pdf`;
+            const filename = `design_fee_book_${new Date().toISOString().split('T')[0]}.pdf`;
             const opt = {
-                margin: [0.25, 0.25, 0.25, 0.25],
+                margin: [0.5, 0.5, 0.5, 0.5],
                 filename: filename,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
@@ -13588,7 +11131,6 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
                 pagebreak: { mode: ['css', 'legacy'] }
             };
             
-            // Use outputPdf to get blob, then trigger download with correct filename
             html2pdf().set(opt).from(container).outputPdf('blob').then(blob => {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -13966,7 +11508,6 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         window.previewExtractedText = previewExtractedText;
         window.analyzeRfpDocument = analyzeRfpDocument;
         window.applyRfpData = applyRfpData;
-        window.exportRfpData = exportRfpData;
         window.updateRfpQuantity = updateRfpQuantity;
         window.showQuantityReasoning = showQuantityReasoning;
         
@@ -13978,10 +11519,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         // Reports
         window.openReportsPanel = openReportsPanel;
         window.closeReportsPanel = closeReportsPanel;
-        window.generateComprehensiveReport = generateComprehensiveReport;
-        window.generateMasterReport = generateMasterReport;
-        window.exportCSV = exportCSV;
-        window.exportAllDataCSV = exportAllDataCSV;
+        window.generateDesignFeeBook = generateDesignFeeBook;
         window.shareProjectUrl = shareProjectUrl;
         window.importData = importData;
         

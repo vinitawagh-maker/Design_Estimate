@@ -926,80 +926,22 @@
     <div id="reports-modal" class="modal-base reports-modal" onclick="if(event.target===this)closeReportsPanel()">
         <div class="modal-base-content">
             <div class="modal-base-header">
-                <h3>📊 Reports & Exports</h3>
+                <h3>📄 Export Report</h3>
                 <button class="modal-base-close" onclick="closeReportsPanel()">✕</button>
             </div>
             
             <div class="modal-base-body">
-                <!-- Master Report Section (Featured) -->
+                <!-- Design Fee Book -->
                 <div class="reports-section">
-                    <div class="reports-section-title">⭐ Master Project Report</div>
+                    <div class="reports-section-title">Design Fee Book</div>
                     <div class="reports-grid">
-                        <div class="card-base report-card report-card-featured" onclick="closeReportsPanel(); generateMasterReport();">
-                            <div class="card-base-icon" style="font-size: 32px;">📑</div>
+                        <div class="card-base report-card report-card-featured" onclick="closeReportsPanel(); generateDesignFeeBook();">
+                            <div class="card-base-icon" style="font-size: 32px;">📄</div>
                             <div class="report-card-info">
-                                <div class="card-base-title" style="color: #c9a227; font-size: 14px;">Master Project Report</div>
-                                <div class="card-base-desc">Complete unified report with RFP analysis, AI insights, MH estimates, cost details, risk register, schedule, and full WBS</div>
+                                <div class="card-base-title" style="color: #c9a227; font-size: 14px;">Design Fee Book</div>
+                                <div class="card-base-desc">Complete professional report with executive summary, cost estimates, MH analysis, discipline details, schedule, risk register, AI insights, and full WBS</div>
                             </div>
                         </div>
-                    </div>
-                </div>
-                
-                <!-- PDF Reports Section -->
-                <div class="reports-section">
-                    <div class="reports-section-title">📄 Individual Reports</div>
-                    <div class="reports-grid">
-                        <div class="card-base report-card" onclick="closeReportsPanel(); generateComprehensiveReport();">
-                            <div class="card-base-icon">📊</div>
-                            <div class="report-card-info">
-                                <div class="card-base-title">Project Summary Report</div>
-                                <div class="card-base-desc">Executive summary, KPIs, budgets, discipline details, schedule, and charts</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- RFP Report Section (conditionally shown) -->
-                <div id="reports-rfp-section" class="reports-section hidden">
-                    <div class="reports-section-title">📄 RFP Analysis</div>
-                    <div class="reports-grid">
-                        <div class="card-base report-card" onclick="closeReportsPanel(); openRfpWizard(); setTimeout(exportRfpData, 100);">
-                            <div class="card-base-icon">📑</div>
-                            <div class="report-card-info">
-                                <div class="card-base-title">RFP Analysis Report</div>
-                                <div class="card-base-desc">AI-extracted project scope, disciplines, and requirements from RFP</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Data Export Section -->
-                <div class="reports-section">
-                    <div class="reports-section-title">📊 Data Exports</div>
-                    <div class="reports-grid">
-                        <div class="card-base report-card" onclick="closeReportsPanel(); exportCSV();">
-                            <div class="card-base-icon">📁</div>
-                            <div class="report-card-info">
-                                <div class="card-base-title">WBS Table (CSV)</div>
-                                <div class="card-base-desc">Complete WBS structure with budgets and dates</div>
-                            </div>
-                        </div>
-                        <div class="card-base report-card" onclick="closeReportsPanel(); exportAllDataCSV();">
-                            <div class="card-base-icon">💾</div>
-                            <div class="report-card-info">
-                                <div class="card-base-title">Full Data Export (JSON)</div>
-                                <div class="card-base-desc">All project data for backup or import</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Actions -->
-                <div class="reports-section">
-                    <div class="reports-section-title">⚡ Quick Actions</div>
-                    <div class="reports-quick-actions">
-                        <button class="btn btn-sm" onclick="shareProjectUrl()">🔗 Copy Share Link</button>
-                        <button class="btn btn-sm" onclick="importData(); closeReportsPanel();">📥 Import Data</button>
                     </div>
                 </div>
             </div>
