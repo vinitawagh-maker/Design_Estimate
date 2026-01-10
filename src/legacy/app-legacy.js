@@ -5822,16 +5822,26 @@ ${reasoning}`;
             container.innerHTML = html;
             document.body.appendChild(container);
             
+            const filename = `project_summary_${new Date().toISOString().split('T')[0]}.pdf`;
             const opt = {
                 margin: [0.25, 0.25, 0.25, 0.25],
-                filename: `project_summary_${new Date().toISOString().split('T')[0]}.pdf`,
+                filename: filename,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, willReadFrequently: true },
                 jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
                 pagebreak: { mode: ['css', 'legacy'] }
             };
             
-            html2pdf().set(opt).from(container).save().then(() => {
+            // Use outputPdf to get blob, then trigger download with correct filename
+            html2pdf().set(opt).from(container).outputPdf('blob').then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
                 document.body.removeChild(container);
             }).catch(err => {
                 console.error('PDF generation failed:', err);
@@ -6715,9 +6725,10 @@ ${reasoning}`;
             document.body.appendChild(container);
             
             // Configure PDF options
+            const filename = `project_report_${new Date().toISOString().split('T')[0]}.pdf`;
             const opt = {
                 margin: [0.25, 0.25, 0.25, 0.25],
-                filename: `project_report_${new Date().toISOString().split('T')[0]}.pdf`,
+                filename: filename,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
                     scale: 2, 
@@ -6733,8 +6744,16 @@ ${reasoning}`;
                 pagebreak: { mode: ['css', 'legacy'] }
             };
             
-            // Generate and download PDF
-            html2pdf().set(opt).from(container).save().then(() => {
+            // Use outputPdf to get blob, then trigger download with correct filename
+            html2pdf().set(opt).from(container).outputPdf('blob').then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
                 document.body.removeChild(container);
             }).catch(err => {
                 console.error('PDF generation failed:', err);
@@ -7482,9 +7501,10 @@ ${reasoning}`;
             document.body.appendChild(container);
             
             // Configure PDF options
+            const filename = `comprehensive_report_${new Date().toISOString().split('T')[0]}.pdf`;
             const opt = {
                 margin: [0.3, 0.3, 0.3, 0.3],
-                filename: `project_report_${new Date().toISOString().split('T')[0]}.pdf`,
+                filename: filename,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
                     scale: 2, 
@@ -7500,8 +7520,16 @@ ${reasoning}`;
                 pagebreak: { mode: ['css', 'legacy'] }
             };
             
-            // Generate and download PDF
-            html2pdf().set(opt).from(container).save().then(() => {
+            // Use outputPdf to get blob, then trigger download with correct filename
+            html2pdf().set(opt).from(container).outputPdf('blob').then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
                 document.body.removeChild(container);
             }).catch(err => {
                 console.error('PDF generation failed:', err);
@@ -12265,16 +12293,26 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             container.innerHTML = html;
             document.body.appendChild(container);
             
+            const filename = `rfp_analysis_${new Date().toISOString().split('T')[0]}.pdf`;
             const opt = {
                 margin: [0.25, 0.25, 0.25, 0.25],
-                filename: `rfp_analysis_${new Date().toISOString().split('T')[0]}.pdf`,
+                filename: filename,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, willReadFrequently: true },
                 jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
                 pagebreak: { mode: ['css', 'legacy'] }
             };
             
-            html2pdf().set(opt).from(container).save().then(() => {
+            // Use outputPdf to get blob, then trigger download with correct filename
+            html2pdf().set(opt).from(container).outputPdf('blob').then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
                 document.body.removeChild(container);
             }).catch(err => {
                 console.error('PDF generation failed:', err);
@@ -13531,9 +13569,10 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             container.innerHTML = html;
             document.body.appendChild(container);
             
+            const filename = `master_project_report_${new Date().toISOString().split('T')[0]}.pdf`;
             const opt = {
                 margin: [0.25, 0.25, 0.25, 0.25],
-                filename: `master_project_report_${new Date().toISOString().split('T')[0]}.pdf`,
+                filename: filename,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
                     scale: 2, 
@@ -13549,7 +13588,16 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
                 pagebreak: { mode: ['css', 'legacy'] }
             };
             
-            html2pdf().set(opt).from(container).save().then(() => {
+            // Use outputPdf to get blob, then trigger download with correct filename
+            html2pdf().set(opt).from(container).outputPdf('blob').then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
                 document.body.removeChild(container);
             }).catch(err => {
                 console.error('PDF generation failed:', err);
