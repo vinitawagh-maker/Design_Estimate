@@ -1100,22 +1100,23 @@ let projectData = {
         // ============================================
         
         // Mapping of discipline IDs to their JSON benchmark files
+        // Use relative paths (no leading /) to work with GitHub Pages subdirectory deployment
         const BENCHMARK_FILE_MAPPING = {
-            drainage: '/data/benchmarking/benchmarking-drainage.json',
-            mot: '/data/benchmarking/benchmarking-mot.json',
-            roadway: '/data/benchmarking/benchmarking-roadway.json',
-            traffic: '/data/benchmarking/benchmarking-traffic.json',
-            utilities: '/data/benchmarking/benchmarking-utilities.json',
-            retainingWalls: '/data/benchmarking/benchmarking-retainingwalls.json',
-            bridgesPCGirder: '/data/benchmarking/benchmarking-bridges.json',
-            bridgesSteel: '/data/benchmarking/benchmarking-bridges.json',
-            bridgesRehab: '/data/benchmarking/benchmarking-bridges.json',
-            miscStructures: '/data/benchmarking/benchmarking-miscstructures.json',
-            geotechnical: '/data/benchmarking/benchmarking-geotechnical.json',
-            systems: '/data/benchmarking/benchmarking-systems.json',
-            track: '/data/benchmarking/benchmarking-track.json',
-            esdc: '/data/benchmarking/benchmarking-esdc.json',
-            tscd: '/data/benchmarking/benchmarking-tsdc.json'
+            drainage: './data/benchmarking/benchmarking-drainage.json',
+            mot: './data/benchmarking/benchmarking-mot.json',
+            roadway: './data/benchmarking/benchmarking-roadway.json',
+            traffic: './data/benchmarking/benchmarking-traffic.json',
+            utilities: './data/benchmarking/benchmarking-utilities.json',
+            retainingWalls: './data/benchmarking/benchmarking-retainingwalls.json',
+            bridgesPCGirder: './data/benchmarking/benchmarking-bridges.json',
+            bridgesSteel: './data/benchmarking/benchmarking-bridges.json',
+            bridgesRehab: './data/benchmarking/benchmarking-bridges.json',
+            miscStructures: './data/benchmarking/benchmarking-miscstructures.json',
+            geotechnical: './data/benchmarking/benchmarking-geotechnical.json',
+            systems: './data/benchmarking/benchmarking-systems.json',
+            track: './data/benchmarking/benchmarking-track.json',
+            esdc: './data/benchmarking/benchmarking-esdc.json',
+            tscd: './data/benchmarking/benchmarking-tsdc.json'
         };
 
         // Cache for loaded benchmark data
