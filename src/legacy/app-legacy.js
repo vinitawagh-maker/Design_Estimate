@@ -12294,7 +12294,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             const modal = document.getElementById('rfp-results-modal');
             if (!modal) return;
             
-            modal.classList.add('active');
+            modal.classList.add('open');
             populateRfpResultsPanel();
         }
 
@@ -12304,7 +12304,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         function closeRfpResultsPanel() {
             const modal = document.getElementById('rfp-results-modal');
             if (modal) {
-                modal.classList.remove('active');
+                modal.classList.remove('open');
             }
         }
 
