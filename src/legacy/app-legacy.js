@@ -10238,13 +10238,30 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             .page-break { page-break-before: always; }
             .no-break { page-break-inside: avoid; }
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: Georgia, 'Times New Roman', Times, serif;
-            color: #000;
-            background: #fff;
+        
+        /* Force professional fonts on all elements for html2canvas compatibility */
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
+        }
+        
+        html, body {
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
+            color: #000 !important;
+            background: #fff !important;
             font-size: 10pt;
             line-height: 1.5;
+        }
+        
+        /* Ensure all text elements use professional fonts */
+        div, span, p, h1, h2, h3, h4, h5, h6, td, th, li, label, strong, em, b, i {
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
+        }
+        
+        table, thead, tbody, tfoot, tr {
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         
         /* Cover Page */
@@ -10257,6 +10274,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             text-align: center;
             border: 3px solid #000;
             padding: 60px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .cover-title {
             font-size: 32pt;
@@ -10264,11 +10282,13 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             margin-bottom: 20px;
             text-transform: uppercase;
             letter-spacing: 2px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .cover-subtitle {
             font-size: 14pt;
             margin-bottom: 60px;
             font-style: italic;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .cover-metrics {
             display: flex;
@@ -10285,22 +10305,26 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         .cover-metric-value {
             font-size: 24pt;
             font-weight: bold;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .cover-metric-label {
             font-size: 9pt;
             text-transform: uppercase;
             margin-top: 5px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .cover-date {
             position: absolute;
             bottom: 60px;
             font-size: 11pt;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         
         /* Page Layout */
         .page {
             padding: 40px 50px;
             max-width: 8.5in;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         
         /* Chapter Headers */
@@ -10315,10 +10339,12 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 5px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .chapter-title {
             font-size: 18pt;
             font-weight: bold;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         
         /* Typography */
@@ -10328,13 +10354,19 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             margin: 20px 0 10px 0;
             border-bottom: 1px solid #000;
             padding-bottom: 5px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         h3 {
             font-size: 11pt;
             font-weight: bold;
             margin: 15px 0 8px 0;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
-        p { margin: 8px 0; line-height: 1.6; }
+        p { 
+            margin: 8px 0; 
+            line-height: 1.6;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
+        }
         
         /* KPI Grid */
         .kpi-grid {
@@ -10347,15 +10379,18 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             border: 1px solid #000;
             padding: 12px;
             text-align: center;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .kpi-value {
             font-size: 18pt;
             font-weight: bold;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .kpi-label {
             font-size: 8pt;
             text-transform: uppercase;
             margin-top: 3px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         
         /* Tables */
@@ -10364,6 +10399,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             border-collapse: collapse;
             margin: 15px 0;
             font-size: 9pt;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         thead th {
             background: #e5e5e5;
@@ -10373,10 +10409,12 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             font-weight: bold;
             font-size: 8pt;
             text-transform: uppercase;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         tbody td {
             border: 1px solid #000;
             padding: 6px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         tbody tr:nth-child(even) { background: #f5f5f5; }
         tbody tr:nth-child(odd) { background: #fff; }
@@ -10385,6 +10423,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             border: 1px solid #000;
             padding: 8px 6px;
             font-weight: bold;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
@@ -10395,14 +10434,16 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             padding: 12px 15px;
             margin: 12px 0;
             background: #f9f9f9;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
-        .info-box h3 { margin-top: 0; }
+        .info-box h3 { margin-top: 0; font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important; }
         
         /* Risk Cards */
         .risk-item {
             border: 1px solid #000;
             padding: 10px 12px;
             margin: 8px 0;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .risk-item.severity-high { border-left: 4px solid #000; background: #f5f5f5; }
         .risk-item.severity-medium { border-left: 4px solid #666; }
@@ -10412,19 +10453,21 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             justify-content: space-between;
             margin-bottom: 5px;
         }
-        .risk-category { font-weight: bold; }
+        .risk-category { font-weight: bold; font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important; }
         .risk-severity { 
             font-size: 8pt; 
             text-transform: uppercase;
             border: 1px solid #000;
             padding: 1px 6px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
-        .risk-description { font-size: 9pt; margin-bottom: 5px; }
+        .risk-description { font-size: 9pt; margin-bottom: 5px; font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important; }
         .risk-mitigation {
             font-size: 8pt;
             font-style: italic;
             padding: 6px;
             background: #f0f0f0;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         
         /* Insight Cards */
@@ -10434,17 +10477,19 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             margin: 8px 0;
             display: flex;
             gap: 10px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .insight-icon { font-size: 18px; }
-        .insight-content { flex: 1; }
-        .insight-title { font-weight: bold; font-size: 10pt; }
-        .insight-desc { font-size: 9pt; margin-top: 3px; }
+        .insight-content { flex: 1; font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important; }
+        .insight-title { font-weight: bold; font-size: 10pt; font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important; }
+        .insight-desc { font-size: 9pt; margin-top: 3px; font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important; }
         
         /* Discipline Cards */
         .discipline-card {
             border: 1px solid #000;
             padding: 12px;
             margin: 12px 0;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .discipline-header {
             display: flex;
@@ -10453,13 +10498,14 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             padding-bottom: 8px;
             margin-bottom: 8px;
         }
-        .discipline-name { font-weight: bold; font-size: 11pt; }
-        .discipline-budget { font-weight: bold; }
+        .discipline-name { font-weight: bold; font-size: 11pt; font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important; }
+        .discipline-budget { font-weight: bold; font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important; }
         .discipline-scope {
             font-size: 9pt;
             padding: 8px;
             background: #f9f9f9;
             margin-top: 8px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         
         /* Quantity Backup */
@@ -10470,12 +10516,14 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             padding: 4px 8px;
             background: #f5f5f5;
             margin-top: 2px;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         
         /* Chart */
         .chart-container {
             margin: 20px 0;
             text-align: center;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         .chart-container img {
             max-width: 100%;
@@ -10489,6 +10537,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             border-top: 1px solid #000;
             font-size: 8pt;
             text-align: center;
+            font-family: Cambria, Georgia, 'Times New Roman', Times, serif !important;
         }
         
         .page-break { page-break-before: always; }
