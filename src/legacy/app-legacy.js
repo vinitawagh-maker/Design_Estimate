@@ -9485,12 +9485,12 @@ IMPORTANT:
                             'Authorization': `Bearer ${apiKey}`
                         },
                         body: JSON.stringify({
-                            model: 'gpt-5.2',
+                            model: 'gpt-5.2-thinking',
                             messages: [
                                 { role: 'system', content: systemPrompt },
                                 { role: 'user', content: `Analyze this RFP document (chunk ${chunkIndex + 1} of ${totalChunks}). Extract WBS information AND estimate all quantities and project costs based on the scope described. Even if quantities aren't explicitly stated, use your engineering expertise to provide reasonable estimates for man-hour estimation purposes:\n\n${chunkText}` }
                             ],
-                            max_completion_tokens: 32000,
+                            max_completion_tokens: 64000,
                             temperature: 0.3
                         })
                     });
@@ -9570,7 +9570,7 @@ IMPORTANT:
             return {
                 data: parsedData,
                 usage: usage,
-                model: data.model || 'gpt-5.2'
+                model: data.model || 'gpt-5.2-thinking'
             };
         }
 
@@ -9829,11 +9829,11 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
                             'Authorization': `Bearer ${apiKey}`
                         },
                         body: JSON.stringify({
-                            model: 'gpt-5.2',
+                            model: 'gpt-5.2-thinking',
                             messages: [
                                 { role: 'user', content: mergePrompt }
                             ],
-                            max_completion_tokens: 32000,
+                            max_completion_tokens: 64000,
                             temperature: 0.2
                         })
                     });
@@ -9932,7 +9932,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
                     commercialTermsConfidence: aiMerged.commercialTermsConfidence || {}
                 },
                 usage: usage,
-                model: data.model || 'gpt-5.2'
+                model: data.model || 'gpt-5.2-thinking'
             };
         }
 
@@ -10087,7 +10087,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
                     totalTokens: 0,
                     apiCalls: 0,
                     estimatedCost: 0,
-                    model: 'gpt-5.2',
+                    model: 'gpt-5.2-thinking',
                     startTime: Date.now(),
                     endTime: null
                 };
