@@ -142,78 +142,28 @@ projectData = {
     },
     projectScope: '',
     scheduleNotes: '',
-    disciplineScopes: {},
-    
-    // Chapter 1 - Project Information (Step 7)
-    projectInfo: {
-        projectName: '',
-        projectLocation: '',
-        leadDistrict: '',
-        partneringDistricts: '',
-        kieNonSpPercentage: '',
-        technicalProposalDue: '',
-        priceProposalDue: '',
-        interviewDate: '',
-        contractAward: '',
-        noticeToProceed: '',
-        stipendAmount: '',
-        ownerContractType: '',
-        kegEntity: '',
-        evaluationCriteria: '',
-        dbeGoals: ''
-    },
-    
-    // Chapter 2 - Commercial Status (AI-extracted from RFP)
-    commercialTerms: {
-        client: '',
-        projectValue: '',
-        projectStatus: '',
-        waiverConsequentialDamages: '',
-        limitationOfLiability: '',
-        professionalLiability: '',
-        insuranceRequirements: '',
-        standardOfCare: '',
-        reliedUponInformation: '',
-        thirdPartyDelays: '',
-        thirdPartyContractorImpacts: '',
-        indemnification: ''
-    },
-    
-    // Chapter 3 - Project Organization
-    projectOrganization: ''
+    disciplineScopes: {}
 }
 ```
 
 ## Key Features
 
-### 7-Step Wizard
+### 6-Step Wizard
 1. **PHASES** - Project phases with templates
 2. **DISCIPLINES** - Engineering discipline selection (18+ options)
 3. **PACKAGES** - Deliverable milestones
 4. **BUDGET** - Cost estimator with industry benchmarks
 5. **CLAIMING** - Distribution schemes (linear, front/back-loaded, bell curve)
 6. **SCHEDULE** - AI-powered schedule generation
-7. **PROJECT** - Project details, key dates, organization for Design Fee Book
 
 ### AI Features (requires OpenAI API key)
-
-| Feature | Model | Description |
-|---------|-------|-------------|
-| Chat Assistant | `gpt-5.2-chat-latest` | Natural language WBS editing |
-| Schedule Generation | `gpt-5.2` | AI-optimized timelines |
-| Insights Panel | `gpt-5.2` | Risk scoring, forecasting |
-| RFP Wizard | `gpt-5.2` | PDF import with quantity/commercial terms extraction |
+- **Chat Assistant** - Natural language WBS editing
+- **Schedule Generation** - AI-optimized timelines
+- **Insights Panel** - Risk scoring, forecasting
+- **RFP Wizard** - PDF import with quantity extraction
 
 ### Export Options
-- **Design Fee Book** - 7-chapter professional PDF per KEG standards:
-  - Ch 1.0: Project Overview (info, dates, evaluation criteria, DBE goals)
-  - Ch 2.0: Commercial Status (contract terms, liability, insurance)
-  - Ch 3.0: Team Organization and Scope
-  - Ch 4.0: Schedule (summary, fragnet, charts)
-  - Ch 5.0: Design Fee Estimate (MH benchmarking, WBS, cost curves)
-  - Ch 6.0: Resource Evaluation (TBD)
-  - Ch 7.0: Risk Review
-  - Appendices: AI Insights, Complete WBS Table
+- **Design Fee Book** - Professional PDF with all project data (B/W, print-ready)
 - Import from CSV
 - Shareable URL
 
@@ -271,20 +221,17 @@ projectData = {
 
 ### Testing Checklist
 
-- [ ] All 7 wizard steps navigate correctly
+- [ ] All 6 wizard steps navigate correctly
 - [ ] Budget totals calculate properly
 - [ ] Claiming percentages validate to 100%
 - [ ] Dates calculate duration correctly
-- [ ] Step 7 project info saves/loads correctly
 - [ ] WBS table generates with correct numbering
 - [ ] Chart displays and filters work
-- [ ] Design Fee Book PDF generates with all 7 chapters
 - [ ] CSV/PDF exports download correctly
 - [ ] Responsive breakpoints work (768px, 480px)
 - [ ] Auto-save triggers on changes
 - [ ] Recovery modal appears with saved data
 - [ ] AI features work with valid API key
-- [ ] RFP Wizard extracts commercial terms and project info
 
 ## Design System
 

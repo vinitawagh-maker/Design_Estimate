@@ -14,7 +14,7 @@ IPC-Builder provides a terminal-themed interface for project planning, budgeting
 
 ## Features
 
-### 7-Step Wizard Interface
+### 6-Step Wizard Interface
 
 | Step | Name | Description |
 |------|------|-------------|
@@ -24,7 +24,6 @@ IPC-Builder provides a terminal-themed interface for project planning, budgeting
 | 4 | **BUDGET** | Set total budget per discipline with integrated cost estimator |
 | 5 | **CLAIMING** | Set claiming % per package with preset distribution schemes |
 | 6 | **SCHEDULE** | Set start/end dates with AI-powered schedule generation |
-| 7 | **PROJECT** | Enter project details, key dates, and organizational info for the Design Fee Book |
 
 ### Project Templates
 
@@ -63,12 +62,12 @@ Estimates man-hours based on historical project data:
 
 *Requires OpenAI API key*
 
-| Feature | Model | Description |
-|---------|-------|-------------|
-| **AI Chat Assistant** | GPT-5.2-chat-latest | Natural language WBS editing via draggable chat panel |
-| **AI Schedule Generation** | GPT-5.2 | Optimized schedules considering discipline dependencies |
-| **AI Insights Panel** | GPT-5.2 | Risk scoring, cost/schedule forecasting, budget health analysis |
-| **RFP Wizard** | GPT-5.2 | PDF import with AI extraction of quantities, commercial terms, and project scope |
+| Feature | Description |
+|---------|-------------|
+| **AI Chat Assistant** | Natural language WBS editing via draggable chat panel |
+| **AI Schedule Generation** | Optimized schedules considering discipline dependencies |
+| **AI Insights Panel** | Risk scoring, cost/schedule forecasting, budget health analysis |
+| **RFP Wizard** | PDF import with AI extraction of quantities and project scope |
 
 ### Visualization
 
@@ -83,16 +82,17 @@ Estimates man-hours based on historical project data:
 
 ### Export & Sharing
 
-- **Design Fee Book** - Professional 7-chapter PDF report (black/white, print-ready) per KEG standards:
-  - **Chapter 1.0 - Project Overview**: Project info, key dates, evaluation criteria, DBE/SBE goals
-  - **Chapter 2.0 - Commercial Status**: Owner commercial terms, liability, insurance, indemnification
-  - **Chapter 3.0 - Team Organization and Scope**: Design scope of work, project organization
-  - **Chapter 4.0 - Schedule**: Summary schedule, package fragnet, performance charts
-  - **Chapter 5.0 - Design Fee Estimate**: MH benchmarking, WBS breakdown, cost curves
-  - **Chapter 6.0 - Resource Evaluation**: Design FTEs by discipline (placeholder)
-  - **Chapter 7.0 - Risk Review**: Design risk register sorted by severity
-  - **Appendix A**: AI Insights and recommendations
-  - **Appendix B**: Complete WBS Table
+- **Design Fee Book** - Professional PDF report (black/white, print-ready) including:
+  - Cover page with key project metrics
+  - Executive Summary with KPIs and project structure
+  - RFP Analysis Summary (if RFP data available)
+  - Cost Estimate Details with discipline allocation
+  - MH Benchmark Analysis with quantity backup
+  - Discipline Details with package breakdown
+  - Schedule Analysis with AI rationale
+  - Risk Register sorted by severity
+  - AI Insights and recommendations
+  - Complete WBS Table
 - Import from CSV
 - Shareable URL generation
 
