@@ -5,8 +5,8 @@ export default defineConfig(({ command, mode }) => {
   const isDev = mode === 'development';
 
   return {
-    // Base public path (update for GitHub Pages deployment)
-    base: './',
+    // Base public path (GitHub Pages uses repo subpath in production)
+    base: isDev ? '/' : '/IPC-Builder/',
 
     // Root directory
     root: '.',
