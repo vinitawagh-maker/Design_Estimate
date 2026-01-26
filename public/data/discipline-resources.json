@@ -1,0 +1,156 @@
+{
+  "description": "Discipline resource codes and billing rates (Low/High)",
+  "lastUpdated": "2026-01-26",
+  "disciplines": [
+    {
+      "discipline": "Roadway",
+      "keyQuantity": "Total Alignment Length",
+      "unit": "LF",
+      "disciplineLead": null,
+      "notes": "",
+      "lowResource": {
+        "code": "Civ.01",
+        "rate": 48.00
+      },
+      "highResource": {
+        "code": "Civ.02",
+        "rate": 55.20
+      }
+    },
+    {
+      "discipline": "Drainage",
+      "keyQuantity": "Total Project Area",
+      "unit": "Acres",
+      "disciplineLead": null,
+      "notes": "",
+      "lowResource": {
+        "code": "Civ.01",
+        "rate": 48.00
+      },
+      "highResource": {
+        "code": "Civ.02",
+        "rate": 55.20
+      }
+    },
+    {
+      "discipline": "Walls",
+      "keyQuantity": "Wall Area",
+      "unit": "SF",
+      "disciplineLead": null,
+      "notes": "",
+      "lowResource": {
+        "code": "Str.01",
+        "rate": 52.00
+      },
+      "highResource": {
+        "code": "Str.02",
+        "rate": 59.80
+      }
+    },
+    {
+      "discipline": "Bridges",
+      "keyQuantity": "Bridge Deck Area",
+      "unit": "SF",
+      "disciplineLead": null,
+      "notes": "See Tab 3",
+      "lowResource": {
+        "code": "Str.01",
+        "rate": 52.00
+      },
+      "highResource": {
+        "code": "Str.02",
+        "rate": 59.80
+      }
+    },
+    {
+      "discipline": "MOT",
+      "keyQuantity": "Alignment Length",
+      "unit": "LF",
+      "disciplineLead": null,
+      "notes": "Match Roadway",
+      "lowResource": {
+        "code": "Civ.01",
+        "rate": 48.00
+      },
+      "highResource": {
+        "code": "Civ.02",
+        "rate": 55.20
+      }
+    },
+    {
+      "discipline": "Utilities",
+      "keyQuantity": "Relocation Count",
+      "unit": "EA",
+      "disciplineLead": null,
+      "notes": "",
+      "lowResource": {
+        "code": "Civ.01",
+        "rate": 48.00
+      },
+      "highResource": {
+        "code": "Civ.02",
+        "rate": 55.20
+      }
+    },
+    {
+      "discipline": "Track",
+      "keyQuantity": "Track Feet",
+      "unit": "TF",
+      "disciplineLead": null,
+      "notes": "",
+      "lowResource": {
+        "code": "Systrk.01",
+        "rate": 64.00
+      },
+      "highResource": {
+        "code": "Systrk.02",
+        "rate": 73.60
+      }
+    },
+    {
+      "discipline": "Traffic",
+      "keyQuantity": "Alignment Length",
+      "unit": "LF",
+      "disciplineLead": null,
+      "notes": "Match Roadway",
+      "lowResource": {
+        "code": "Civ.01",
+        "rate": 48.00
+      },
+      "highResource": {
+        "code": "Civ.02",
+        "rate": 55.20
+      }
+    },
+    {
+      "discipline": "Geotechnical",
+      "keyQuantity": "EA of Walls + EA Bridge",
+      "unit": "EA",
+      "disciplineLead": null,
+      "notes": "",
+      "lowResource": {
+        "code": "Geo.01",
+        "rate": 56.19
+      },
+      "highResource": {
+        "code": "Geo.02",
+        "rate": 64.62
+      }
+    },
+    {
+      "discipline": "Environmental",
+      "keyQuantity": "Permits",
+      "unit": "EA",
+      "disciplineLead": null,
+      "notes": "",
+      "lowResource": {
+        "code": "Civ.01",
+        "rate": 48.00
+      },
+      "highResource": {
+        "code": "Civ.02",
+        "rate": 55.20
+      }
+    }
+  ]
+}

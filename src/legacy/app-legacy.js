@@ -1513,6 +1513,76 @@ let projectData = {
         let benchmarkDataCache = {};
         let benchmarkDataLoaded = false;
         let benchmarkLoadPromise = null;
+        
+        // Cache for discipline resource rates (low/high)
+        let disciplineResourcesCache = {};
+        let disciplineResourcesLoaded = false;
+        
+        /**
+         * Load discipline resource rates from JSON file
+         */
+        async function loadDisciplineResources() {
+            if (disciplineResourcesLoaded) {
+                return disciplineResourcesCache;
+            }
+            
+            try {
+                const response = await fetch('./data/discipline-resources.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    // Create a lookup map by discipline name (lowercase)
+                    for (const disc of data.disciplines) {
+                        const key = disc.discipline.toLowerCase();
+                        disciplineResourcesCache[key] = {
+                            lowRate: disc.lowResource.rate,
+                            highRate: disc.highResource.rate,
+                            lowCode: disc.lowResource.code,
+                            highCode: disc.highResource.code,
+                            unit: disc.unit,
+                            keyQuantity: disc.keyQuantity
+                        };
+                    }
+                    disciplineResourcesLoaded = true;
+                    console.log('Discipline resources loaded:', Object.keys(disciplineResourcesCache));
+                }
+            } catch (error) {
+                console.warn('Error loading discipline resources:', error);
+            }
+            
+            return disciplineResourcesCache;
+        }
+        
+        /**
+         * Get resource rates for a discipline (sync, returns cached data)
+         */
+        function getDisciplineResources(disciplineName) {
+            // Try exact match first
+            const key = disciplineName.toLowerCase();
+            if (disciplineResourcesCache[key]) {
+                return disciplineResourcesCache[key];
+            }
+            
+            // Try partial matching for common mappings
+            const mappings = {
+                'bridgespcgirder': 'bridges',
+                'bridgessteel': 'bridges',
+                'bridgesrehab': 'bridges',
+                'retainingwalls': 'walls',
+                'noisewalls': 'walls',
+                'miscstructures': 'bridges',
+                'digitaldelivery': null,
+                'esdc': null,
+                'tscd': null
+            };
+            
+            const mappedKey = mappings[key];
+            if (mappedKey && disciplineResourcesCache[mappedKey]) {
+                return disciplineResourcesCache[mappedKey];
+            }
+            
+            // Default fallback
+            return { lowRate: 48.00, highRate: 55.20, lowCode: 'Civ.01', highCode: 'Civ.02' };
+        }
 
         /**
          * Statistical calculation functions for benchmark analysis
@@ -1584,6 +1654,305 @@ let projectData = {
                 };
             }
         };
+
+        // ============================================
+        // POWER REGRESSION FOR BENCHMARK CHARTS
+        // ============================================
+        
+        /**
+         * Power regression calculator for y = a * x^b curves
+         * Used for visualizing MH vs Quantity relationships
+         */
+        const PowerRegression = {
+            /**
+             * Calculate power regression coefficients (y = a * x^b)
+             * Uses logarithmic transformation for linear regression
+             * @param {Array} data - Array of {x, y} points
+             * @returns {Object} { a, b, r2 } coefficients and R-squared
+             */
+            calculate: function(data) {
+                // Filter out invalid points (x or y <= 0)
+                const valid = data.filter(p => p.x > 0 && p.y > 0);
+                if (valid.length < 2) {
+                    return { a: 0, b: 0, r2: 0, valid: false };
+                }
+                
+                // Transform to log space
+                const logX = valid.map(p => Math.log(p.x));
+                const logY = valid.map(p => Math.log(p.y));
+                const n = valid.length;
+                
+                // Calculate means
+                const meanLogX = logX.reduce((s, v) => s + v, 0) / n;
+                const meanLogY = logY.reduce((s, v) => s + v, 0) / n;
+                
+                // Calculate slope (b) and intercept (log(a))
+                let numerator = 0;
+                let denominator = 0;
+                for (let i = 0; i < n; i++) {
+                    numerator += (logX[i] - meanLogX) * (logY[i] - meanLogY);
+                    denominator += Math.pow(logX[i] - meanLogX, 2);
+                }
+                
+                const b = denominator !== 0 ? numerator / denominator : 0;
+                const logA = meanLogY - b * meanLogX;
+                const a = Math.exp(logA);
+                
+                // Calculate R-squared
+                let ssRes = 0;
+                let ssTot = 0;
+                for (let i = 0; i < n; i++) {
+                    const predicted = logA + b * logX[i];
+                    ssRes += Math.pow(logY[i] - predicted, 2);
+                    ssTot += Math.pow(logY[i] - meanLogY, 2);
+                }
+                const r2 = ssTot !== 0 ? 1 - (ssRes / ssTot) : 0;
+                
+                return { a, b, r2, valid: true };
+            },
+            
+            /**
+             * Generate curve points for plotting
+             * @param {number} a - Coefficient a
+             * @param {number} b - Coefficient b  
+             * @param {number} xMin - Start X value
+             * @param {number} xMax - End X value
+             * @param {number} numPoints - Number of points to generate
+             * @returns {Array} Array of {x, y} points
+             */
+            generateCurve: function(a, b, xMin, xMax, numPoints = 50) {
+                const points = [];
+                if (xMin <= 0) xMin = 1;
+                const step = (xMax - xMin) / (numPoints - 1);
+                
+                for (let i = 0; i < numPoints; i++) {
+                    const x = xMin + i * step;
+                    const y = a * Math.pow(x, b);
+                    points.push({ x, y });
+                }
+                return points;
+            },
+            
+            /**
+             * Format regression equation as string
+             * @param {number} a - Coefficient a
+             * @param {number} b - Coefficient b
+             * @returns {string} Formatted equation
+             */
+            formatEquation: function(a, b) {
+                const aStr = a >= 1 ? a.toFixed(3) : a.toExponential(2);
+                const bStr = b.toFixed(3);
+                return `y = ${aStr}x^${bStr}`;
+            }
+        };
+        
+        // Benchmark chart instance (for the modal)
+        let benchmarkChart = null;
+        let currentBenchmarkDiscipline = null;
+        
+        /**
+         * Create or update the benchmark regression chart
+         * @param {string} discId - Discipline ID to chart
+         */
+        function updateBenchmarkChart(discId) {
+            const canvas = document.getElementById('benchmark-chart-canvas');
+            if (!canvas) return;
+            
+            const benchmarks = getBenchmarkDataSync(discId);
+            if (!benchmarks || !benchmarks.projects) return;
+            
+            const config = DISCIPLINE_CONFIG[discId];
+            const allProjects = benchmarks.projects;
+            const selectedProjects = allProjects.filter(p => p.applicable);
+            
+            // Convert to chart data points
+            const allPoints = allProjects.map(p => ({ 
+                x: p.quantity || p.mh, 
+                y: p.mh || 0,
+                name: p.name 
+            })).filter(p => p.x > 0 && p.y > 0);
+            
+            const selectedPoints = selectedProjects.map(p => ({ 
+                x: p.quantity || p.mh, 
+                y: p.mh || 0,
+                name: p.name 
+            })).filter(p => p.x > 0 && p.y > 0);
+            
+            // Calculate regressions
+            const allRegression = PowerRegression.calculate(allPoints);
+            const selectedRegression = PowerRegression.calculate(selectedPoints);
+            
+            // Smart X-axis scaling: focus on where data is dense
+            // Use 90th percentile of quantities with 20% buffer
+            const quantities = allPoints.map(p => p.x).sort((a, b) => a - b);
+            const p90Index = Math.floor(quantities.length * 0.9);
+            const p90Value = quantities[p90Index] || quantities[quantities.length - 1] || 100000;
+            const xMax = p90Value * 1.2;
+            const xMin = Math.min(...quantities) * 0.5 || 1;
+            
+            // Generate curve points
+            const allCurvePoints = allRegression.valid 
+                ? PowerRegression.generateCurve(allRegression.a, allRegression.b, xMin, xMax, 60)
+                : [];
+            const selectedCurvePoints = selectedRegression.valid 
+                ? PowerRegression.generateCurve(selectedRegression.a, selectedRegression.b, xMin, xMax, 60)
+                : [];
+            
+            // Update equations display
+            const allEqEl = document.getElementById('benchmark-eq-all');
+            const selEqEl = document.getElementById('benchmark-eq-selected');
+            const allR2El = document.getElementById('benchmark-r2-all');
+            const selR2El = document.getElementById('benchmark-r2-selected');
+            
+            if (allEqEl) {
+                allEqEl.textContent = allRegression.valid 
+                    ? PowerRegression.formatEquation(allRegression.a, allRegression.b) 
+                    : 'Insufficient data';
+            }
+            if (selEqEl) {
+                selEqEl.textContent = selectedRegression.valid 
+                    ? PowerRegression.formatEquation(selectedRegression.a, selectedRegression.b) 
+                    : 'Insufficient data';
+            }
+            if (allR2El) {
+                allR2El.textContent = allRegression.valid ? `R² = ${allRegression.r2.toFixed(4)}` : '';
+            }
+            if (selR2El) {
+                selR2El.textContent = selectedRegression.valid ? `R² = ${selectedRegression.r2.toFixed(4)}` : '';
+            }
+            
+            // Chart datasets
+            const datasets = [
+                // All projects scatter points
+                {
+                    label: 'All Projects',
+                    data: allPoints,
+                    backgroundColor: 'rgba(74, 144, 217, 0.8)',
+                    borderColor: '#4a90d9',
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    showLine: false,
+                    order: 2
+                },
+                // Selected projects scatter points
+                {
+                    label: 'Selected Projects',
+                    data: selectedPoints,
+                    backgroundColor: 'rgba(224, 124, 58, 0.9)',
+                    borderColor: '#e07c3a',
+                    pointRadius: 7,
+                    pointHoverRadius: 9,
+                    showLine: false,
+                    order: 1
+                },
+                // All projects regression curve
+                {
+                    label: 'All Projects Trend',
+                    data: allCurvePoints,
+                    borderColor: 'rgba(74, 144, 217, 0.5)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    showLine: true,
+                    fill: false,
+                    order: 4
+                },
+                // Selected projects regression curve
+                {
+                    label: 'Selected Projects Trend',
+                    data: selectedCurvePoints,
+                    borderColor: 'rgba(224, 124, 58, 0.7)',
+                    borderWidth: 2,
+                    borderDash: [3, 3],
+                    pointRadius: 0,
+                    showLine: true,
+                    fill: false,
+                    order: 3
+                }
+            ];
+            
+            // Y-axis max: use the highest curve value with buffer
+            const allYValues = [...allPoints.map(p => p.y), ...allCurvePoints.map(p => p.y)];
+            const yMax = Math.max(...allYValues) * 1.1 || 10000;
+            
+            const chartConfig = {
+                type: 'scatter',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'nearest',
+                        intersect: true
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const point = context.raw;
+                                    if (point.name) {
+                                        return `${point.name}: ${point.y.toLocaleString()} MH @ ${point.x.toLocaleString()} ${config?.unit || 'units'}`;
+                                    }
+                                    return `${point.y.toLocaleString()} MH`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            min: 0,
+                            max: xMax,
+                            title: {
+                                display: true,
+                                text: `Quantity (${config?.unit || 'units'})`,
+                                color: '#888'
+                            },
+                            ticks: {
+                                color: '#888',
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            min: 0,
+                            max: yMax,
+                            title: {
+                                display: true,
+                                text: 'Forecast Man-hours',
+                                color: '#888'
+                            },
+                            ticks: {
+                                color: '#888',
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            };
+            
+            // Destroy existing chart and create new one
+            if (benchmarkChart) {
+                benchmarkChart.destroy();
+            }
+            
+            const ctx = canvas.getContext('2d');
+            benchmarkChart = new Chart(ctx, chartConfig);
+        }
 
         /**
          * Build tooltip content for "All Projects" production rate
@@ -2633,7 +3002,8 @@ ${reasoning}`;
                     active: false,
                     quantity: 0,
                     rate: defaultRate,
-                    mh: 0
+                    mh: 0,
+                    l4Percentage: 30  // Default 30% of MH above L4 Engg
                 };
                 
                 const row = document.createElement('tr');
@@ -2644,6 +3014,9 @@ ${reasoning}`;
                 const allProjects = benchmarks ? benchmarks.projects || [] : [];
                 const allProjectsRate = allProjects.length > 0 ? BenchmarkStats.calculateRateStats(allProjects).mean : 0;
 
+                // Get resource rates for this discipline
+                const resources = getDisciplineResources(config.name);
+                
                 row.innerHTML = `
                     <td>
                         <button class="discipline-toggle" onclick="toggleMHDiscipline('${discId}')" title="Toggle discipline">+</button>
@@ -2673,6 +3046,21 @@ ${reasoning}`;
                     <td class="numeric">
                         <span class="mh-value" id="mh-value-${discId}">0</span>
                         <div class="mh-range" id="mh-range-${discId}" style="font-size: 9px; color: #888; margin-top: 2px; display: none;"></div>
+                    </td>
+                    <td class="numeric">
+                        <div class="l4-input-wrapper">
+                            <input type="number" class="l4-input" id="mh-l4-pct-${discId}" 
+                                   value="30" min="0" max="100" step="5"
+                                   onchange="updateL4Percentage('${discId}')"
+                                   title="% MH allocated to Level 4+ Engineers">
+                            <span class="l4-pct-symbol">%</span>
+                        </div>
+                    </td>
+                    <td class="numeric">
+                        <span class="estimate-low" id="mh-estimate-low-${discId}" title="L1-3 Engineers: ${resources.lowCode} @ $${resources.lowRate}/hr">$0</span>
+                    </td>
+                    <td class="numeric">
+                        <span class="estimate-high" id="mh-estimate-high-${discId}" title="L4-6 Engineers: ${resources.highCode} @ $${resources.highRate}/hr">$0</span>
                     </td>
                     <td>
                         <span class="projects-used" id="mh-projects-${discId}" title="Click to expand">—</span>
@@ -2864,6 +3252,38 @@ ${reasoning}`;
                     projectsEl.title = `Rate: ${state.rateStats.mean.toFixed(3)} ± ${state.rateStats.stdDev.toFixed(3)} ${config.unit}/MH (${applicableProjects.length} projects)`;
                 }
             }
+            
+            // Calculate and display Low/High estimates using discipline resource rates
+            // L4 percentage determines the split:
+            // - Low Estimate: (100 - L4%) of MH × Low Rate (junior portion)
+            // - High Estimate: L4% of MH × High Rate (senior portion)
+            const resources = getDisciplineResources(config.name);
+            const l4Pct = state.l4Percentage !== undefined ? state.l4Percentage : 30;
+            const lowPct = (100 - l4Pct) / 100;  // Percentage at low (junior) rate
+            const highPct = l4Pct / 100;         // Percentage at high (senior) rate
+            
+            // Low Estimate: junior portion (100 - L4%) × MH × Low Rate
+            const lowEstimate = state.mh * lowPct * resources.lowRate;
+            // High Estimate: senior portion L4% × MH × High Rate
+            const highEstimate = state.mh * highPct * resources.highRate;
+            
+            const lowEstEl = document.getElementById(`mh-estimate-low-${discId}`);
+            const highEstEl = document.getElementById(`mh-estimate-high-${discId}`);
+            
+            // Update L4 input value in case it was set programmatically
+            const l4Input = document.getElementById(`mh-l4-pct-${discId}`);
+            if (l4Input && l4Input.value != l4Pct) {
+                l4Input.value = l4Pct;
+            }
+            
+            if (lowEstEl) {
+                lowEstEl.textContent = state.mh > 0 ? `$${lowEstimate.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '$0';
+                lowEstEl.title = `L1-3 Engineers: ${resources.lowCode} @ $${resources.lowRate}/hr × ${formatMH(Math.round(state.mh * lowPct))} MH (${100-l4Pct}%)`;
+            }
+            if (highEstEl) {
+                highEstEl.textContent = state.mh > 0 ? `$${highEstimate.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '$0';
+                highEstEl.title = `L4-6 Engineers: ${resources.highCode} @ $${resources.highRate}/hr × ${formatMH(Math.round(state.mh * highPct))} MH (${l4Pct}%)`;
+            }
         }
 
         /**
@@ -2918,6 +3338,22 @@ ${reasoning}`;
                 updateMHRowDisplay('digitalDelivery', ddState);
                 recalculateTotalMH();
             }
+        }
+
+        /**
+         * Update L4 percentage for a discipline and recalculate estimates
+         */
+        function updateL4Percentage(discId) {
+            const input = document.getElementById(`mh-l4-pct-${discId}`);
+            const value = parseFloat(input.value) || 50;
+            const state = mhEstimateState.disciplines[discId];
+            
+            // Clamp between 0 and 100
+            state.l4Percentage = Math.max(0, Math.min(100, value));
+            input.value = state.l4Percentage;
+            
+            // Recalculate the estimates
+            updateMHRowDisplay(discId, state);
         }
 
         /**
@@ -3039,37 +3475,61 @@ ${reasoning}`;
          * Show benchmark project selection modal
          */
         function showBenchmarkSelection() {
-            // Build modal content
+            // Get active disciplines
+            const activeDisciplines = Object.entries(mhEstimateState.disciplines)
+                .filter(([_, state]) => state.active)
+                .map(([id, _]) => id);
+            
+            // Set first active discipline for chart
+            const firstDiscipline = activeDisciplines[0] || null;
+            currentBenchmarkDiscipline = firstDiscipline;
+            
+            // Build discipline tabs for chart
+            let disciplineTabs = '';
+            if (activeDisciplines.length > 0) {
+                disciplineTabs = activeDisciplines.map(discId => {
+                    const config = DISCIPLINE_CONFIG[discId];
+                    const isActive = discId === firstDiscipline ? 'active' : '';
+                    return `<button class="benchmark-tab ${isActive}" data-disc="${discId}" onclick="switchBenchmarkChartDiscipline('${discId}')">${config?.name || discId}</button>`;
+                }).join('');
+            }
+            
+            // Build modal content with side-by-side layout
             let html = `
                 <div class="benchmark-modal-content">
                     <div class="benchmark-modal-header">
                         <h3>📊 Select Benchmark Projects</h3>
                         <p>Choose which historical projects to include in rate calculations</p>
                     </div>
-                    <div class="benchmark-disciplines">
+                    
+                    <div class="benchmark-modal-body">
+                        <!-- LEFT SIDE: Project Selection -->
+                        <div class="benchmark-modal-left">
+                            <div class="benchmark-disciplines">
             `;
-            
-            // Get active disciplines
-            const activeDisciplines = Object.entries(mhEstimateState.disciplines)
-                .filter(([_, state]) => state.active)
-                .map(([id, _]) => id);
             
             if (activeDisciplines.length === 0) {
                 html += `<p style="color: #888; padding: 20px;">No disciplines are active. Enable disciplines in the MH Estimator first.</p>`;
             } else {
-                for (const discId of activeDisciplines) {
+                for (let i = 0; i < activeDisciplines.length; i++) {
+                    const discId = activeDisciplines[i];
                     const config = DISCIPLINE_CONFIG[discId];
                     const benchmarks = getBenchmarkDataSync(discId);
                     
                     if (!config || !benchmarks || !benchmarks.projects) continue;
                     
+                    // Only expand if there's exactly 1 discipline; otherwise keep all collapsed
+                    const isExpanded = activeDisciplines.length === 1;
+                    const hiddenClass = isExpanded ? '' : 'hidden';
+                    const arrowSymbol = isExpanded ? '▼' : '▶';
+                    
                     html += `
-                        <div class="benchmark-discipline-section">
+                        <div class="benchmark-discipline-section" id="benchmark-section-${discId}">
                             <div class="benchmark-discipline-header" onclick="toggleBenchmarkSection('${discId}')">
-                                <span>▶ ${config.name}</span>
+                                <span>${arrowSymbol} ${config.name}</span>
                                 <span class="benchmark-count" id="benchmark-count-${discId}">${benchmarks.projects.filter(p => p.applicable).length}/${benchmarks.projects.length} selected</span>
                             </div>
-                            <div class="benchmark-projects hidden" id="benchmark-projects-${discId}">
+                            <div class="benchmark-projects ${hiddenClass}" id="benchmark-projects-${discId}">
                     `;
                     
                     for (const project of benchmarks.projects) {
@@ -3093,7 +3553,45 @@ ${reasoning}`;
             }
             
             html += `
+                            </div>
+                        </div>
+                        
+                        <!-- RIGHT SIDE: Regression Chart -->
+                        <div class="benchmark-modal-right">
+                            <div class="benchmark-chart-container">
+                                <div class="benchmark-chart-header">
+                                    <h4>📈 MH vs Quantity Regression</h4>
+                                    <div class="benchmark-chart-legend">
+                                        <div class="legend-item">
+                                            <span class="legend-dot all-projects"></span>
+                                            <span class="legend-label">All Projects</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-dot selected-projects"></span>
+                                            <span class="legend-label">Selected Projects</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                ${activeDisciplines.length > 1 ? `<div class="benchmark-tabs">${disciplineTabs}</div>` : ''}
+                                <div class="benchmark-chart-canvas-wrapper">
+                                    <canvas id="benchmark-chart-canvas"></canvas>
+                                </div>
+                                <div class="benchmark-chart-equations">
+                                    <div class="benchmark-equation">
+                                        <div class="equation-label">All Projects</div>
+                                        <div class="equation-formula all-projects" id="benchmark-eq-all">—</div>
+                                        <div class="equation-r2" id="benchmark-r2-all"></div>
+                                    </div>
+                                    <div class="benchmark-equation">
+                                        <div class="equation-label">Selected Projects</div>
+                                        <div class="equation-formula selected-projects" id="benchmark-eq-selected">—</div>
+                                        <div class="equation-r2" id="benchmark-r2-selected"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                    
                     <div class="benchmark-modal-actions">
                         <button class="btn btn-sm" onclick="closeBenchmarkModal()">Cancel</button>
                         <button class="btn-mh" onclick="applyBenchmarkSelection()">Apply Selection</button>
@@ -3114,6 +3612,33 @@ ${reasoning}`;
             }
             
             modal.classList.add('open');
+            
+            // Initialize chart after modal is visible
+            if (firstDiscipline) {
+                setTimeout(() => {
+                    updateBenchmarkChart(firstDiscipline);
+                }, 100);
+            }
+        }
+        
+        /**
+         * Switch the benchmark chart to show a different discipline
+         */
+        function switchBenchmarkChartDiscipline(discId) {
+            currentBenchmarkDiscipline = discId;
+            
+            // Update tab styles
+            const tabs = document.querySelectorAll('.benchmark-tab');
+            tabs.forEach(tab => {
+                if (tab.dataset.disc === discId) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // Update chart
+            updateBenchmarkChart(discId);
         }
 
         /**
@@ -3149,6 +3674,11 @@ ${reasoning}`;
                 const countEl = document.getElementById(`benchmark-count-${discId}`);
                 if (countEl) {
                     countEl.textContent = `${count}/${benchmarks.projects.length} selected`;
+                }
+                
+                // Live update the chart if this discipline is currently displayed
+                if (currentBenchmarkDiscipline === discId) {
+                    updateBenchmarkChart(discId);
                 }
             }
         }
@@ -3274,6 +3804,14 @@ ${reasoning}`;
                 console.log('Benchmark data loaded from JSON files');
             } catch (error) {
                 console.warn('Failed to load benchmark data from JSON files, using fallback:', error);
+            }
+            
+            // Load discipline resource rates
+            try {
+                await loadDisciplineResources();
+                console.log('Discipline resources loaded');
+            } catch (error) {
+                console.warn('Failed to load discipline resources:', error);
             }
             
             initMHEstimator();
@@ -12848,6 +13386,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         window.initMHEstimator = initMHEstimator;
         window.updateMHRowDisplay = updateMHRowDisplay;
         window.updateMHQuantity = updateMHQuantity;
+        window.updateL4Percentage = updateL4Percentage;
         window.recalculateTotalMH = recalculateTotalMH;
         window.toggleBenchmarkSection = toggleBenchmarkSection;
         window.toggleBenchmarkProject = toggleBenchmarkProject;
@@ -12856,6 +13395,8 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         window.buildAllProjectsRateTooltip = buildAllProjectsRateTooltip;
         window.buildSelectedRateTooltip = buildSelectedRateTooltip;
         window.buildQuantityReasoningTooltip = buildQuantityReasoningTooltip;
+        window.updateBenchmarkChart = updateBenchmarkChart;
+        window.switchBenchmarkChartDiscipline = switchBenchmarkChartDiscipline;
         
         // Claiming table functions (Step 5)
         window.buildClaimingTable = buildClaimingTable;
