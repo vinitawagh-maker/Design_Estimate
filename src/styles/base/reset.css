@@ -1,5 +1,6 @@
 /* ===========================================
    CSS Reset and Base Styles
+   Light Pastel Theme
    =========================================== */
 
 * {
@@ -9,29 +10,34 @@
 
 body {
     background: var(--color-bg-body);
-    color: var(--color-primary);
+    color: var(--color-text-dark);
     min-height: 100vh;
     margin: 0;
-    padding: 20px;
+    padding: 12px;
 }
 
 .container {
-    max-width: 1000px;
+    max-width: 100%;
     margin: 0 auto;
 }
 
-/* Scrollbar */
+/* Scrollbar - Light Theme */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #111;
+    background: #f0f0f0;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--color-primary);
+    background: #b0bec5;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #90a4ae;
 }
 
 /* Hidden utility */

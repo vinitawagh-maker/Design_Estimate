@@ -1,10 +1,10 @@
 /* ===========================================
-   Typography Styles
+   Typography Styles - Light Theme
    =========================================== */
 
 /* Section Headers */
 .section-title {
-    color: var(--color-text-white);
+    color: var(--color-text-dark);
     font-size: var(--font-size-xl);
     margin-bottom: var(--spacing-sm);
     display: flex;
@@ -13,7 +13,7 @@
 }
 
 .section-title::before {
-    content: ">";
+    content: "◆";
     color: var(--color-primary);
 }
 
@@ -23,13 +23,9 @@
     margin-bottom: var(--spacing-xl);
 }
 
-/* ASCII decorations */
+/* ASCII decorations - hidden in light theme */
 .ascii-line {
-    color: var(--color-border-light);
-    font-size: var(--font-size-sm);
-    margin: var(--spacing-lg) 0;
-    overflow: hidden;
-    white-space: nowrap;
+    display: none;
 }
 
 /* Blinking cursor */

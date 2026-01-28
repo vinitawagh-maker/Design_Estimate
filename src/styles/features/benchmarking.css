@@ -1,0 +1,417 @@
+/* ===========================================
+   Benchmarking Step - Light Pastel Theme
+   Two-column layout with full-width design
+   =========================================== */
+
+/* Main Step Container */
+.benchmarking-step {
+    padding: 0 !important;
+    max-width: 100% !important;
+}
+
+/* Header */
+.benchmarking-header {
+    background: linear-gradient(135deg, var(--color-pastel-purple) 0%, var(--color-pastel-blue) 100%);
+    padding: 16px 24px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    text-align: center;
+    border: 1px solid var(--color-border);
+}
+
+.benchmarking-title {
+    color: var(--color-primary-dark);
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+}
+
+.benchmarking-subtitle {
+    color: var(--color-text-muted);
+    font-size: 13px;
+    margin: 0;
+}
+
+/* Two Column Layout */
+.benchmarking-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    min-height: calc(100vh - 200px);
+}
+
+/* Column Base Styles */
+.benchmarking-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* LEFT COLUMN: MH Estimator - Blue Pastel */
+.mh-column .mh-estimator {
+    background: var(--color-pastel-blue);
+    border: 1px solid var(--color-pastel-blue-dark);
+    border-radius: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.mh-column .mh-estimator-header {
+    background: linear-gradient(135deg, #90caf9 0%, #64b5f6 100%);
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--color-pastel-blue-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mh-column .mh-estimator-header h3 {
+    color: #1565c0;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.mh-column #mh-estimator-status {
+    color: #1976d2;
+    font-size: 11px;
+}
+
+.mh-column .mh-estimator-body {
+    padding: 16px;
+    flex: 1;
+    overflow-y: auto;
+    background: var(--color-pastel-blue);
+}
+
+/* RIGHT COLUMN: Cost Estimator - Green Pastel */
+.cost-column .budget-calculator {
+    background: var(--color-pastel-green);
+    border: 1px solid var(--color-pastel-green-dark);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.cost-column .calculator-header {
+    background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%);
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--color-pastel-green-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cost-column .calculator-header h3 {
+    color: #2e7d32;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.cost-column #calculator-status {
+    color: #388e3c;
+    font-size: 11px;
+}
+
+.cost-column .calculator-body {
+    padding: 16px;
+    background: var(--color-pastel-green);
+}
+
+/* Calc Grid Layout */
+.cost-column .calc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.cost-column .calc-group label {
+    color: var(--color-text-dark);
+    font-size: 11px;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.cost-column .calc-group input,
+.cost-column .calc-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-pastel-green-dark);
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--color-text-dark);
+    font-size: 13px;
+}
+
+.cost-column .calc-group input:focus,
+.cost-column .calc-group select:focus {
+    outline: none;
+    border-color: #4caf50;
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+}
+
+/* Fee Total Box */
+.calc-total-fee-box {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #c8e6c9;
+    border: 1px solid #a5d6a7;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+}
+
+.calc-total-fee-box .fee-value {
+    color: #2e7d32;
+    font-weight: 700;
+    font-size: 18px;
+}
+
+/* Calc Actions */
+.calc-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* Complexity Overrides Panel */
+.complexity-overrides-panel {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-pastel-green-dark);
+}
+
+.complexity-overrides-label {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+}
+
+/* Budget Summary Section - Orange Pastel */
+.budget-summary-section {
+    background: var(--color-pastel-orange);
+    border: 1px solid var(--color-pastel-orange-dark);
+    border-radius: 12px;
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.budget-summary-section h4 {
+    color: #e65100;
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+}
+
+.budget-table-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    background: #ffffff;
+    border: 1px solid var(--color-pastel-orange-dark);
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.budget-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #ffcc80 0%, #ffb74d 100%);
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.budget-total-row span:first-child {
+    color: #e65100;
+}
+
+.budget-total-value {
+    color: #bf360c;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* MH Input Grid - Override for light theme */
+.mh-column .mh-input-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.mh-column .mh-input-group label {
+    color: var(--color-text-dark);
+    font-size: 11px;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.mh-column .mh-input-group input,
+.mh-column .mh-input-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-pastel-blue-dark);
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--color-text-dark);
+    font-size: 13px;
+}
+
+.mh-column .mh-input-group input:focus,
+.mh-column .mh-input-group select:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.15);
+}
+
+/* MH Estimate Table - Light Theme */
+.mh-table-wrapper {
+    position: relative;
+    overflow-y: auto;
+    overflow-x: visible;
+    padding-top: 0;
+}
+
+.mh-column .mh-estimate-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: visible;
+    position: relative;
+}
+
+.mh-column .mh-estimate-table thead {
+    background: #e3f2fd;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.mh-column .mh-estimate-table thead th {
+    position: relative;
+    overflow: visible;
+}
+
+.mh-column .mh-estimate-table th {
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #1565c0;
+    border-bottom: 2px solid var(--color-pastel-blue-dark);
+    font-size: 11px;
+}
+
+.mh-column .mh-estimate-table td {
+    padding: 8px;
+    border-bottom: 1px solid #e3f2fd;
+    color: var(--color-text-dark);
+}
+
+.mh-column .mh-estimate-table tr:hover {
+    background: #f5f5f5;
+}
+
+/* MH Summary Bar - Light Theme */
+.mh-column .mh-summary-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #90caf9 0%, #64b5f6 100%);
+    border-radius: 8px;
+    margin-top: 16px;
+}
+
+.mh-column .mh-summary-bar .total-label {
+    color: #1565c0;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.mh-column .mh-summary-bar .total-mh {
+    color: #0d47a1;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+/* MH Actions - Light Theme */
+.mh-column .mh-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+/* Button Overrides for Light Theme */
+.benchmarking-step .btn {
+    background: #ffffff;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-dark);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.benchmarking-step .btn:hover {
+    background: #f5f5f5;
+    border-color: var(--color-border-dark);
+}
+
+.benchmarking-step .btn-primary {
+    background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+    border-color: #43a047;
+    color: #ffffff;
+}
+
+.benchmarking-step .btn-primary:hover {
+    background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%);
+}
+
+.benchmarking-step .btn-mh {
+    background: linear-gradient(135deg, #42a5f5 0%, #2196f3 100%);
+    border-color: #1e88e5;
+    color: #ffffff;
+    padding: 10px 20px;
+    font-weight: 600;
+}
+
+.benchmarking-step .btn-mh:hover {
+    background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
+}
+
+/* Benchmark Select Button - Light Theme */
+.benchmarking-step .btn-benchmark-select {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 1px solid #90caf9;
+    color: #1565c0;
+}
+
+.benchmarking-step .btn-benchmark-select:hover {
+    background: linear-gradient(135deg, #bbdefb 0%, #90caf9 100%);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .benchmarking-layout {
+        grid-template-columns: 1fr;
+    }
+    
+    .mh-column .mh-input-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

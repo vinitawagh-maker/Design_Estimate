@@ -25,6 +25,7 @@
 @import 'features/templates.css';
 @import 'features/calculator.css';
 @import 'features/mh-estimator.css';
+@import 'features/benchmarking.css';
 @import 'features/claiming.css';
 @import 'features/schedule.css';
 @import 'features/chart.css';

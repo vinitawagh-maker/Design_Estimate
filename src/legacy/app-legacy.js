@@ -84,7 +84,7 @@ let projectData = {
             projectOrganization: ''
         };
 
-        let currentStep = 1;
+        let currentStep = 4; // Start at Benchmarking (formerly Budget)
         let chart = null;
 
         // ============================================
@@ -679,8 +679,8 @@ let projectData = {
                 initDisciplines();
             }
             
-            // Navigate to saved step
-            currentStep = savedData.currentStep || 1;
+            // Navigate to saved step (default to Benchmarking if not saved)
+            currentStep = savedData.currentStep || 4;
             showStep(currentStep);
             updateProgress();
             
@@ -942,7 +942,7 @@ let projectData = {
             
             // Load project data
             projectData = JSON.parse(JSON.stringify(project.projectData));
-            currentStep = project.currentStep || 1;
+            currentStep = project.currentStep || 4;
             
             // Update UI
             document.getElementById('phases-input').value = projectData.phases.join(', ');
@@ -3037,6 +3037,12 @@ ${reasoning}`;
                         </div>
                     </td>
                     <td>${config.unit}</td>
+                    <td class="benchmark-select-cell">
+                        <button class="btn-benchmark-select" onclick="showDisciplineBenchmark('${discId}')" title="Select benchmark projects for ${config.name}">
+                            <span class="benchmark-icon">📊</span>
+                            <span class="benchmark-btn-text">Select</span>
+                        </button>
+                    </td>
                     <td class="numeric">
                         <span class="rate-display rate-all-projects" id="mh-rate-all-${discId}" title="${buildAllProjectsRateTooltip(discId, allProjectsRate, allProjects.length, config.unit)}">${formatRate(allProjectsRate, config.unit)}</span>
                     </td>
@@ -3056,11 +3062,21 @@ ${reasoning}`;
                             <span class="l4-pct-symbol">%</span>
                         </div>
                     </td>
-                    <td class="numeric">
-                        <span class="estimate-low" id="mh-estimate-low-${discId}" title="L1-3 Engineers: ${resources.lowCode} @ $${resources.lowRate}/hr">$0</span>
-                    </td>
-                    <td class="numeric">
-                        <span class="estimate-high" id="mh-estimate-high-${discId}" title="L4-6 Engineers: ${resources.highCode} @ $${resources.highRate}/hr">$0</span>
+                    <td class="numeric cost-cell">
+                        <div class="cost-dropdown-wrapper">
+                            <span class="estimate-total" id="mh-estimate-total-${discId}">$0</span>
+                            <button class="cost-dropdown-toggle" onclick="toggleCostDropdown('${discId}')" title="View breakdown">▼</button>
+                            <div class="cost-dropdown" id="cost-dropdown-${discId}">
+                                <div class="cost-dropdown-item">
+                                    <span class="cost-label">L1-3 (${resources.lowCode})</span>
+                                    <span class="cost-value" id="cost-low-${discId}">$0</span>
+                                </div>
+                                <div class="cost-dropdown-item">
+                                    <span class="cost-label">L4-6 (${resources.highCode})</span>
+                                    <span class="cost-value" id="cost-high-${discId}">$0</span>
+                                </div>
+                            </div>
+                        </div>
                     </td>
                     <td>
                         <span class="projects-used" id="mh-projects-${discId}" title="Click to expand">—</span>
@@ -3267,8 +3283,8 @@ ${reasoning}`;
             // High Estimate: senior portion L4% × MH × High Rate
             const highEstimate = state.mh * highPct * resources.highRate;
             
-            const lowEstEl = document.getElementById(`mh-estimate-low-${discId}`);
-            const highEstEl = document.getElementById(`mh-estimate-high-${discId}`);
+            const totalEstEl = document.getElementById(`mh-estimate-total-${discId}`);
+            const totalEstimate = lowEstimate + highEstimate;
             
             // Update L4 input value in case it was set programmatically
             const l4Input = document.getElementById(`mh-l4-pct-${discId}`);
@@ -3276,13 +3292,19 @@ ${reasoning}`;
                 l4Input.value = l4Pct;
             }
             
-            if (lowEstEl) {
-                lowEstEl.textContent = state.mh > 0 ? `$${lowEstimate.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '$0';
-                lowEstEl.title = `L1-3 Engineers: ${resources.lowCode} @ $${resources.lowRate}/hr × ${formatMH(Math.round(state.mh * lowPct))} MH (${100-l4Pct}%)`;
+            if (totalEstEl) {
+                totalEstEl.textContent = state.mh > 0 ? `$${totalEstimate.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '$0';
             }
-            if (highEstEl) {
-                highEstEl.textContent = state.mh > 0 ? `$${highEstimate.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '$0';
-                highEstEl.title = `L4-6 Engineers: ${resources.highCode} @ $${resources.highRate}/hr × ${formatMH(Math.round(state.mh * highPct))} MH (${l4Pct}%)`;
+            
+            // Update dropdown values
+            const costLowEl = document.getElementById(`cost-low-${discId}`);
+            const costHighEl = document.getElementById(`cost-high-${discId}`);
+            
+            if (costLowEl) {
+                costLowEl.textContent = state.mh > 0 ? `$${lowEstimate.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${100-l4Pct}%)` : '$0';
+            }
+            if (costHighEl) {
+                costHighEl.textContent = state.mh > 0 ? `$${highEstimate.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${l4Pct}%)` : '$0';
             }
         }
 
@@ -3355,6 +3377,37 @@ ${reasoning}`;
             // Recalculate the estimates
             updateMHRowDisplay(discId, state);
         }
+
+        /**
+         * Toggle cost breakdown dropdown visibility
+         */
+        function toggleCostDropdown(discId) {
+            const dropdown = document.getElementById(`cost-dropdown-${discId}`);
+            const toggle = dropdown?.previousElementSibling;
+            
+            // Close all other dropdowns first
+            document.querySelectorAll('.cost-dropdown.open').forEach(d => {
+                if (d.id !== `cost-dropdown-${discId}`) {
+                    d.classList.remove('open');
+                    d.previousElementSibling?.classList.remove('open');
+                }
+            });
+            
+            if (dropdown) {
+                dropdown.classList.toggle('open');
+                toggle?.classList.toggle('open');
+            }
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.cost-dropdown-wrapper')) {
+                document.querySelectorAll('.cost-dropdown.open').forEach(d => {
+                    d.classList.remove('open');
+                    d.previousElementSibling?.classList.remove('open');
+                });
+            }
+        });
 
         /**
          * Recalculate total MH from all active disciplines
@@ -3472,13 +3525,28 @@ ${reasoning}`;
         }
 
         /**
-         * Show benchmark project selection modal
+         * Show benchmark project selection modal for a specific discipline
+         * @param {string} discId - Discipline ID to show benchmarks for
          */
-        function showBenchmarkSelection() {
-            // Get active disciplines
-            const activeDisciplines = Object.entries(mhEstimateState.disciplines)
-                .filter(([_, state]) => state.active)
-                .map(([id, _]) => id);
+        function showDisciplineBenchmark(discId) {
+            // Show modal for just this one discipline
+            showBenchmarkSelection(discId);
+        }
+
+        /**
+         * Show benchmark project selection modal
+         * @param {string|null} singleDiscipline - If provided, only show this discipline
+         */
+        function showBenchmarkSelection(singleDiscipline = null) {
+            // Get active disciplines, or just the single one if specified
+            let activeDisciplines;
+            if (singleDiscipline) {
+                activeDisciplines = [singleDiscipline];
+            } else {
+                activeDisciplines = Object.entries(mhEstimateState.disciplines)
+                    .filter(([_, state]) => state.active)
+                    .map(([id, _]) => id);
+            }
             
             // Set first active discipline for chart
             const firstDiscipline = activeDisciplines[0] || null;
@@ -3495,10 +3563,15 @@ ${reasoning}`;
             }
             
             // Build modal content with side-by-side layout
+            const singleConfig = singleDiscipline ? DISCIPLINE_CONFIG[singleDiscipline] : null;
+            const headerTitle = singleConfig 
+                ? `📊 Select Benchmark Projects for ${singleConfig.name}`
+                : '📊 Select Benchmark Projects';
+            
             let html = `
                 <div class="benchmark-modal-content">
                     <div class="benchmark-modal-header">
-                        <h3>📊 Select Benchmark Projects</h3>
+                        <h3>${headerTitle}</h3>
                         <p>Choose which historical projects to include in rate calculations</p>
                     </div>
                     
@@ -3793,9 +3866,38 @@ ${reasoning}`;
             return mapping[discId] || null;
         }
 
+        // Initialize header help tooltips (click to toggle)
+        function initHeaderHelpTooltips() {
+            // Toggle tooltip on click
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('header-help')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const isActive = e.target.classList.contains('active');
+                    
+                    // Close all other tooltips
+                    document.querySelectorAll('.header-help.active').forEach(el => {
+                        el.classList.remove('active');
+                    });
+                    
+                    // Toggle this one
+                    if (!isActive) {
+                        e.target.classList.add('active');
+                    }
+                } else {
+                    // Close all tooltips if clicking outside
+                    document.querySelectorAll('.header-help.active').forEach(el => {
+                        el.classList.remove('active');
+                    });
+                }
+            });
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             initDisciplines();
+            initHeaderHelpTooltips();
             
             // Load benchmark data from JSON files before initializing MH estimator
             updateStatus('LOADING BENCHMARKS...');
@@ -3928,12 +4030,16 @@ ${reasoning}`;
 
         /**
          * Updates the progress bar visual state based on current step
+         * Tab order: BENCHMARKING(4), PHASES(1), DISCIPLINES(2), PACKAGES(3), CLAIMING(5), SCHEDULE(6), PROJECT(7)
          */
         function updateProgress() {
+            // Map tab index to step number (visual order differs from internal step numbers)
+            const tabToStep = [4, 1, 2, 3, 5, 6, 7];
+            
             document.querySelectorAll('.progress-step').forEach((el, i) => {
                 el.classList.remove('active', 'completed');
-                if (i + 1 < currentStep) el.classList.add('completed');
-                if (i + 1 === currentStep) el.classList.add('active');
+                const tabStep = tabToStep[i];
+                if (tabStep === currentStep) el.classList.add('active');
             });
         }
 
@@ -3945,8 +4051,12 @@ ${reasoning}`;
             document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`step${step}`).classList.remove('hidden');
             
-            document.getElementById('prev-btn').classList.toggle('hidden', step === 1);
-            document.getElementById('next-btn').classList.toggle('hidden', step === 7);
+            // Visual step order: BENCHMARKING(4), PHASES(1), DISCIPLINES(2), PACKAGES(3), CLAIMING(5), SCHEDULE(6), PROJECT(7)
+            const visualOrder = [4, 1, 2, 3, 5, 6, 7];
+            const visualIndex = visualOrder.indexOf(step);
+            
+            document.getElementById('prev-btn').classList.toggle('hidden', visualIndex === 0);
+            document.getElementById('next-btn').classList.toggle('hidden', visualIndex === 6);
             document.getElementById('generate-btn').classList.toggle('hidden', step !== 7);
             
             // Load project info when showing step 7
@@ -3955,18 +4065,24 @@ ${reasoning}`;
             }
             
             updateProgress();
-            updateStatus(`STEP ${step}/7`);
+            updateStatus(`STEP ${visualIndex + 1}/7`);
         }
 
         /**
-         * Navigates to a previous step in the wizard (backward navigation only)
+         * Navigates to any step in the wizard
          * @param {number} step - Step number to navigate to
          */
         function goToStep(step) {
-            if (step < currentStep) {
+            if (step !== currentStep) {
                 saveCurrentStep();
                 currentStep = step;
                 showStep(step);
+                
+                // Initialize step-specific content
+                if (step === 4) buildBudgetTable();
+                if (step === 5) buildClaimingTable();
+                if (step === 6) buildDatesTable();
+                if (step === 7) loadProjectInfo();
             }
         }
 
@@ -4103,8 +4219,12 @@ ${reasoning}`;
             if (!validate()) return;
             saveCurrentStep();
             
-            if (currentStep < 7) {
-                currentStep++;
+            // Visual step order: BENCHMARKING(4), PHASES(1), DISCIPLINES(2), PACKAGES(3), CLAIMING(5), SCHEDULE(6), PROJECT(7)
+            const visualOrder = [4, 1, 2, 3, 5, 6, 7];
+            const currentVisualIndex = visualOrder.indexOf(currentStep);
+            
+            if (currentVisualIndex < visualOrder.length - 1) {
+                currentStep = visualOrder[currentVisualIndex + 1];
                 showStep(currentStep);
                 
                 if (currentStep === 4) {
@@ -4136,8 +4256,13 @@ ${reasoning}`;
             }
             
             saveCurrentStep();
-            if (currentStep > 1) {
-                currentStep--;
+            
+            // Visual step order: BENCHMARKING(4), PHASES(1), DISCIPLINES(2), PACKAGES(3), CLAIMING(5), SCHEDULE(6), PROJECT(7)
+            const visualOrder = [4, 1, 2, 3, 5, 6, 7];
+            const currentVisualIndex = visualOrder.indexOf(currentStep);
+            
+            if (currentVisualIndex > 0) {
+                currentStep = visualOrder[currentVisualIndex - 1];
                 showStep(currentStep);
             }
         }
@@ -5850,8 +5975,8 @@ ${reasoning}`;
         function editWBS() {
             document.getElementById('wizard-terminal').style.display = 'block';
             document.getElementById('results-section').classList.add('hidden');
-            currentStep = 1;
-            showStep(1);
+            currentStep = 4; // Start at Benchmarking
+            showStep(4);
             
             // Hide the reports button and exit edit mode
             updateReportsButtonVisibility();
@@ -11194,12 +11319,12 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             // Trigger autosave with RFP data
             triggerAutosave();
             
-            // Close modal and go to step 1
+            // Close modal and go to Benchmarking (first visual step)
             closeRfpWizard();
             
-            // Reset to step 1
-            currentStep = 1;
-            showStep(1);
+            // Reset to Benchmarking step
+            currentStep = 4;
+            showStep(4);
             
             // Build success message including quantity info
             let quantityInfo = '';
@@ -13271,6 +13396,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         window.updateMHInputs = updateMHInputs;
         window.resetMHEstimate = resetMHEstimate;
         window.showBenchmarkSelection = showBenchmarkSelection;
+        window.showDisciplineBenchmark = showDisciplineBenchmark;
         window.applyMHEstimate = applyMHEstimate;
         window.toggleMHDiscipline = toggleMHDiscipline;
         
@@ -13387,6 +13513,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         window.updateMHRowDisplay = updateMHRowDisplay;
         window.updateMHQuantity = updateMHQuantity;
         window.updateL4Percentage = updateL4Percentage;
+        window.toggleCostDropdown = toggleCostDropdown;
         window.recalculateTotalMH = recalculateTotalMH;
         window.toggleBenchmarkSection = toggleBenchmarkSection;
         window.toggleBenchmarkProject = toggleBenchmarkProject;

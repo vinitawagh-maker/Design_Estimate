@@ -1,42 +1,59 @@
 /* ===========================================
    CSS Custom Properties (Variables)
+   Light Pastel Theme
    =========================================== */
 
 :root {
-    /* Colors - Background */
-    --color-bg-body: #0a0a0a;
-    --color-bg-terminal: #0d0d0d;
-    --color-bg-card: #1a1a1a;
-    --color-bg-input: #000;
-    --color-bg-highlight: #1a1a00;
-    --color-bg-highlight-hover: #2d2d00;
+    /* Colors - Background (Light Pastels) */
+    --color-bg-body: #f5f7fa;
+    --color-bg-terminal: #ffffff;
+    --color-bg-card: #ffffff;
+    --color-bg-input: #ffffff;
+    --color-bg-highlight: #fff9e6;
+    --color-bg-highlight-hover: #fff3cc;
+
+    /* Pastel Section Colors */
+    --color-pastel-blue: #e3f2fd;
+    --color-pastel-blue-dark: #bbdefb;
+    --color-pastel-green: #e8f5e9;
+    --color-pastel-green-dark: #c8e6c9;
+    --color-pastel-purple: #f3e5f5;
+    --color-pastel-purple-dark: #e1bee7;
+    --color-pastel-orange: #fff3e0;
+    --color-pastel-orange-dark: #ffe0b2;
+    --color-pastel-pink: #fce4ec;
+    --color-pastel-pink-dark: #f8bbd9;
+    --color-pastel-teal: #e0f2f1;
+    --color-pastel-teal-dark: #b2dfdb;
+    --color-pastel-yellow: #fffde7;
+    --color-pastel-yellow-dark: #fff9c4;
 
     /* Colors - Primary */
-    --color-primary: #ffd700;
-    --color-primary-dark: #b8860b;
-    --color-primary-gradient: linear-gradient(135deg, #ffd700 0%, #b8860b 100%);
+    --color-primary: #5c6bc0;
+    --color-primary-dark: #3f51b5;
+    --color-primary-gradient: linear-gradient(135deg, #7986cb 0%, #5c6bc0 100%);
 
     /* Colors - Text */
-    --color-text-primary: #ffd700;
-    --color-text-white: #fff;
-    --color-text-light: #e0e0e0;
-    --color-text-muted: #888;
-    --color-text-dimmed: #666;
-    --color-text-dark: #000;
+    --color-text-primary: #3f51b5;
+    --color-text-white: #1a1a2e;
+    --color-text-light: #37474f;
+    --color-text-muted: #78909c;
+    --color-text-dimmed: #90a4ae;
+    --color-text-dark: #263238;
 
     /* Colors - Border */
-    --color-border: #333;
-    --color-border-light: #444;
-    --color-border-dark: #222;
+    --color-border: #e0e0e0;
+    --color-border-light: #eeeeee;
+    --color-border-dark: #bdbdbd;
 
     /* Colors - Status */
-    --color-success: #00ff00;
-    --color-success-muted: #00cc66;
-    --color-error: #ff4444;
-    --color-error-light: #ff6b6b;
-    --color-warning: #ff8800;
-    --color-info: #4da6ff;
-    --color-info-dark: #2c5aa0;
+    --color-success: #4caf50;
+    --color-success-muted: #81c784;
+    --color-error: #e53935;
+    --color-error-light: #ef5350;
+    --color-warning: #ff9800;
+    --color-info: #2196f3;
+    --color-info-dark: #1976d2;
 
     /* Typography */
     --font-family: 'JetBrains Mono', monospace;

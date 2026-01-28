@@ -580,3 +580,114 @@
     border-color: var(--color-primary);
     font-weight: 600;
 }
+
+/* Cost Dropdown */
+.cost-cell {
+    position: relative;
+}
+
+.cost-dropdown-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+.cost-dropdown-toggle {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 10px;
+    padding: 2px 4px;
+    opacity: 0.6;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.cost-dropdown-toggle:hover {
+    opacity: 1;
+    color: var(--color-primary);
+}
+
+.cost-dropdown-toggle.open {
+    transform: rotate(180deg);
+}
+
+.cost-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    min-width: 200px;
+    z-index: 100;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.cost-dropdown.open {
+    display: block;
+}
+
+.cost-dropdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 12px;
+}
+
+.cost-dropdown-item:not(:last-child) {
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 4px;
+    padding-bottom: 8px;
+}
+
+.cost-dropdown-item .cost-label {
+    color: var(--color-text-muted);
+}
+
+.cost-dropdown-item .cost-value {
+    color: var(--color-text-dark);
+    font-weight: 600;
+}
+
+/* Benchmark Select Button */
+.benchmark-select-header {
+    text-align: center;
+    min-width: 80px;
+}
+
+.benchmark-select-cell {
+    text-align: center;
+}
+
+.btn-benchmark-select {
+    background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%);
+    border: 1px solid #2a5a8c;
+    border-radius: 4px;
+    color: #4da6ff;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+}
+
+.btn-benchmark-select:hover {
+    background: linear-gradient(135deg, #2a4a6c 0%, #1a3147 100%);
+    border-color: #4a7aac;
+    color: #6dc6ff;
+}
+
+.btn-benchmark-select .benchmark-icon {
+    font-size: 12px;
+}
+
+.btn-benchmark-select .benchmark-btn-text {
+    font-weight: 500;
+}

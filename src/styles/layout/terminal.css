@@ -1,21 +1,25 @@
 /* ===========================================
-   Terminal Window Layout
+   Terminal Window Layout - Light Theme
    =========================================== */
 
 .terminal {
-    border: 2px solid var(--color-primary);
+    border: 1px solid var(--color-border);
     background: var(--color-bg-terminal);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    max-width: 100%;
 }
 
 .terminal-header {
-    background: var(--color-primary);
-    color: var(--color-text-dark);
-    padding: 8px 16px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: #ffffff;
+    padding: 12px 20px;
     font-weight: 700;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 16px;
+    border-radius: 11px 11px 0 0;
 }
 
 .terminal-header .btn {
@@ -26,27 +30,27 @@
 }
 
 .terminal-header .btn-primary {
-    background: var(--color-text-dark);
-    color: var(--color-primary);
-    border-color: var(--color-text-dark);
+    background: #ffffff;
+    color: var(--color-primary-dark);
+    border-color: #ffffff;
 }
 
 .terminal-header .btn-primary:hover {
-    background: var(--color-border);
-    border-color: var(--color-border);
+    background: #f5f5f5;
+    border-color: #f5f5f5;
 }
 
 .terminal-header .btn:not(.btn-primary) {
     background: transparent;
-    color: var(--color-text-dark);
-    border-color: var(--color-text-dark);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
 .terminal-header .btn:not(.btn-primary):hover {
-    background: var(--color-text-dark);
-    color: var(--color-primary);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #ffffff;
 }
 
 .terminal-body {
-    padding: 24px;
+    padding: 20px;
 }

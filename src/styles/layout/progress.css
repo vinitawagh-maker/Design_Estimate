@@ -1,36 +1,45 @@
 /* ===========================================
-   Progress Bar / Step Navigation
+   Progress Bar / Step Navigation - Light Theme
    =========================================== */
 
 .progress-bar {
     display: flex;
     gap: 4px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     font-size: 12px;
+    background: #ffffff;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
 }
 
 .progress-step {
     flex: 1;
     text-align: center;
-    padding: 8px 4px;
-    border: 1px solid var(--color-border);
-    color: var(--color-text-dimmed);
+    padding: 10px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--color-text-muted);
     cursor: pointer;
     transition: all var(--transition-normal);
+    font-weight: 500;
+    background: #f5f7fa;
 }
 
 .progress-step.active {
-    background: var(--color-primary);
-    color: var(--color-text-dark);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: #ffffff;
     border-color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(92, 107, 192, 0.3);
 }
 
 .progress-step.completed {
-    background: var(--color-bg-highlight);
-    color: var(--color-primary);
-    border-color: var(--color-primary);
+    background: var(--color-pastel-green);
+    color: #2e7d32;
+    border-color: var(--color-pastel-green-dark);
 }
 
-.progress-step:hover {
-    border-color: var(--color-primary);
+.progress-step:hover:not(.active) {
+    background: #e8eaf6;
+    color: var(--color-primary);
 }
