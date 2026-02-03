@@ -2237,10 +2237,18 @@ ${reasoning}`;
                 // For Wall format: each file can contain multiple disciplines
                 // For standard format: each file maps to one discipline ID
                 if (activeBenchmarkDataset === 'border-wall') {
+                    console.log('🔷 Loading Wall Projects data...');
+                    console.log('🔷 Unique files:', uniqueFiles);
+                    console.log('🔷 Account code map:', accountCodeMap);
+
                     // Wall Projects: load all disciplines from all files
                     for (const filePath of uniqueFiles) {
                         const disciplinesFromFile = fileDataMap[filePath];
-                        if (!Array.isArray(disciplinesFromFile)) continue;
+                        console.log(`🔷 Processing ${filePath}:`, disciplinesFromFile ? `${disciplinesFromFile.length} disciplines` : 'NULL');
+                        if (!Array.isArray(disciplinesFromFile)) {
+                            console.warn(`⚠️  Skipping ${filePath} - not an array`);
+                            continue;
+                        }
 
                         for (const discData of disciplinesFromFile) {
                             const projects = discData.projects || [];
@@ -2370,7 +2378,15 @@ ${reasoning}`;
                         };
                     }
                 }
-                
+
+                console.log('🔷 Final loadedData keys:', Object.keys(loadedData));
+                console.log('🔷 loadedData sample:', Object.keys(loadedData).slice(0, 3).map(k => ({
+                    id: k,
+                    discipline: loadedData[k].discipline,
+                    displayName: loadedData[k].displayName,
+                    projectCount: loadedData[k].projects?.length
+                })));
+
                 benchmarkDataCache = loadedData;
                 benchmarkDataLoaded = true;
                 console.log('Benchmark data loaded successfully:', Object.keys(loadedData));
