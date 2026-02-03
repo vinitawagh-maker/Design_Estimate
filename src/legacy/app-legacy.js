@@ -3905,14 +3905,25 @@ ${reasoning}`;
             if (activeDisciplines.length > 0) {
                 disciplineTabs = activeDisciplines.map(discId => {
                     const config = DISCIPLINE_CONFIG[discId];
+                    const benchmarks = getBenchmarkDataSync(discId);
+                    const displayName = config?.name || benchmarks?.displayName || benchmarks?.discipline || discId;
                     const isActive = discId === firstDiscipline ? 'active' : '';
-                    return `<button class="benchmark-tab ${isActive}" data-disc="${discId}" onclick="switchBenchmarkChartDiscipline('${discId}')">${config?.name || discId}</button>`;
+                    return `<button class="benchmark-tab ${isActive}" data-disc="${discId}" onclick="switchBenchmarkChartDiscipline('${discId}')">${displayName}</button>`;
                 }).join('');
             }
-            
+
             // Build modal content with side-by-side layout
-            const singleConfig = singleDiscipline ? DISCIPLINE_CONFIG[singleDiscipline] : null;
-            const headerTitle = singleConfig 
+            let singleConfig = singleDiscipline ? DISCIPLINE_CONFIG[singleDiscipline] : null;
+            if (!singleConfig && singleDiscipline) {
+                // For Wall projects, get config from benchmarks
+                const benchmarks = getBenchmarkDataSync(singleDiscipline);
+                if (benchmarks) {
+                    singleConfig = {
+                        name: benchmarks.displayName || benchmarks.discipline || singleDiscipline
+                    };
+                }
+            }
+            const headerTitle = singleConfig
                 ? `📊 Select Benchmark Projects for ${singleConfig.name}`
                 : '📊 Select Benchmark Projects';
             
@@ -3934,10 +3945,18 @@ ${reasoning}`;
             } else {
                 for (let i = 0; i < activeDisciplines.length; i++) {
                     const discId = activeDisciplines[i];
-                    const config = DISCIPLINE_CONFIG[discId];
                     const benchmarks = getBenchmarkDataSync(discId);
-                    
-                    if (!config || !benchmarks || !benchmarks.projects) continue;
+
+                    if (!benchmarks || !benchmarks.projects) {
+                        console.warn('No benchmarks or projects for:', discId);
+                        continue;
+                    }
+
+                    // For Wall projects, use data from benchmarks; for standard, use DISCIPLINE_CONFIG
+                    const config = DISCIPLINE_CONFIG[discId] || {
+                        name: benchmarks.displayName || benchmarks.discipline || discId,
+                        unit: benchmarks.eqty_metric?.uom || 'EA'
+                    };
                     
                     // Only expand if there's exactly 1 discipline; otherwise keep all collapsed
                     const isExpanded = activeDisciplines.length === 1;
