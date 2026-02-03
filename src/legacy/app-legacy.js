@@ -5307,22 +5307,25 @@ ${reasoning}`;
         }
 
         function toggleKieLaborSection() {
+            const directsHeader = document.getElementById('unified-estimate-tbody-header');
             const directsTbody = document.getElementById('unified-estimate-tbody');
             const indirectsSection = document.getElementById('unified-indirects-section');
             const indirectsTbody = document.getElementById('unified-indirects-tbody');
             const icon = document.getElementById('kie-labor-toggle-icon');
 
             if (icon) {
-                const isCollapsed = directsTbody && directsTbody.classList.contains('hidden');
+                const isCollapsed = directsHeader && directsHeader.classList.contains('hidden');
 
                 if (isCollapsed) {
-                    // Expand
+                    // Expand - show DIRECTS and INDIRECTS rows
+                    if (directsHeader) directsHeader.classList.remove('hidden');
                     if (directsTbody) directsTbody.classList.remove('hidden');
                     if (indirectsSection) indirectsSection.classList.remove('hidden');
                     if (indirectsTbody) indirectsTbody.classList.remove('hidden');
                     icon.textContent = '▼';
                 } else {
-                    // Collapse
+                    // Collapse - hide all subsections, show only KIE LABOR total
+                    if (directsHeader) directsHeader.classList.add('hidden');
                     if (directsTbody) directsTbody.classList.add('hidden');
                     if (indirectsSection) indirectsSection.classList.add('hidden');
                     if (indirectsTbody) indirectsTbody.classList.add('hidden');
@@ -5332,27 +5335,36 @@ ${reasoning}`;
         }
 
         function toggleSubsSection() {
+            const subsHeader = document.getElementById('subs-section-header');
             const lsSubsTbody = document.getElementById('ls-subs-tbody');
+            const surveySection = document.getElementById('survey-section');
             const surveyTbody = document.getElementById('survey-tbody');
+            const subsurfaceSection = document.getElementById('subsurface-utility-section');
             const subsurfaceTbody = document.getElementById('subsurface-utility-tbody');
+            const laborSubsSection = document.getElementById('labor-subs-section');
             const laborSubsTbody = document.getElementById('labor-subs-tbody');
             const icon = document.getElementById('subs-section-toggle-icon');
 
             if (icon) {
-                const isCollapsed = lsSubsTbody && lsSubsTbody.classList.contains('hidden');
+                const isCollapsed = subsHeader && subsHeader.classList.contains('hidden');
 
-                const tbodies = [lsSubsTbody, surveyTbody, subsurfaceTbody, laborSubsTbody];
+                const allElements = [
+                    subsHeader, lsSubsTbody,
+                    surveySection, surveyTbody,
+                    subsurfaceSection, subsurfaceTbody,
+                    laborSubsSection, laborSubsTbody
+                ];
 
                 if (isCollapsed) {
-                    // Expand
-                    tbodies.forEach(tbody => {
-                        if (tbody) tbody.classList.remove('hidden');
+                    // Expand - show all 4 subsection rows
+                    allElements.forEach(elem => {
+                        if (elem) elem.classList.remove('hidden');
                     });
                     icon.textContent = '▼';
                 } else {
-                    // Collapse
-                    tbodies.forEach(tbody => {
-                        if (tbody) tbody.classList.add('hidden');
+                    // Collapse - hide all 4 subsection rows, show only SUBS total
+                    allElements.forEach(elem => {
+                        if (elem) elem.classList.add('hidden');
                     });
                     icon.textContent = '▶';
                 }
@@ -5360,33 +5372,44 @@ ${reasoning}`;
         }
 
         function toggleExpensesSection() {
+            const expensesHeader = document.getElementById('expenses-section-header');
             const ipcTbody = document.getElementById('ipc-tbody');
+            const odcsSection = document.getElementById('odcs-section');
             const odcsTbody = document.getElementById('odcs-tbody');
             const icon = document.getElementById('expenses-section-toggle-icon');
 
             if (icon) {
-                const isCollapsed = ipcTbody && ipcTbody.classList.contains('hidden');
+                const isCollapsed = expensesHeader && expensesHeader.classList.contains('hidden');
+
+                const allElements = [expensesHeader, ipcTbody, odcsSection, odcsTbody];
 
                 if (isCollapsed) {
-                    // Expand
-                    if (ipcTbody) ipcTbody.classList.remove('hidden');
-                    if (odcsTbody) odcsTbody.classList.remove('hidden');
+                    // Expand - show IPC and ODC'S rows
+                    allElements.forEach(elem => {
+                        if (elem) elem.classList.remove('hidden');
+                    });
                     icon.textContent = '▼';
                 } else {
-                    // Collapse
-                    if (ipcTbody) ipcTbody.classList.add('hidden');
-                    if (odcsTbody) odcsTbody.classList.add('hidden');
+                    // Collapse - hide IPC and ODC'S rows, show only EXPENSES total
+                    allElements.forEach(elem => {
+                        if (elem) elem.classList.add('hidden');
+                    });
                     icon.textContent = '▶';
                 }
             }
         }
 
+        /**
+         * Handle benchmark dataset change
+         */
         // Export to window for HTML onclick handlers
         window.initUnifiedEstimator = initUnifiedEstimator;
         window.updateUnifiedQuantity = updateUnifiedQuantity;
         window.updateUnifiedL4 = updateUnifiedL4;
         window.applyGlobalComplexity = applyGlobalComplexity;
         window.calculateMHEstimates = calculateMHEstimates;
+        window.handleBenchmarkDatasetChange = handleBenchmarkDatasetChange;
+        window.handleWallMetricChange = handleWallMetricChange;
         window.toggleMHParams = toggleMHParams;
         window.toggleUnifiedPanel = toggleUnifiedPanel;
         window.toggleUnifiedTable = toggleUnifiedTable;
@@ -11702,7 +11725,7 @@ Return ONLY the JSON, no markdown formatting.`;
          */
         async function analyzeChunk(apiKey, chunkText, chunkIndex, totalChunks) {
             const systemPrompt = `You are an expert transportation infrastructure cost estimator and contract analyst. Extract WBS info, quantities, project details, and commercial terms from this RFP chunk ${chunkIndex + 1}/${totalChunks}. Return raw JSON only:
-{"phases":[],"disciplines":[],"disciplineScopes":{},"packages":[],"budgets":{},"scope":"","schedule":"","reviewSteps":[],"risks":[],"quantities":{},"quantityReasoning":{},"projectInfo":{},"projectInfoReasoning":{},"commercialTerms":{},"commercialTermsConfidence":{},"scheduleReasoning":"","confidence":{},"notes":""}
+{"phases":[],"disciplines":[],"disciplineScopes":{},"packages":[],"budgets":{},"scope":"","schedule":"","reviewSteps":[],"risks":[],"quantities":{},"quantityReasoning":{},"projectInfo":{},"projectInfoReasoning":{},"commercialTerms":{},"commercialTermsConfidence":{},"scheduleReasoning":"","confidence":{},"notes":"","wallProject":false,"wallMetricType":"alignment"}
 
 **PHASES**: Project stages (e.g. Base Design, ESDC, TSCD, Preliminary, Final, As-Builts, Closeout, Phase 1/2/3)
 **DISCIPLINES**: Use EXACT names: Roadway, Drainage, MOT, Traffic, Utilities, Retaining Walls, Noise Walls, Bridge Structures, Misc Structures, Geotechnical, Systems, Track, Environmental, Digital Delivery, ESDC, TSCD
@@ -11713,8 +11736,18 @@ Return ONLY the JSON, no markdown formatting.`;
 **REVIEW STEPS**: Array of design review milestones mentioned in RFP: ["Design Development", "Internal Design Review", "Owner's Review", "Comment Resolution", "Final Approval", "Constructability Review", "Value Engineering", "Safety Review", "QA/QC Review", "Permit Review", "Stakeholder Review", etc.] - Extract ALL review/approval steps mentioned
 **RISKS**: Array: [{"category":"Schedule|Budget|Technical|Scope|Coordination|Legal|Commercial","severity":"High|Medium|Low","description":"specific risk","mitigation":"suggested mitigation"}]
 
+**WALL PROJECT DETECTION**:
+- wallProject: true if this is a border wall/barrier wall project, false otherwise
+- wallMetricType: "alignment" if quantities are based on alignment/fence line length, "barrier" if based on barrier panel/section length (detect from RFP context)
+
 **QUANTITIES** (estimate if not explicit):
-- roadwayLengthLF, projectAreaAC, wallAreaSF, noiseWallAreaSF, bridgeDeckAreaSF
+- roadwayLengthLF: Alignment/centerline length for roadway disciplines (LF)
+- alignmentLengthLF: Total fence line/alignment length for wall projects (LF)
+- barrierLengthLF: Total barrier panel/section length for wall projects (LF)
+- projectAreaAC: Project area in acres
+- wallAreaSF: Retaining wall surface area (SF)
+- noiseWallAreaSF: Noise wall surface area (SF)
+- bridgeDeckAreaSF: Bridge deck area (SF)
 - bridgeCount, structureCount, utilityRelocations, permitCount, trackLengthTF
 **QUANTITY REASONING**: {"key": "explanation"} for each quantity
 
@@ -11872,8 +11905,12 @@ IMPORTANT:
                 packages: [],
                 budgets: {},
                 risks: [],
+                wallProject: false,
+                wallMetricType: 'alignment',
                 quantities: {
                     roadwayLengthLF: 0,
+                    alignmentLengthLF: 0,
+                    barrierLengthLF: 0,
                     projectAreaAC: 0,
                     wallAreaSF: 0,
                     noiseWallAreaSF: 0,
@@ -12038,7 +12075,7 @@ IMPORTANT:
             chunkResults.forEach((resultObj, chunkIdx) => {
                 const result = resultObj.data || resultObj;
                 if (result.projectInfoReasoning) {
-                    if (result.projectInfoReasoning.projectCostReasoning && 
+                    if (result.projectInfoReasoning.projectCostReasoning &&
                         (projectInfoSourceChunk === chunkIdx || !merged.projectInfoReasoning.projectCostReasoning)) {
                         merged.projectInfoReasoning.projectCostReasoning = result.projectInfoReasoning.projectCostReasoning;
                     }
@@ -12049,6 +12086,18 @@ IMPORTANT:
                 // Also check for scheduleReasoning at root level (older format)
                 if (result.scheduleReasoning && !merged.projectInfoReasoning.scheduleReasoning) {
                     merged.projectInfoReasoning.scheduleReasoning = result.scheduleReasoning;
+                }
+            });
+
+            // Merge Wall project fields - if ANY chunk identifies it as a wall project, set to true
+            chunkResults.forEach((resultObj) => {
+                const result = resultObj.data || resultObj;
+                if (result.wallProject === true) {
+                    merged.wallProject = true;
+                }
+                // Take first non-default wallMetricType
+                if (result.wallMetricType && result.wallMetricType !== 'alignment' && merged.wallMetricType === 'alignment') {
+                    merged.wallMetricType = result.wallMetricType;
                 }
             });
 
@@ -12644,6 +12693,8 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             
             // Quantity field definitions with labels and units
             const quantityFields = [
+                { key: 'alignmentLengthLF', label: 'Alignment Length (Wall Projects)', unit: 'LF' },
+                { key: 'barrierLengthLF', label: 'Barrier Length (Wall Projects)', unit: 'LF' },
                 { key: 'roadwayLengthLF', label: 'Roadway Length', unit: 'LF' },
                 { key: 'projectAreaAC', label: 'Project Area', unit: 'AC' },
                 { key: 'wallAreaSF', label: 'Retaining Wall Area', unit: 'SF' },
@@ -13015,6 +13066,7 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
          */
         function readRfpQuantityFields() {
             const quantityKeys = [
+                'alignmentLengthLF', 'barrierLengthLF',
                 'roadwayLengthLF', 'projectAreaAC', 'wallAreaSF', 'noiseWallAreaSF',
                 'bridgeDeckAreaSF', 'bridgeCount', 'structureCount', 'utilityRelocations',
                 'permitCount', 'trackLengthTF'
@@ -13059,16 +13111,29 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
                 console.log('applyRfpQuantitiesToEstimator: No extractedData found');
                 return;
             }
-            
+
             console.log('applyRfpQuantitiesToEstimator: Starting with extractedData:', rfpState.extractedData);
-            
+
             // Read user-edited values from the RFP preview fields
             const quantities = readRfpQuantityFields();
             const projectInfo = readRfpProjectInfoFields();
-            
+
             console.log('applyRfpQuantitiesToEstimator: Read quantities from fields:', quantities);
             console.log('applyRfpQuantitiesToEstimator: Read projectInfo from fields:', projectInfo);
-            
+
+            // Check if this is a Wall project and switch dataset if needed
+            const isWallProject = rfpState.extractedData.wallProject === true;
+            if (isWallProject) {
+                console.log('RFP indicates Wall project - switching to border-wall dataset');
+                const datasetSelect = document.getElementById('benchmark-dataset');
+                if (datasetSelect && datasetSelect.value !== 'border-wall') {
+                    datasetSelect.value = 'border-wall';
+                    // Trigger the dataset change handler to reload benchmark data
+                    const event = new Event('change');
+                    datasetSelect.dispatchEvent(event);
+                }
+            }
+
             // Store in rfpState for reference
             rfpState.quantities = quantities;
             rfpState.projectInfo = projectInfo;
@@ -13135,22 +13200,66 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
             const quantityReasoning = rfpState.extractedData?.quantityReasoning || {};
 
             // Map RFP quantities to MH estimator disciplines with reasoning keys
-            const quantityMapping = {
-                'roadway': { qty: quantities.roadwayLengthLF || 0, reasoningKey: 'roadwayLengthLF' },
-                'drainage': { qty: quantities.projectAreaAC || 0, reasoningKey: 'projectAreaAC' },
-                'mot': { qty: quantities.roadwayLengthLF || 0, reasoningKey: 'roadwayLengthLF', note: 'Same as roadway alignment length' },
-                'traffic': { qty: quantities.roadwayLengthLF || 0, reasoningKey: 'roadwayLengthLF', note: 'Same as roadway alignment length' },
-                'utilities': { qty: quantities.utilityRelocations || 0, reasoningKey: 'utilityRelocations' },
-                'retainingWalls': { qty: quantities.wallAreaSF || 0, reasoningKey: 'wallAreaSF' },
-                'noiseWalls': { qty: quantities.noiseWallAreaSF || 0, reasoningKey: 'noiseWallAreaSF' },
-                'bridgesPCGirder': { qty: Math.round((quantities.bridgeDeckAreaSF || 0) * 0.7), reasoningKey: 'bridgeDeckAreaSF', note: '70% of total bridge deck area assumed as PC Girder' },
-                'bridgesSteel': { qty: Math.round((quantities.bridgeDeckAreaSF || 0) * 0.2), reasoningKey: 'bridgeDeckAreaSF', note: '20% of total bridge deck area assumed as Steel' },
-                'bridgesRehab': { qty: Math.round((quantities.bridgeDeckAreaSF || 0) * 0.1), reasoningKey: 'bridgeDeckAreaSF', note: '10% of total bridge deck area assumed as Rehabilitation' },
-                'geotechnical': { qty: quantities.structureCount || quantities.bridgeCount || 0, reasoningKey: quantities.structureCount ? 'structureCount' : 'bridgeCount' },
-                'systems': { qty: quantities.trackLengthTF || 0, reasoningKey: 'trackLengthTF' },
-                'track': { qty: quantities.trackLengthTF || 0, reasoningKey: 'trackLengthTF' },
-                'environmental': { qty: quantities.permitCount || 0, reasoningKey: 'permitCount' }
-            };
+            let quantityMapping = {};
+
+            if (isWallProject) {
+                // Wall Projects: map to alignment and barrier length disciplines
+                // The discipline IDs are generated by parseWallFormat and follow the pattern:
+                // {base_name}_{metric_name} (e.g., drainage_design_alignment_length_lf)
+                quantityMapping = {
+                    // Drainage - both metrics
+                    'drainage_design_alignment_length_lf': {
+                        qty: quantities.alignmentLengthLF || 0,
+                        reasoningKey: 'alignmentLengthLF',
+                        note: 'Alignment length for drainage design'
+                    },
+                    'drainage_design_barrier_length_lf': {
+                        qty: quantities.barrierLengthLF || 0,
+                        reasoningKey: 'barrierLengthLF',
+                        note: 'Barrier length for drainage design'
+                    },
+                    // Roadway - both metrics
+                    'roadway_civil_design_alignment_length_lf': {
+                        qty: quantities.alignmentLengthLF || 0,
+                        reasoningKey: 'alignmentLengthLF',
+                        note: 'Alignment length for roadway/civil design'
+                    },
+                    'roadway_civil_design_barrier_length_lf': {
+                        qty: quantities.barrierLengthLF || 0,
+                        reasoningKey: 'barrierLengthLF',
+                        note: 'Barrier length for roadway/civil design'
+                    },
+                    // Geotechnical - both metrics
+                    'geotechnical_design_alignment_length_lf': {
+                        qty: quantities.alignmentLengthLF || 0,
+                        reasoningKey: 'alignmentLengthLF',
+                        note: 'Alignment length for geotechnical design'
+                    },
+                    'geotechnical_design_barrier_length_lf': {
+                        qty: quantities.barrierLengthLF || 0,
+                        reasoningKey: 'barrierLengthLF',
+                        note: 'Barrier length for geotechnical design'
+                    }
+                };
+            } else {
+                // All Other Projects: standard mapping
+                quantityMapping = {
+                    'roadway': { qty: quantities.roadwayLengthLF || 0, reasoningKey: 'roadwayLengthLF' },
+                    'drainage': { qty: quantities.projectAreaAC || 0, reasoningKey: 'projectAreaAC' },
+                    'mot': { qty: quantities.roadwayLengthLF || 0, reasoningKey: 'roadwayLengthLF', note: 'Same as roadway alignment length' },
+                    'traffic': { qty: quantities.roadwayLengthLF || 0, reasoningKey: 'roadwayLengthLF', note: 'Same as roadway alignment length' },
+                    'utilities': { qty: quantities.utilityRelocations || 0, reasoningKey: 'utilityRelocations' },
+                    'retainingWalls': { qty: quantities.wallAreaSF || 0, reasoningKey: 'wallAreaSF' },
+                    'noiseWalls': { qty: quantities.noiseWallAreaSF || 0, reasoningKey: 'noiseWallAreaSF' },
+                    'bridgesPCGirder': { qty: Math.round((quantities.bridgeDeckAreaSF || 0) * 0.7), reasoningKey: 'bridgeDeckAreaSF', note: '70% of total bridge deck area assumed as PC Girder' },
+                    'bridgesSteel': { qty: Math.round((quantities.bridgeDeckAreaSF || 0) * 0.2), reasoningKey: 'bridgeDeckAreaSF', note: '20% of total bridge deck area assumed as Steel' },
+                    'bridgesRehab': { qty: Math.round((quantities.bridgeDeckAreaSF || 0) * 0.1), reasoningKey: 'bridgeDeckAreaSF', note: '10% of total bridge deck area assumed as Rehabilitation' },
+                    'geotechnical': { qty: quantities.structureCount || quantities.bridgeCount || 0, reasoningKey: quantities.structureCount ? 'structureCount' : 'bridgeCount' },
+                    'systems': { qty: quantities.trackLengthTF || 0, reasoningKey: 'trackLengthTF' },
+                    'track': { qty: quantities.trackLengthTF || 0, reasoningKey: 'trackLengthTF' },
+                    'environmental': { qty: quantities.permitCount || 0, reasoningKey: 'permitCount' }
+                };
+            }
 
             console.log('applyRfpQuantitiesToEstimator: quantityMapping:', quantityMapping);
 
