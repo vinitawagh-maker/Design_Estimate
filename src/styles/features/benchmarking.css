@@ -7,12 +7,15 @@
 .benchmarking-step {
     padding: 0 !important;
     max-width: 100% !important;
+    --bench-input-block-height: 58px;
+    --bench-header-row-height: 36px;
+    --bench-row-height: 26px;
 }
 
 /* Header */
 .benchmarking-header {
     background: linear-gradient(135deg, var(--color-pastel-purple) 0%, var(--color-pastel-blue) 100%);
-    padding: 16px 24px;
+    padding: 10px 18px;
     border-radius: 12px;
     margin-bottom: 16px;
     text-align: center;
@@ -21,21 +24,21 @@
 
 .benchmarking-title {
     color: var(--color-primary-dark);
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 700;
-    margin: 0 0 4px 0;
+    margin: 0 0 2px 0;
 }
 
 .benchmarking-subtitle {
     color: var(--color-text-muted);
-    font-size: 13px;
+    font-size: 11px;
     margin: 0;
 }
 
 /* Two Column Layout */
 .benchmarking-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 16px;
     min-height: calc(100vh - 200px);
 }
@@ -44,6 +47,14 @@
 .benchmarking-column {
     display: flex;
     flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.benchmarking-secondary {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 16px;
 }
 
@@ -80,9 +91,9 @@
 }
 
 .mh-column .mh-estimator-body {
-    padding: 16px;
+    padding: 10px 12px;
     flex: 1;
-    overflow-y: auto;
+    overflow: visible;
     background: var(--color-pastel-blue);
 }
 
@@ -118,6 +129,153 @@
 .cost-column .calculator-body {
     padding: 16px;
     background: var(--color-pastel-green);
+}
+
+/* RIGHT COLUMN: Cost by Discipline - Pink Pastel */
+.cost-extension-panel {
+    background: var(--color-pastel-pink);
+    border: 1px solid var(--color-pastel-pink-dark);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 100%;
+}
+
+.cost-extension-header {
+    background: linear-gradient(135deg, #f8bbd9 0%, #f48fb1 100%);
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--color-pastel-pink-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cost-extension-header h3 {
+    color: #ad1457;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.cost-extension-status {
+    color: #ad1457;
+    font-size: 11px;
+}
+
+.cost-extension-body {
+    padding: 10px 12px;
+    background: var(--color-pastel-pink);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.cost-extension-inputs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px 12px;
+    margin-bottom: 8px;
+    min-height: var(--bench-input-block-height);
+    align-items: start;
+}
+
+.cost-extension-panel .budget-table-wrapper {
+    margin-bottom: 0;
+    border-color: var(--color-pastel-pink-dark);
+    border-radius: 0;
+    margin-top: 0;
+}
+
+.cost-extension-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #7a1a3a;
+    margin-bottom: 4px;
+}
+
+.cost-extension-group input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--color-pastel-pink-dark);
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--color-text-dark);
+    font-size: 12px;
+}
+
+.cost-extension-group input[type="number"] {
+    appearance: auto;
+    -webkit-appearance: auto;
+    -moz-appearance: number-input;
+}
+
+.cost-extension-percent {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cost-extension-percent input {
+    width: 80px;
+    text-align: right;
+}
+
+.cost-extension-percent span {
+    color: #ad1457;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.cost-extension-panel #budget-table {
+    width: 100%;
+    table-layout: fixed;
+    border-radius: 0;
+}
+
+.cost-extension-panel #budget-table th:nth-child(n+3),
+.cost-extension-panel #budget-table td:nth-child(n+3) {
+    display: none;
+}
+
+.cost-extension-panel #budget-table th,
+.cost-extension-panel #budget-table td {
+    padding: 6px 6px;
+    height: auto;
+    vertical-align: middle;
+}
+
+.cost-extension-panel #budget-table {
+    font-size: 10px;
+}
+
+.cost-extension-panel #budget-table th {
+    font-size: 9px;
+    line-height: 1.2;
+    font-weight: 600;
+    height: var(--bench-header-row-height);
+}
+
+.cost-extension-panel #budget-table td {
+    height: var(--bench-row-height);
+}
+
+.cost-extension-panel .budget-input {
+    height: 24px;
+    padding: 2px 6px;
+    font-size: 10px;
+}
+
+.cost-extension-panel .budget-summary-row {
+    background: #f5f5f5;
+    color: #7a7a7a;
+}
+
+.cost-extension-panel .budget-summary-row .budget-input {
+    background: #f0f0f0;
+    color: #7a7a7a;
+    border-color: #d8d8d8;
 }
 
 /* Calc Grid Layout */
@@ -244,8 +402,9 @@
 .mh-column .mh-input-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 8px;
+    margin-bottom: 8px;
+    min-height: var(--bench-input-block-height);
 }
 
 .mh-column .mh-input-group label {
@@ -277,15 +436,16 @@
 /* MH Estimate Table - Light Theme */
 .mh-table-wrapper {
     position: relative;
-    overflow-y: auto;
-    overflow-x: visible;
+    overflow-y: visible;
+    overflow-x: auto;
     padding-top: 0;
+    max-height: none;
 }
 
 .mh-column .mh-estimate-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12px;
+    font-size: 10px;
     background: #ffffff;
     border-radius: 8px;
     overflow: visible;
@@ -305,22 +465,60 @@
 }
 
 .mh-column .mh-estimate-table th {
-    padding: 10px 8px;
+    padding: 6px 6px;
     text-align: left;
     font-weight: 600;
     color: #1565c0;
     border-bottom: 2px solid var(--color-pastel-blue-dark);
-    font-size: 11px;
+    font-size: 9px;
+    white-space: normal;
+    line-height: 1.2;
+    word-break: break-word;
+    height: var(--bench-header-row-height);
 }
 
 .mh-column .mh-estimate-table td {
-    padding: 8px;
+    padding: 5px 6px;
     border-bottom: 1px solid #e3f2fd;
     color: var(--color-text-dark);
+    height: var(--bench-row-height);
 }
 
 .mh-column .mh-estimate-table tr:hover {
     background: #f5f5f5;
+}
+
+/* Emphasize data entry fields */
+.mh-column .qty-input,
+.mh-column .l4-input {
+    background: #ffffff;
+    border: 2px solid #64b5f6;
+    box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.15);
+    border-radius: 6px;
+    font-weight: 600;
+    height: 24px;
+    padding: 2px 6px;
+    font-size: 10px;
+}
+
+.mh-column .qty-input:focus,
+.mh-column .l4-input:focus {
+    border-color: #1e88e5;
+    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.2);
+}
+
+.mh-column .btn-benchmark-select {
+    background: linear-gradient(135deg, #64b5f6 0%, #2196f3 100%);
+    border: 2px solid #1e88e5;
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: 0 6px 14px rgba(33, 150, 243, 0.25);
+}
+
+.mh-column .btn-benchmark-select:hover {
+    background: linear-gradient(135deg, #90caf9 0%, #42a5f5 100%);
+    border-color: #1e88e5;
+    color: #ffffff;
 }
 
 /* MH Summary Bar - Light Theme */
@@ -410,8 +608,812 @@
     .benchmarking-layout {
         grid-template-columns: 1fr;
     }
-    
+
+    .benchmarking-secondary {
+        grid-template-columns: 1fr;
+    }
+
+    .cost-extension-inputs {
+        grid-template-columns: 1fr;
+    }
+
     .mh-column .mh-input-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ============================================
+   UNIFIED TABLE LAYOUT
+   ============================================ */
+
+.unified-benchmarking-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0;
+}
+
+/* Input Parameters Panel */
+.unified-input-panel {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* Panel Header */
+.unified-panel-header {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #e0e0e0;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.unified-panel-header:hover {
+    background: #d5d5d5;
+}
+
+.unified-panel-summary {
+    font-size: 10px;
+    color: #666;
+    margin-top: 2px;
+}
+
+/* Collapsed State */
+.unified-input-panel.collapsed .unified-input-grid {
+    display: none;
+}
+
+.unified-input-panel.collapsed .unified-panel-summary {
+    display: block !important;
+}
+
+.unified-input-panel.collapsed {
+    padding: 0;
+}
+
+.unified-input-grid {
+    display: grid;
+    grid-template-columns: 9fr 5fr; /* MH section (9fr) + Cost section (5fr) to match table column ratio */
+    gap: 10px;
+    padding: 10px;
+    align-items: stretch;
+    margin-left: 130px; /* Offset by frozen column width (120px) + gap (10px) */
+}
+
+.input-section {
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.input-section.mh-params {
+    background: var(--color-pastel-blue);
+    border: 1px solid var(--color-pastel-blue-dark);
+}
+
+.input-section.cost-params {
+    background: var(--color-pastel-green);
+    border: 1px solid var(--color-pastel-green-dark);
+}
+
+.input-section h4 {
+    font-size: 11px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+}
+
+.input-section.mh-params h4 {
+    color: #1565c0;
+}
+
+.input-section.cost-params h4 {
+    color: #2e7d32;
+}
+
+/* Collapsible Parameter Header */
+.param-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 8px;
+}
+
+.param-header h4 {
+    margin: 0;
+    flex: 1;
+}
+
+.param-summary {
+    font-size: 9px;
+    color: #666;
+    font-weight: 500;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.param-toggle-btn {
+    background: transparent;
+    border: none;
+    color: #1565c0;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: all 0.2s;
+}
+
+.param-toggle-btn:hover {
+    background: rgba(33, 150, 243, 0.1);
+}
+
+#mh-params-icon {
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+/* Collapsed state */
+.input-section.collapsed .param-content {
+    display: none;
+}
+
+.input-section.collapsed #mh-params-icon {
+    transform: rotate(-90deg);
+}
+
+.input-section.collapsed .param-header {
+    margin-bottom: 0;
+}
+
+/* Smooth transition for content */
+.param-content {
+    transition: opacity 0.3s ease;
+}
+
+/* Step-based parameter layout */
+.param-step {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.param-step-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: #1565c0;
+    text-align: right;
+    padding-right: 8px;
+}
+
+.input-step {
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px solid #90caf9;
+    border-radius: 4px;
+    font-size: 10px;
+    line-height: 1.3;
+    background: #ffffff;
+    color: var(--color-text-dark);
+}
+
+.input-step:focus {
+    outline: none;
+    border-color: #1e88e5;
+    box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.2);
+}
+
+.input-step:disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.btn-step {
+    width: 100%;
+    padding: 5px 12px;
+    background: linear-gradient(135deg, #64b5f6 0%, #2196f3 100%);
+    border: 1px solid #1e88e5;
+    color: #ffffff;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-step:hover {
+    background: linear-gradient(135deg, #90caf9 0%, #42a5f5 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
+}
+
+.btn-calculate {
+    width: 100%;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+    border: 2px solid #43a047;
+    color: #ffffff;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 3px 8px rgba(76, 175, 80, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-calculate:hover {
+    background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.btn-calculate:active {
+    transform: translateY(0);
+}
+
+/* Legacy input row (for cost params) */
+.input-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.input-group label {
+    font-size: 9px;
+    font-weight: 600;
+    margin-bottom: 3px;
+    display: block;
+    color: var(--color-text-dark);
+}
+
+.input-group input,
+.input-group select {
+    width: 100%;
+    padding: 5px 6px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+/* Unified Table */
+.unified-table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+}
+
+/* Unified Table Header */
+.unified-table-header {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #e0e0e0;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    border-bottom: 1px solid #ddd;
+}
+
+.unified-table-header:hover {
+    background: #d5d5d5;
+}
+
+.unified-table-summary {
+    font-size: 10px;
+    color: #666;
+    margin-top: 2px;
+}
+
+/* Collapsed Table State - Keep headers and totals, hide only category rows */
+.unified-table-wrapper.collapsed .unified-estimate-table tbody {
+    display: none;
+}
+
+.unified-table-wrapper.collapsed .unified-table-summary {
+    display: block !important;
+}
+
+.unified-estimate-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    overflow: visible !important;
+}
+
+/* Remove sticky from Labor/Directs since they're now at the top */
+
+.unified-estimate-table tfoot {
+    position: sticky;
+    bottom: 0;
+    z-index: 100;
+    background: #f5f5f5;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+}
+
+.unified-estimate-table th {
+    overflow: visible !important;
+    position: relative;
+    user-select: none;
+}
+
+/* Column Resize Handle */
+.unified-estimate-table th .resize-handle {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+    background: transparent;
+}
+
+.unified-estimate-table th .resize-handle:hover {
+    background: rgba(33, 150, 243, 0.3);
+}
+
+.unified-estimate-table th .resize-handle:active {
+    background: rgba(33, 150, 243, 0.5);
+}
+
+/* Visual indicator while resizing */
+.unified-estimate-table.resizing {
+    user-select: none;
+    cursor: col-resize;
+}
+
+.unified-estimate-table.resizing th {
+    cursor: col-resize;
+}
+
+/* Inline Toggle Button in Header - Separator Wall Style */
+.mh-toggle-header {
+    padding: 2px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    width: 20px !important;
+    background: #9e9e9e !important;
+    border-left: 2px solid #757575 !important;
+    border-right: 2px solid #757575 !important;
+    position: relative !important;
+}
+
+/* Disable resize handle for toggle column */
+.mh-toggle-header .resize-handle {
+    display: none !important;
+    pointer-events: none !important;
+}
+
+/* Toggle Cell in Body - Separator Wall Style */
+.mh-toggle-cell {
+    padding: 0 !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    width: 20px !important;
+    background: #bdbdbd !important;
+    border-left: 1px solid #9e9e9e !important;
+    border-right: 1px solid #9e9e9e !important;
+}
+
+.btn-toggle-mh-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    height: 20px;
+    padding: 0;
+    background: #616161;
+    border: 1px solid #424242;
+    color: #ffffff;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 8px;
+    font-weight: 700;
+    transition: all 0.2s;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-toggle-mh-inline:hover {
+    background: #757575;
+    transform: scale(1.05);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.btn-toggle-mh-inline:active {
+    transform: scale(0.95);
+}
+
+#toggle-mh-icon {
+    font-size: 11px;
+    line-height: 1;
+    transition: transform 0.2s;
+}
+
+/* Hide MH Columns when collapsed (but keep toggle button, Est. MH, and separator visible) */
+.unified-estimate-table.mh-collapsed th.mh-col:not(.frozen-col):not(.mh-toggle-header):not(.mh-col-keep) {
+    display: none !important;
+}
+
+.unified-estimate-table.mh-collapsed td.mh-col:not(.frozen-col):not(.mh-toggle-cell):not(.mh-col-keep) {
+    display: none !important;
+}
+
+/* Keep toggle header visible and style it for collapsed state */
+.unified-estimate-table.mh-collapsed th.mh-toggle-header {
+    display: table-cell !important;
+    background: #9e9e9e !important;
+    border-right: 2px solid #757575 !important;
+    border-left: 2px solid #757575 !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    width: 20px !important;
+}
+
+/* Keep toggle cells visible in collapsed state */
+.unified-estimate-table.mh-collapsed td.mh-toggle-cell {
+    display: table-cell !important;
+}
+
+.unified-estimate-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 10px;
+    background: #ffffff;
+    table-layout: auto; /* Allow columns to size based on content */
+}
+
+/* Frozen Discipline Column */
+.unified-estimate-table .frozen-col {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background: #ffffff;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+    min-width: 120px;
+    max-width: 120px;
+    font-weight: 600;
+    padding: 1px 4px;
+    line-height: 1;
+}
+
+.unified-estimate-table thead .frozen-col {
+    z-index: 20;
+    background: #e0e0e0;
+    color: #333;
+    font-size: 10px;
+    line-height: 1;
+}
+
+.unified-estimate-table tfoot .frozen-col {
+    z-index: 15;
+    background: #f5f5f5;
+    font-weight: 700;
+    color: #333;
+    font-size: 11px;
+}
+
+/* MH Columns - Blue Theme */
+.unified-estimate-table thead .mh-col {
+    background: #e3f2fd;
+    color: #1565c0;
+    font-weight: 600;
+    padding: 2px 2px;
+    border-bottom: 2px solid #90caf9;
+    font-size: 10px;
+    line-height: 1;
+}
+
+.unified-estimate-table tbody td.mh-col {
+    background: #ffffff;
+    color: var(--color-text-dark);
+    padding: 1px 2px;
+    border-bottom: 1px solid #e3f2fd;
+    line-height: 1;
+}
+
+.unified-estimate-table tbody tr:hover td.mh-col {
+    background: #f5f9ff;
+}
+
+.unified-estimate-table tfoot td.mh-col {
+    background: #f5f5f5;
+    padding: 2px 2px;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+/* Cost Columns - Green Theme */
+.unified-estimate-table thead .cost-col {
+    background: #c8e6c9;
+    color: #2e7d32;
+    font-weight: 600;
+    padding: 2px 2px;
+    border-bottom: 2px solid #81c784;
+    font-size: 10px;
+    line-height: 1;
+    min-width: auto !important;
+}
+
+/* Ensure first cost column (Weighted Rate) is independent */
+.unified-estimate-table thead .cost-col:first-of-type,
+.unified-estimate-table tbody .cost-col:first-of-type {
+    border-left: 2px solid #81c784;
+}
+
+.unified-estimate-table tbody td.cost-col {
+    background: #f1f8f1;
+    color: var(--color-text-dark);
+    padding: 1px 2px;
+    border-bottom: 1px solid #c8e6c9;
+    line-height: 1;
+}
+
+.unified-estimate-table tbody tr:hover td.cost-col {
+    background: #e8f5e9;
+}
+
+.unified-estimate-table tfoot td.cost-col {
+    background: #f5f5f5;
+    padding: 2px 2px;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+/* Visual Separation Between MH and Cost */
+.unified-estimate-table th.mh-toggle-header {
+    border-right: 2px solid #757575;
+}
+
+.unified-estimate-table td.mh-col:nth-last-of-type(1) {
+    border-right: 2px solid #64b5f6;
+}
+
+/* Visual alignment indicators */
+.input-section.mh-params {
+    position: relative;
+}
+
+.input-section.mh-params::after {
+    content: '';
+    position: absolute;
+    bottom: -11px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, #90caf9, transparent);
+    opacity: 0.3;
+}
+
+.input-section.cost-params {
+    position: relative;
+}
+
+.input-section.cost-params::after {
+    content: '';
+    position: absolute;
+    bottom: -11px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, #81c784, transparent);
+    opacity: 0.3;
+}
+
+/* Numeric Alignment */
+.unified-estimate-table .numeric {
+    text-align: right;
+}
+
+/* Section Header Row (Labor) */
+.unified-estimate-table .section-header-row {
+    background: #d0d0d0;
+    font-weight: 700;
+    font-size: 11px;
+    border-top: 2px solid #999;
+    border-bottom: 1px solid #999;
+}
+
+.unified-estimate-table .section-header {
+    padding: 6px 4px;
+    color: #333;
+    font-weight: 700;
+}
+
+/* Indentation Levels */
+.unified-estimate-table .indent-1 {
+    padding-left: 20px !important;
+}
+
+.unified-estimate-table .indent-level-2 tr td.frozen-col {
+    padding-left: 40px !important;
+}
+
+/* Summary Row Styling */
+.unified-estimate-table .summary-row {
+    font-weight: 700;
+    font-size: 11px;
+    background: #f5f5f5;
+}
+
+.unified-estimate-table .summary-row td {
+    padding: 6px 4px;
+}
+
+/* Clickable Row (Directs) */
+.unified-estimate-table .clickable-row {
+    cursor: pointer;
+    user-select: none;
+}
+
+.unified-estimate-table .clickable-row:hover {
+    background: #e8e8e8;
+}
+
+/* Standardize all toggle icons */
+[id$="-toggle-icon"] {
+    display: inline-block;
+    width: 12px;
+    font-size: 10px;
+    margin-right: 4px;
+    text-align: center;
+}
+
+#unified-panel-icon,
+#unified-table-icon,
+#mh-params-icon {
+    font-size: 10px;
+}
+
+/* Hidden tbody */
+tbody.hidden {
+    display: none;
+}
+
+.unified-estimate-table #unified-total-mh {
+    color: #0d47a1;
+    font-size: 12px;
+}
+
+.unified-estimate-table #unified-total-cost {
+    color: #1b5e20;
+    font-size: 12px;
+}
+
+.unified-estimate-table tfoot .summary-row {
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.unified-estimate-table tfoot #unified-total-mh {
+    color: #0d47a1;
+    font-size: 12px;
+}
+
+.unified-estimate-table tfoot #unified-total-cost {
+    color: #1b5e20;
+    font-size: 12px;
+}
+
+/* Input Fields in Table */
+.unified-estimate-table .qty-input,
+.unified-estimate-table .l4-input {
+    width: 100%;
+    padding: 1px 2px;
+    border: 1px solid #64b5f6;
+    border-radius: 2px;
+    font-size: 10px;
+    text-align: right;
+    line-height: 1;
+    height: 16px;
+}
+
+.unified-estimate-table .qty-input:focus,
+.unified-estimate-table .l4-input:focus {
+    outline: none;
+    border-color: #1e88e5;
+    box-shadow: 0 0 0 1px rgba(30, 136, 229, 0.2);
+}
+
+/* MH Cell - stacked total and breakdown */
+.unified-estimate-table .mh-cell {
+    padding: 1px 2px !important;
+    vertical-align: top;
+}
+
+.unified-estimate-table .complexity-breakdown {
+    text-align: right;
+    line-height: 1;
+    margin-top: 1px;
+    padding-top: 1px;
+    border-top: 1px solid #e3f2fd;
+}
+
+/* Quantity Column - make narrower */
+.unified-estimate-table th:nth-child(3),
+.unified-estimate-table td:nth-child(3) {
+    width: 80px;
+    max-width: 80px;
+}
+
+/* Benchmark Button */
+.unified-estimate-table .btn-benchmark-select {
+    padding: 2px 6px;
+    font-size: 9px;
+    background: linear-gradient(135deg, #64b5f6 0%, #2196f3 100%);
+    border: 1px solid #1e88e5;
+    color: #ffffff;
+    border-radius: 3px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.unified-estimate-table .btn-benchmark-select:hover {
+    background: linear-gradient(135deg, #90caf9 0%, #42a5f5 100%);
+}
+
+/* Select All Benchmarks Button in Header */
+.btn-select-all-benchmarks {
+    margin-left: 6px;
+    padding: 2px 6px;
+    font-size: 8px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
+    border: 1px solid #e6a700;
+    color: #000000;
+    border-radius: 3px;
+    cursor: pointer;
+    line-height: 1;
+    vertical-align: middle;
+    transition: all 0.2s;
+}
+
+.btn-select-all-benchmarks:hover {
+    background: linear-gradient(135deg, #ffe44d 0%, #ffd700 100%);
+    transform: scale(1.05);
+    box-shadow: 0 2px 6px rgba(255, 215, 0, 0.4);
+}
+
+/* Actions */
+.unified-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding-top: 6px;
+}
+
+.unified-actions .btn,
+.unified-actions .btn-mh {
+    padding: 6px 12px;
+    font-size: 10px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .unified-input-grid {
+        grid-template-columns: 1fr;
+        margin-left: 0; /* Remove offset on mobile */
+    }
+
+    .input-row {
         grid-template-columns: repeat(2, 1fr);
     }
 }

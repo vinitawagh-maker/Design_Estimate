@@ -15,7 +15,6 @@
                 <span>■ WBS TERMINAL v1.0</span>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <button class="rfp-header-btn" onclick="openProjectManager()">📁 PROJECTS</button>
-                    <button class="rfp-header-btn" onclick="openRfpWizard()">📄 RFP WIZARD</button>
                     <button id="rfp-results-btn" class="rfp-header-btn hidden" onclick="openRfpResultsPanel()">📋 RFP DATA</button>
                     <button id="reports-btn" class="rfp-header-btn hidden" onclick="openReportsPanel()">📊 REPORTS</button>
                     <span id="status-text">READY</span>
@@ -104,17 +103,639 @@
 
                 <!-- Step 4: Benchmarking (formerly Budget) -->
                 <div id="step4" class="step-content benchmarking-step">
-                    <div class="benchmarking-header">
-                        <h2 class="benchmarking-title">📊 BENCHMARKING</h2>
-                        <p class="benchmarking-subtitle">Select benchmark projects and estimate man-hours for each discipline</p>
+                    <!-- UNIFIED TABLE LAYOUT -->
+                    <div class="unified-benchmarking-layout">
+                        <!-- Input Parameters Panel -->
+                        <div class="unified-input-panel" id="unified-input-panel">
+                            <div class="unified-panel-header" onclick="toggleUnifiedPanel()">
+                                <div>
+                                    <h3 style="margin: 0; font-size: 13px; color: #333;">⚙️ INPUT PARAMETERS</h3>
+                                    <div class="unified-panel-summary" id="unified-panel-summary" style="display: none; font-size: 10px; color: #666; margin-top: 2px;">
+                                        Click to expand parameters
+                                    </div>
+                                </div>
+                                <button class="param-toggle-btn" id="unified-panel-toggle" title="Expand/Collapse">
+                                    <span id="unified-panel-icon">▼</span>
+                                </button>
+                            </div>
+                            <div class="unified-input-grid" id="unified-input-content">
+                                <!-- MH Parameters (Blue) -->
+                                <div class="input-section mh-params" id="mh-params-section">
+                                    <div class="param-header" onclick="toggleMHParams()">
+                                        <div>
+                                            <h4>🔵 MH ESTIMATION PARAMETERS</h4>
+                                            <div class="param-summary" id="mh-params-summary" style="display: none;">
+                                                <span id="summary-type"></span> • <span id="summary-complexity"></span>
+                                            </div>
+                                        </div>
+                                        <button class="param-toggle-btn" id="mh-params-toggle" title="Expand/Collapse">
+                                            <span id="mh-params-icon">▼</span>
+                                        </button>
+                                    </div>
+                                    <div class="param-content" id="mh-params-content">
+                                    <p style="font-size: 8px; margin: 0 0 6px 0; color: #1565c0; line-height: 1.2;">Follow steps 1-4 to configure estimation parameters. Click Calculate to update all disciplines.</p>
+
+                                    <!-- Step 1: Benchmark Dataset -->
+                                    <div class="param-step">
+                                        <div class="param-step-label">Step 1: Benchmark Dataset</div>
+                                        <select id="benchmark-dataset" class="input-step" onchange="handleBenchmarkDatasetChange()">
+                                            <option value="all-other">All Other Projects</option>
+                                            <option value="border-wall">Wall Projects</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Step 2: Project Type -->
+                                    <div class="param-step">
+                                        <div class="param-step-label">Step 2: Choose Project Type</div>
+                                        <select id="unified-project-type" class="input-step">
+                                            <option value="highway" selected>Highway/Interstate</option>
+                                            <option value="transit">Transit/Rail</option>
+                                            <option value="bridge">Bridge</option>
+                                            <option value="utility">Utility</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Step 3: Complexity -->
+                                    <div class="param-step">
+                                        <div class="param-step-label">Step 3: Choose Complexity</div>
+                                        <select id="unified-complexity" class="input-step" onchange="applyGlobalComplexity()">
+                                            <option value="Low">Low (30%)</option>
+                                            <option value="Med" selected>Medium (60%)</option>
+                                            <option value="High">High (90%)</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Step 4: Upload RFP -->
+                                    <div class="param-step">
+                                        <div class="param-step-label">Step 4: Upload RFP</div>
+                                        <button class="btn-step" onclick="openRfpWizard()">📄 RFP Wizard</button>
+                                    </div>
+
+                                    <!-- Calculate Button -->
+                                    <div class="param-step">
+                                        <button class="btn-calculate" onclick="calculateMHEstimates()">⚡ Calculate Estimated Hours</button>
+                                    </div>
+                                    </div><!-- /param-content -->
+                                </div>
+
+                                <!-- Cost Parameters (Green) -->
+                                <div class="input-section cost-params">
+                                    <h4>🟢 COST CALCULATION PARAMETERS</h4>
+                                    <p style="font-size: 8px; margin: -6px 0 6px 0; color: #2e7d32; line-height: 1.2;">Hourly rates auto-calculated per discipline based on complexity % and resource codes</p>
+                                    <div class="input-row" style="grid-template-columns: repeat(3, 1fr);">
+                                        <div class="input-group">
+                                            <label>Burden Rate (%)</label>
+                                            <input type="number" id="unified-burden" value="66" min="0" max="200" step="1">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>G&A Rate (%)</label>
+                                            <input type="number" id="unified-gna" value="104" min="0" max="300" step="1">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Contingency (%)</label>
+                                            <input type="number" id="unified-contingency" value="5" min="0" max="100" step="1">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>IPC Fee ($/MH)</label>
+                                            <input type="number" id="unified-ipc-fee" value="6" min="0" step="0.01">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Escalation (%)</label>
+                                            <input type="number" id="unified-escalation" value="3" min="0" max="100" step="0.1">
+                                        </div>
+                                    </div>
+                                    <div class="input-row" style="grid-template-columns: repeat(3, 1fr); margin-top: 8px;">
+                                        <div class="input-group">
+                                            <label>Est. Construction Cost ($)</label>
+                                            <input type="text" id="calc-est-construction-cost" placeholder="0" inputmode="numeric">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>NTP Date</label>
+                                            <input type="date" id="calc-ntp-date" placeholder="MM/DD/YYYY">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Design Duration (Months)</label>
+                                            <input type="number" id="calc-design-duration" placeholder="0" min="0" step="1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div><!-- /unified-input-content -->
+                        </div><!-- /unified-input-panel -->
+
+                        <!-- Unified Table -->
+                        <div class="unified-table-wrapper">
+                            <div class="unified-table-header" onclick="toggleUnifiedTable()">
+                                <div>
+                                    <h3 style="margin: 0; font-size: 13px; color: #333;">📊 CATEGORY BREAKDOWN</h3>
+                                    <div class="unified-table-summary" id="unified-table-summary" style="display: none; font-size: 10px; color: #666; margin-top: 2px;">
+                                        Click to expand table
+                                    </div>
+                                </div>
+                                <button class="param-toggle-btn" id="unified-table-toggle" title="Expand/Collapse">
+                                    <span id="unified-table-icon">▼</span>
+                                </button>
+                            </div>
+                            <table class="unified-estimate-table" id="unified-estimate-table">
+                                <thead>
+                                    <tr>
+                                        <th class="frozen-col">Category<span class="header-help" data-tooltip="Standard KIE category list">?</span></th>
+                                        <!-- MH Columns (Blue) -->
+                                        <th class="mh-col">Account Code<span class="header-help" data-tooltip="Standard KIE account codes">?</span></th>
+                                        <th class="mh-col numeric">Quantity<span class="header-help" data-tooltip="Auto-populated from RFP, verify with Discipline Lead">?</span></th>
+                                        <th class="mh-col">Unit<span class="header-help" data-tooltip="Unit of measure based on account code">?</span></th>
+                                        <th class="mh-col">Benchmark<span class="header-help" data-tooltip="Click to select historical projects for rate calculation">?</span><button class="btn-select-all-benchmarks" onclick="selectAllBenchmarks()" title="Select all projects for all disciplines">⚡ All</button></th>
+                                        <th class="mh-col numeric">All Rate<span class="header-help" data-tooltip="Production rate using ALL available benchmark projects">?</span></th>
+                                        <th class="mh-col numeric">Selected Rate<span class="header-help" data-tooltip="Production rate using SELECTED benchmark projects only">?</span></th>
+                                        <th class="mh-col numeric">Complexity<span class="header-help" data-tooltip="Resource complexity: % of senior engineers (L4-L6) vs junior (L1-L3)">?</span><br><span style="font-size: 8px; font-weight: 400;">(% & Hours)</span></th>
+                                        <th class="mh-col mh-col-keep numeric">Est. MH<span class="header-help" data-tooltip="Estimated man-hours = Quantity × Selected Rate">?</span></th>
+                                        <th class="mh-col mh-toggle-header">
+                                            <button class="btn-toggle-mh-inline" onclick="toggleMHColumns()" title="Show/hide man-hour estimation columns">
+                                                <span id="toggle-mh-icon">◀</span>
+                                            </button>
+                                        </th>
+                                        <!-- Cost Columns (Green) -->
+                                        <th class="cost-col numeric">Weighted Rate<span class="header-help" data-tooltip="Weighted hourly rate based on complexity % and resource codes">?</span><br><span style="font-size: 8px; font-weight: 400;">($/hr)</span></th>
+                                        <th class="cost-col numeric">Raw Labor<span class="header-help" data-tooltip="Raw Labor = Est. MH × Weighted Rate">?</span></th>
+                                        <th class="cost-col numeric">Burden<span class="header-help" data-tooltip="Burden = Raw Labor × Burden Rate %">?</span></th>
+                                        <th class="cost-col numeric">Total Labor<span class="header-help" data-tooltip="Total Labor = Raw Labor + Burden">?</span></th>
+                                        <th class="cost-col numeric">Expenses<span class="header-help" data-tooltip="Expenses (IPC + ODC)">?</span></th>
+                                        <th class="cost-col numeric">Total Costs<span class="header-help" data-tooltip="Total Costs = Total Labor + Expenses">?</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unified-estimate-tbody-header">
+                                    <!-- KIE Labor Section -->
+                                    <tr class="section-header-row clickable-row" onclick="toggleKieLaborSection()">
+                                        <td class="frozen-col section-header">
+                                            <span id="kie-labor-toggle-icon">▼</span> KIE LABOR
+                                        </td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header numeric" id="kie-labor-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header numeric" id="kie-labor-avg-rate">$0</td>
+                                        <td class="cost-col section-header numeric" id="kie-labor-total-raw-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="kie-labor-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="kie-labor-total-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="kie-labor-total-expenses">$0</td>
+                                        <td class="cost-col section-header numeric" id="kie-labor-total-costs">$0</td>
+                                    </tr>
+                                    <!-- Directs Row -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleDirectsRows()">
+                                        <td class="frozen-col indent-1">
+                                            <span id="directs-toggle-icon">▼</span> DIRECTS
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="unified-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="unified-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="unified-total-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="unified-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="unified-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="unified-total-expenses">$0</td>
+                                        <td class="cost-col numeric" id="unified-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="unified-estimate-tbody" class="indent-level-2">
+                                    <!-- Category rows populated by JavaScript - indented under Directs -->
+                                </tbody>
+                                <tbody id="unified-indirects-section">
+                                    <!-- Indirects Row -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleIndirectsRows()">
+                                        <td class="frozen-col indent-1">
+                                            <span id="indirects-toggle-icon">▼</span> INDIRECTS
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="unified-indirect-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="unified-indirect-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="unified-indirect-total-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="unified-indirect-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="unified-indirect-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="unified-indirect-total-expenses">$0</td>
+                                        <td class="cost-col numeric" id="unified-indirect-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="unified-indirects-tbody" class="indent-level-2">
+                                    <!-- Indirect category rows (if any) - indented under Indirects -->
+                                </tbody>
+
+                                <!-- SUBS Section -->
+                                <tbody>
+                                    <tr class="section-header-row clickable-row" onclick="toggleSubsSection()">
+                                        <td class="frozen-col section-header">
+                                            <span id="subs-section-toggle-icon">▼</span> SUBS
+                                        </td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header numeric" id="subs-section-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header numeric" id="subs-section-avg-rate">$0</td>
+                                        <td class="cost-col section-header numeric" id="subs-section-total-raw-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="subs-section-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="subs-section-total-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="subs-section-total-expenses">$0</td>
+                                        <td class="cost-col section-header numeric" id="subs-section-total-costs">$0</td>
+                                    </tr>
+                                    <!-- LS SUBS -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('ls-subs')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="ls-subs-toggle-icon">▼</span> LS SUBS
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="ls-subs-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="ls-subs-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-total-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-total-expenses">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="ls-subs-tbody" class="indent-level-2 hidden">
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 1</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="ls-subs-sub1-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="ls-subs-sub1-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub1-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub1-burden">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub1-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub1-expenses">$0</td>
+                                    </tr>
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 2</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="ls-subs-sub2-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="ls-subs-sub2-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub2-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub2-burden">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub2-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub2-expenses">$0</td>
+                                    </tr>
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 3</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="ls-subs-sub3-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="ls-subs-sub3-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub3-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub3-burden">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub3-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-sub3-expenses">$0</td>
+                                    </tr>
+                                </tbody>
+
+                                <tbody>
+                                    <!-- SURVEY -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('survey')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="survey-toggle-icon">▼</span> SURVEY
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="survey-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="survey-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="survey-total-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="survey-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="survey-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="survey-total-expenses">$0</td>
+                                        <td class="cost-col numeric" id="survey-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="survey-tbody" class="indent-level-2 hidden">
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 1</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="survey-sub1-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="survey-sub1-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub1-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub1-burden">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub1-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub1-expenses">$0</td>
+                                    </tr>
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 2</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="survey-sub2-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="survey-sub2-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub2-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub2-burden">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub2-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub2-expenses">$0</td>
+                                    </tr>
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 3</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="survey-sub3-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="survey-sub3-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub3-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub3-burden">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub3-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="survey-sub3-expenses">$0</td>
+                                    </tr>
+                                </tbody>
+
+                                <tbody>
+                                    <!-- SUBSURFACE UTILITY SUBS -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('subsurface-utility')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="subsurface-utility-toggle-icon">▼</span> SUBSURFACE UTILITY SUBS
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="subsurface-utility-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="subsurface-utility-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-total-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-total-expenses">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="subsurface-utility-tbody" class="indent-level-2 hidden">
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 1</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="subsurface-utility-sub1-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub1-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub1-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub1-burden">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub1-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub1-expenses">$0</td>
+                                    </tr>
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 2</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="subsurface-utility-sub2-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub2-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub2-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub2-burden">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub2-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub2-expenses">$0</td>
+                                    </tr>
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 3</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="subsurface-utility-sub3-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub3-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub3-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub3-burden">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub3-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-sub3-expenses">$0</td>
+                                    </tr>
+                                </tbody>
+
+                                <tbody>
+                                    <!-- LABOR SUBS -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('labor-subs')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="labor-subs-toggle-icon">▼</span> LABOR SUBS
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="labor-subs-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="labor-subs-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-total-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-total-expenses">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="labor-subs-tbody" class="indent-level-2 hidden">
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 1</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="labor-subs-sub1-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="labor-subs-sub1-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub1-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub1-burden">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub1-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub1-expenses">$0</td>
+                                    </tr>
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 2</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="labor-subs-sub2-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="labor-subs-sub2-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub2-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub2-burden">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub2-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub2-expenses">$0</td>
+                                    </tr>
+                                    <tr class="category-row indent-level-2">
+                                        <td class="frozen-col indent-2">Sub 3</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col numeric editable" contenteditable="true">0</td>
+                                        <td class="mh-col mh-col-keep numeric" id="labor-subs-sub3-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="labor-subs-sub3-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub3-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub3-burden">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub3-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-sub3-expenses">$0</td>
+                                    </tr>
+                                </tbody>
+
+                                <!-- EXPENSES Section -->
+                                <tbody>
+                                    <tr class="section-header-row clickable-row" onclick="toggleExpensesSection()">
+                                        <td class="frozen-col section-header">
+                                            <span id="expenses-section-toggle-icon">▼</span> EXPENSES
+                                        </td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header numeric" id="expenses-section-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header numeric" id="expenses-section-avg-rate">$0</td>
+                                        <td class="cost-col section-header numeric" id="expenses-section-total-raw-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="expenses-section-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="expenses-section-total-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="expenses-section-total-expenses">$0</td>
+                                        <td class="cost-col section-header numeric" id="expenses-section-total-costs">$0</td>
+                                    </tr>
+                                    <!-- IPC -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('ipc')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="ipc-toggle-icon">▼</span> IPC
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="ipc-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="ipc-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="ipc-total-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="ipc-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="ipc-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="ipc-total-expenses">$0</td>
+                                        <td class="cost-col numeric" id="ipc-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="ipc-tbody" class="indent-level-2 hidden"></tbody>
+
+                                <tbody>
+                                    <!-- ODC'S -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('odcs')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="odcs-toggle-icon">▼</span> ODC'S
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="odcs-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="odcs-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="odcs-total-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="odcs-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="odcs-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="odcs-total-expenses">$0</td>
+                                        <td class="cost-col numeric" id="odcs-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="odcs-tbody" class="indent-level-2 hidden"></tbody>
+
+                                <!-- G&A Section -->
+                                <tbody>
+                                    <tr class="section-header-row">
+                                        <td class="frozen-col section-header">G&A</td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header numeric" id="gna-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header numeric" id="gna-avg-rate">$0.00</td>
+                                        <td class="cost-col section-header numeric" id="gna-total-raw-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="gna-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="gna-total-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="gna-total-expenses">$0</td>
+                                        <td class="cost-col section-header numeric" id="gna-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+
+                                <!-- ESCALATION Section -->
+                                <tbody>
+                                    <tr class="section-header-row">
+                                        <td class="frozen-col section-header">ESCALATION</td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header numeric" id="escalation-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header numeric" id="escalation-avg-rate">$0</td>
+                                        <td class="cost-col section-header numeric" id="escalation-total-raw-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="escalation-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="escalation-total-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="escalation-total-expenses">$0</td>
+                                        <td class="cost-col section-header numeric" id="escalation-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+
+                                <!-- CONTINGENCY Section -->
+                                <tbody>
+                                    <tr class="section-header-row">
+                                        <td class="frozen-col section-header">CONTINGENCY</td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header numeric" id="contingency-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header numeric" id="contingency-avg-rate">$0</td>
+                                        <td class="cost-col section-header numeric" id="contingency-total-raw-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="contingency-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="contingency-total-labor">$0</td>
+                                        <td class="cost-col section-header numeric" id="contingency-total-expenses">$0</td>
+                                        <td class="cost-col section-header numeric" id="contingency-total-costs">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot style="display: none;">
+                                    <!-- Keep tfoot for reference but hide it -->
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="unified-actions">
+                            <button class="btn" onclick="resetUnifiedEstimate()">Reset All</button>
+                            <button class="btn-mh" onclick="applyUnifiedEstimate()">Apply to Budget</button>
+                        </div>
                     </div>
 
-                    <div class="benchmarking-layout">
+                    <div class="benchmarking-layout" style="display: none;">
                         <!-- LEFT COLUMN: MH BENCHMARK ESTIMATOR -->
                         <div class="benchmarking-column mh-column">
                             <div id="mh-estimator" class="mh-estimator">
                                 <div class="mh-estimator-header">
-                                    <h3>⚡ MH BENCHMARK ESTIMATOR</h3>
+                                    <h3>👥 MH BENCHMARK ESTIMATOR</h3>
                                     <span id="mh-estimator-status">Configure project parameters</span>
                                 </div>
 
@@ -151,11 +772,10 @@
                             </div>
 
                             <!-- Discipline Quantities Table -->
-                            <div class="mh-table-wrapper" style="max-height: 400px; overflow-y: auto; overflow-x: visible;">
+                            <div class="mh-table-wrapper">
                                 <table class="mh-estimate-table" id="mh-estimate-table">
                                     <thead>
                                         <tr>
-                                            <th style="width: 30px;"></th>
                                             <th>Discipline<span class="header-help" data-tooltip="This is the standard list of KIE Disciplines">?</span></th>
                                             <th>Account Code<span class="header-help" data-tooltip="Standard KIE account codes">?</span></th>
                                             <th class="numeric">Quantity<span class="header-help" data-tooltip="This is auto populated from the RFP and needs to be checked by the Discipline Lead">?</span></th>
@@ -165,7 +785,6 @@
                                             <th class="numeric rate-header" title="Production rate using SELECTED benchmark projects only">Selected Rate</th>
                                             <th class="numeric">Est. MH</th>
                                             <th class="numeric rate-header">Percent complexity<span class="header-help" data-tooltip="Percentage of Level 4-6 engineers needed">?</span></th>
-                                            <th class="numeric rate-header" title="Total estimated cost">Total Cost</th>
                                             <th>Projects Used</th>
                                         </tr>
                                     </thead>
@@ -187,15 +806,57 @@
                             <!-- Actions -->
                             <div class="mh-actions">
                                 <button class="btn btn-sm" onclick="resetMHEstimate()">Reset</button>
-                                <button class="btn btn-sm" onclick="showBenchmarkSelection()">Select Benchmarks</button>
                                 <button class="btn-mh" onclick="applyMHEstimate()">Apply to Budget</button>
                             </div>
                         </div>
                             </div>
                         </div><!-- end mh-column -->
 
-                        <!-- RIGHT COLUMN: COST ESTIMATOR -->
-                        <div class="benchmarking-column cost-column">
+                        <!-- RIGHT COLUMN: COST BY DISCIPLINE -->
+                        <div class="benchmarking-column cost-extension-column">
+                            <div class="cost-extension-panel">
+                                <div class="cost-extension-header">
+                                    <h3>💰 COST BY DISCIPLINE</h3>
+                                    <span class="cost-extension-status">Enter cost per discipline</span>
+                                </div>
+                                <div class="cost-extension-body">
+                                    <div class="cost-extension-inputs">
+                                        <div class="cost-extension-group">
+                                            <label for="cost-est-construction">Estimated Construction Cost (District)</label>
+                                            <input type="text" id="cost-est-construction" placeholder="0" inputmode="numeric">
+                                        </div>
+                                        <div class="cost-extension-group">
+                                            <label for="cost-burden-rate">Burden Rate</label>
+                                            <div class="cost-extension-percent">
+                                                <input type="number" id="cost-burden-rate" value="66" min="0" max="200" step="1">
+                                                <span>%</span>
+                                            </div>
+                                        </div>
+                                        <div class="cost-extension-group">
+                                            <label for="cost-gna-rate">G&amp;A Rate</label>
+                                            <div class="cost-extension-percent">
+                                                <input type="number" id="cost-gna-rate" value="104" min="0" max="300" step="1">
+                                                <span>%</span>
+                                            </div>
+                                        </div>
+                                        <div class="cost-extension-group">
+                                            <label for="cost-contingency">Contingency</label>
+                                            <div class="cost-extension-percent">
+                                                <input type="number" id="cost-contingency" value="5" min="0" max="100" step="1">
+                                                <span>%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="budget-table-wrapper">
+                                        <table id="budget-table"></table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div><!-- end cost-extension-column -->
+
+                        <div class="benchmarking-secondary">
+                            <!-- COST ESTIMATOR -->
+                            <div class="benchmarking-column cost-column">
                             <div id="budget-calculator" class="budget-calculator">
                                 <div class="calculator-header">
                                     <h3>💰 COST ESTIMATOR</h3>
@@ -256,15 +917,13 @@
                             <!-- Budget Summary Table -->
                             <div class="budget-summary-section">
                                 <h4>📋 Budget Breakdown</h4>
-                                <div class="budget-table-wrapper">
-                                    <table id="budget-table"></table>
-                                </div>
                                 <div class="budget-total-row">
                                     <span>TOTAL PROJECT BUDGET:</span>
                                     <span id="total-budget" class="budget-total-value">$0</span>
                                 </div>
                             </div>
                         </div><!-- end cost-column -->
+                        </div><!-- end benchmarking-secondary -->
                     </div><!-- end benchmarking-layout -->
                 </div>
 
