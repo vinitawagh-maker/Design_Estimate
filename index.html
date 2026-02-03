@@ -29,10 +29,10 @@
             <div class="terminal-body">
                 <!-- Progress Bar -->
                 <div id="progress-section" class="progress-bar">
-                    <div class="progress-step active" onclick="goToStep(4)">1:BENCHMARKING*</div>
+                    <div class="progress-step active" onclick="goToStep(4)">1:BENCHMARKING</div>
                     <div class="progress-step" onclick="goToStep(1)">2:PHASES</div>
-                    <div class="progress-step" onclick="goToStep(2)">3:DISCIPLINES*</div>
-                    <div class="progress-step" onclick="goToStep(3)">4:PACKAGES*</div>
+                    <div class="progress-step" onclick="goToStep(2)">3:DISCIPLINES</div>
+                    <div class="progress-step" onclick="goToStep(3)">4:PACKAGES</div>
                     <div class="progress-step" onclick="goToStep(5)">5:CLAIMING</div>
                     <div class="progress-step" onclick="goToStep(6)">6:SCHEDULE</div>
                     <div class="progress-step" onclick="goToStep(7)">7:PROJECT</div>
@@ -137,7 +137,7 @@
 
                                     <!-- Step 1: Benchmark Dataset -->
                                     <div class="param-step">
-                                        <div class="param-step-label">Step 1: Benchmark Dataset</div>
+                                        <div class="param-step-label">Step 1: Benchmark Dataset*</div>
                                         <select id="benchmark-dataset" class="input-step" onchange="handleBenchmarkDatasetChange()">
                                             <option value="all-other">All Other Projects</option>
                                             <option value="border-wall">Wall Projects</option>
@@ -157,7 +157,7 @@
 
                                     <!-- Step 3: Complexity -->
                                     <div class="param-step">
-                                        <div class="param-step-label">Step 3: Choose Complexity</div>
+                                        <div class="param-step-label">Step 3: Choose Complexity*</div>
                                         <select id="unified-complexity" class="input-step" onchange="applyGlobalComplexity()">
                                             <option value="Low">Low (30%)</option>
                                             <option value="Med" selected>Medium (60%)</option>
@@ -167,7 +167,7 @@
 
                                     <!-- Step 4: Upload RFP -->
                                     <div class="param-step">
-                                        <div class="param-step-label">Step 4: Upload RFP</div>
+                                        <div class="param-step-label">Step 4: Upload RFP*</div>
                                         <button class="btn-step" onclick="openRfpWizard()">📄 RFP Wizard</button>
                                     </div>
 
@@ -214,7 +214,7 @@
                                     </div>
                                     <div class="input-row" style="grid-template-columns: repeat(3, 1fr); margin-top: 8px;">
                                         <div class="input-group">
-                                            <label>Est. Construction Cost ($)</label>
+                                            <label>Est. Construction Cost ($)*</label>
                                             <input type="text" id="calc-est-construction-cost" placeholder="0" inputmode="numeric">
                                         </div>
                                         <div class="input-group">
