@@ -5611,17 +5611,17 @@ ${reasoning}`;
             if (icon) {
                 const isCollapsed = ipcTbody && ipcTbody.classList.contains('hidden');
 
-                // Only toggle detail rows, keep main EXPENSES header visible
-                const allElements = [ipcTbody, odcsSection, odcsTbody];
+                // Only toggle detail rows, keep EXPENSES, IPC, and ODC'S headers visible
+                const allElements = [ipcTbody, odcsTbody];
 
                 if (isCollapsed) {
-                    // Expand - show IPC and ODC'S rows
+                    // Expand - show IPC and ODC'S detail rows
                     allElements.forEach(elem => {
                         if (elem) elem.classList.remove('hidden');
                     });
                     icon.textContent = '▼';
                 } else {
-                    // Collapse - hide IPC and ODC'S rows, keep EXPENSES header visible
+                    // Collapse - hide detail rows, keep EXPENSES, IPC, and ODC'S summary rows visible
                     allElements.forEach(elem => {
                         if (elem) elem.classList.add('hidden');
                     });
