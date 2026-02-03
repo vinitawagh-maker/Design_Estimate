@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WBS Terminal v2.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="terminal" style="margin-bottom: 20px;">
+            <div class="terminal-header">
+                <button id="prev-btn" class="btn btn-sm hidden" onclick="prevStep()">← BACK</button>
+                <span>■ WBS TERMINAL v1.0</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="rfp-header-btn" onclick="openProjectManager()">📁 PROJECTS</button>
+                    <button id="rfp-results-btn" class="rfp-header-btn hidden" onclick="openRfpResultsPanel()">📋 RFP DATA</button>
+                    <button id="reports-btn" class="rfp-header-btn hidden" onclick="openReportsPanel()">📊 REPORTS</button>
+                    <span id="status-text">READY</span>
+                    <button id="next-btn" class="btn btn-sm btn-primary" onclick="nextStep()">NEXT →</button>
+                    <button id="generate-btn" class="btn btn-sm btn-primary hidden" onclick="generateWBS()">GENERATE WBS</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Terminal -->
+        <div id="wizard-terminal" class="terminal">
+            <div class="terminal-body">
+                <!-- Progress Bar -->
+                <div id="progress-section" class="progress-bar">
+                    <div class="progress-step active" onclick="goToStep(4)">1:BENCHMARKING</div>
+                    <div class="progress-step" onclick="goToStep(1)">2:PHASES</div>
+                    <div class="progress-step" onclick="goToStep(2)">3:DISCIPLINES</div>
+                    <div class="progress-step" onclick="goToStep(3)">4:PACKAGES</div>
+                    <div class="progress-step" onclick="goToStep(5)">5:CLAIMING</div>
+                    <div class="progress-step" onclick="goToStep(6)">6:SCHEDULE</div>
+                    <div class="progress-step" onclick="goToStep(7)">7:PROJECT</div>
+                </div>
+
+                <!-- Step 1: Phases -->
+                <div id="step1" class="step-content hidden">
+                    <!-- Template Selector -->
+                    <div class="template-selector">
+                        <div class="template-header" onclick="toggleTemplateSelector()">
+                            <span>📋 START FROM TEMPLATE</span>
+                            <span class="template-toggle-icon">▼</span>
+                        </div>
+                        <div id="template-body" class="template-body hidden">
+                            <div class="template-grid" id="template-grid">
+                                <!-- Templates populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-title">PROJECT PHASES</div>
+                    <div class="section-desc">Enter project phases separated by commas</div>
+                    
+                    <input type="text" id="phases-input" value="Base,">
+                    
+                    <div class="quick-tags">
+                        <span class="quick-tag" onclick="addQuickPhase('Base')">+Base Design</span>
+                        <span class="quick-tag" onclick="addQuickPhase('ESDC')">+ESDC</span>
+                        <span class="quick-tag" onclick="addQuickPhase('TSCD')">+TSCD</span>
+                        <span class="quick-tag" onclick="addQuickPhase('As-Builts')">+As-Builts</span>
+                        <span class="quick-tag" onclick="addQuickPhase('Closeout')">+Closeout</span>
+                    </div>
+                </div>
+
+                <!-- Step 2: Disciplines -->
+                <div id="step2" class="step-content hidden">
+                    <div class="section-title">PROJECT DISCIPLINES</div>
+                    <div class="section-desc">Select disciplines involved in the project</div>
+                    
+                    <div class="disc-grid" id="disciplines-grid"></div>
+                    
+                    <div style="display: flex; gap: 8px; margin-top: 16px;">
+                        <input type="text" id="custom-discipline" placeholder="Custom discipline..." style="flex: 1;">
+                        <button class="btn btn-sm" onclick="addCustomDiscipline()">ADD</button>
+                        <button class="btn btn-sm" onclick="selectAllDisciplines()">ALL</button>
+                    </div>
+                    
+                    <div style="margin-top: 12px; color: #888; font-size: 12px;">
+                        Selected: <span id="selected-count" style="color: #ffd700;">0</span>
+                    </div>
+                </div>
+
+                <!-- Step 3: Packages -->
+                <div id="step3" class="step-content hidden">
+                    <div class="section-title">DELIVERABLE PACKAGES</div>
+                    <div class="section-desc">Enter package milestones separated by commas</div>
+                    
+                    <input type="text" id="packages-input" value="Preliminary, Interim, Final, RFC, As-Buit">
+                    
+                    <div class="quick-tags">
+                        <span class="quick-tag" onclick="addQuickPackage('Preliminary')">+Preliminary</span>
+                        <span class="quick-tag" onclick="addQuickPackage('Interim')">+Interim</span>
+                        <span class="quick-tag" onclick="addQuickPackage('Final')">+Final</span>
+                        <span class="quick-tag" onclick="addQuickPackage('RFC')">+RFC</span>
+                        <span class="quick-tag" onclick="addQuickPackage('As-Built')">+As-Built</span>
+                    </div>
+                </div>
+
+                <!-- Step 4: Benchmarking (formerly Budget) -->
+                <div id="step4" class="step-content benchmarking-step">
+                    <!-- UNIFIED TABLE LAYOUT -->
+                    <div class="unified-benchmarking-layout">
+                        <!-- Input Parameters Panel -->
+                        <div class="unified-input-panel" id="unified-input-panel">
+                            <div class="unified-panel-header" onclick="toggleUnifiedPanel()">
+                                <div>
+                                    <h3 style="margin: 0; font-size: 13px; color: #333;">⚙️ INPUT PARAMETERS</h3>
+                                    <div class="unified-panel-summary" id="unified-panel-summary" style="display: none; font-size: 10px; color: #666; margin-top: 2px;">
+                                        Click to expand parameters
+                                    </div>
+                                </div>
+                                <button class="param-toggle-btn" id="unified-panel-toggle" title="Expand/Collapse">
+                                    <span id="unified-panel-icon">▼</span>
+                                </button>
+                            </div>
+                            <div class="unified-input-grid" id="unified-input-content">
+                                <!-- MH Parameters (Blue) -->
+                                <div class="input-section mh-params" id="mh-params-section">
+                                    <div class="param-header" onclick="toggleMHParams()">
+                                        <div>
+                                            <h4>🔵 MH ESTIMATION PARAMETERS</h4>
+                                            <div class="param-summary" id="mh-params-summary" style="display: none;">
+                                                <span id="summary-type"></span> • <span id="summary-complexity"></span>
+                                            </div>
+                                        </div>
+                                        <button class="param-toggle-btn" id="mh-params-toggle" title="Expand/Collapse">
+                                            <span id="mh-params-icon">▼</span>
+                                        </button>
+                                    </div>
+                                    <div class="param-content" id="mh-params-content">
+                                    <p style="font-size: 8px; margin: 0 0 6px 0; color: #1565c0; line-height: 1.2;">Follow steps 1-4 to configure estimation parameters. Click Calculate to update all disciplines.</p>
+
+                                    <!-- Step 1: Benchmark Dataset -->
+                                    <div class="param-step">
+                                        <div class="param-step-label">Step 1: Benchmark Dataset</div>
+                                        <select id="benchmark-dataset" class="input-step" onchange="handleBenchmarkDatasetChange()">
+                                            <option value="all-other">All Other Projects</option>
+                                            <option value="border-wall">Wall Projects</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Step 2: Project Type -->
+                                    <div class="param-step">
+                                        <div class="param-step-label">Step 2: Choose Project Type</div>
+                                        <select id="unified-project-type" class="input-step">
+                                            <option value="highway" selected>Highway/Interstate</option>
+                                            <option value="transit">Transit/Rail</option>
+                                            <option value="bridge">Bridge</option>
+                                            <option value="utility">Utility</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Step 3: Complexity -->
+                                    <div class="param-step">
+                                        <div class="param-step-label">Step 3: Choose Complexity</div>
+                                        <select id="unified-complexity" class="input-step" onchange="applyGlobalComplexity()">
+                                            <option value="Low">Low (30%)</option>
+                                            <option value="Med" selected>Medium (60%)</option>
+                                            <option value="High">High (90%)</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Step 4: Upload RFP -->
+                                    <div class="param-step">
+                                        <div class="param-step-label">Step 4: Upload RFP</div>
+                                        <button class="btn-step" onclick="openRfpWizard()">📄 RFP Wizard</button>
+                                    </div>
+
+                                    <!-- Calculate Button -->
+                                    <div class="param-step">
+                                        <button class="btn-calculate" onclick="calculateMHEstimates()">⚡ Calculate Estimated Hours</button>
+                                    </div>
+                                    </div><!-- /param-content -->
+                                </div>
+
+                                <!-- Cost Parameters (Green) -->
+                                <div class="input-section cost-params">
+                                    <h4>🟢 COST CALCULATION PARAMETERS</h4>
+                                    <p style="font-size: 8px; margin: -6px 0 6px 0; color: #2e7d32; line-height: 1.2;">Hourly rates auto-calculated per discipline based on complexity % and resource codes</p>
+                                    <div class="input-row" style="grid-template-columns: repeat(3, 1fr);">
+                                        <div class="input-group">
+                                            <label>Burden Rate (%)</label>
+                                            <input type="number" id="unified-burden" value="66" min="0" max="200" step="1">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>G&A Rate (%)</label>
+                                            <input type="number" id="unified-gna" value="104" min="0" max="300" step="1">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Contingency (%)</label>
+                                            <input type="number" id="unified-contingency" value="5" min="0" max="100" step="1">
+                                        </div>
+                                    </div>
+                                    <div class="input-row" style="grid-template-columns: repeat(3, 1fr); margin-top: 8px;">
+                                        <div class="input-group">
+                                            <label>Est. Construction Cost ($)</label>
+                                            <input type="text" id="calc-est-construction-cost" placeholder="0" inputmode="numeric">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>NTP Date</label>
+                                            <input type="date" id="calc-ntp-date" placeholder="MM/DD/YYYY">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Design Duration (Days)</label>
+                                            <input type="number" id="calc-design-duration" placeholder="0" min="0" step="1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div><!-- /unified-input-content -->
+                        </div><!-- /unified-input-panel -->
+
+                        <!-- Unified Table -->
+                        <div class="unified-table-wrapper">
+                            <div class="unified-table-header" onclick="toggleUnifiedTable()">
+                                <div>
+                                    <h3 style="margin: 0; font-size: 13px; color: #333;">📊 CATEGORY BREAKDOWN</h3>
+                                    <div class="unified-table-summary" id="unified-table-summary" style="display: none; font-size: 10px; color: #666; margin-top: 2px;">
+                                        Click to expand table
+                                    </div>
+                                </div>
+                                <button class="param-toggle-btn" id="unified-table-toggle" title="Expand/Collapse">
+                                    <span id="unified-table-icon">▼</span>
+                                </button>
+                            </div>
+                            <table class="unified-estimate-table" id="unified-estimate-table">
+                                <thead>
+                                    <tr>
+                                        <th class="frozen-col">Category<span class="header-help" data-tooltip="Standard KIE category list">?</span></th>
+                                        <!-- MH Columns (Blue) -->
+                                        <th class="mh-col">Account Code<span class="header-help" data-tooltip="Standard KIE account codes">?</span></th>
+                                        <th class="mh-col numeric">Quantity<span class="header-help" data-tooltip="Auto-populated from RFP, verify with Discipline Lead">?</span></th>
+                                        <th class="mh-col">Unit<span class="header-help" data-tooltip="Unit of measure based on account code">?</span></th>
+                                        <th class="mh-col">Benchmark<span class="header-help" data-tooltip="Click to select historical projects for rate calculation">?</span><button class="btn-select-all-benchmarks" onclick="selectAllBenchmarks()" title="Select all projects for all disciplines">⚡ All</button></th>
+                                        <th class="mh-col numeric">All Rate<span class="header-help" data-tooltip="Production rate using ALL available benchmark projects">?</span></th>
+                                        <th class="mh-col numeric">Selected Rate<span class="header-help" data-tooltip="Production rate using SELECTED benchmark projects only">?</span></th>
+                                        <th class="mh-col numeric">Complexity<span class="header-help" data-tooltip="Resource complexity: % of senior engineers (L4-L6) vs junior (L1-L3)">?</span><br><span style="font-size: 8px; font-weight: 400;">(% & Hours)</span></th>
+                                        <th class="mh-col mh-col-keep numeric">Est. MH<span class="header-help" data-tooltip="Estimated man-hours = Quantity × Selected Rate">?</span></th>
+                                        <th class="mh-col mh-toggle-header">
+                                            <button class="btn-toggle-mh-inline" onclick="toggleMHColumns()" title="Show/hide man-hour estimation columns">
+                                                <span id="toggle-mh-icon">◀</span>
+                                            </button>
+                                        </th>
+                                        <!-- Cost Columns (Green) -->
+                                        <th class="cost-col numeric">Weighted Rate<span class="header-help" data-tooltip="Weighted hourly rate based on complexity % and resource codes">?</span><br><span style="font-size: 8px; font-weight: 400;">($/hr)</span></th>
+                                        <th class="cost-col numeric">Raw Labor<span class="header-help" data-tooltip="Raw Labor = Est. MH × Weighted Rate">?</span></th>
+                                        <th class="cost-col numeric">Burden<span class="header-help" data-tooltip="Burden = Raw Labor × Burden Rate %">?</span></th>
+                                        <th class="cost-col numeric">Total Labor<span class="header-help" data-tooltip="Total Labor = Raw Labor + Burden">?</span></th>
+                                        <th class="cost-col numeric">Expenses<span class="header-help" data-tooltip="Expenses (IPC + ODC)">?</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unified-estimate-tbody-header">
+                                    <!-- KIE Labor Section -->
+                                    <tr class="section-header-row">
+                                        <td class="frozen-col section-header">KIE LABOR</td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header"></td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                    </tr>
+                                    <!-- Directs Row -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleDirectsRows()">
+                                        <td class="frozen-col indent-1">
+                                            <span id="directs-toggle-icon">▼</span> DIRECTS
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="unified-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="unified-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="unified-total-raw-labor">$0</td>
+                                        <td class="cost-col numeric" id="unified-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="unified-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="unified-total-expenses">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="unified-estimate-tbody" class="indent-level-2">
+                                    <!-- Category rows populated by JavaScript - indented under Directs -->
+                                </tbody>
+                                <tbody id="unified-indirects-section">
+                                    <!-- Indirects Row -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleIndirectsRows()">
+                                        <td class="frozen-col indent-1">
+                                            <span id="indirects-toggle-icon">▼</span> INDIRECTS
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="unified-indirect-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="unified-indirect-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="unified-indirect-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="unified-indirect-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="unified-indirect-total-gna">$0</td>
+                                        <td class="cost-col numeric" id="unified-indirect-total-cost">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="unified-indirects-tbody" class="indent-level-2">
+                                    <!-- Indirect category rows (if any) - indented under Indirects -->
+                                </tbody>
+
+                                <!-- SUBS Section -->
+                                <tbody>
+                                    <tr class="section-header-row">
+                                        <td class="frozen-col section-header">SUBS</td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header"></td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                    </tr>
+                                    <!-- LS SUBS -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('ls-subs')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="ls-subs-toggle-icon">▼</span> LS SUBS
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="ls-subs-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="ls-subs-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-total-gna">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-total-cost">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="ls-subs-tbody" class="indent-level-2 hidden"></tbody>
+
+                                <tbody>
+                                    <!-- SURVEY -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('survey')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="survey-toggle-icon">▼</span> SURVEY
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="survey-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="survey-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="survey-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="survey-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="survey-total-gna">$0</td>
+                                        <td class="cost-col numeric" id="survey-total-cost">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="survey-tbody" class="indent-level-2 hidden"></tbody>
+
+                                <tbody>
+                                    <!-- SUBSURFACE UTILITY SUBS -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('subsurface-utility')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="subsurface-utility-toggle-icon">▼</span> SUBSURFACE UTILITY SUBS
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="subsurface-utility-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="subsurface-utility-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-total-gna">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-total-cost">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="subsurface-utility-tbody" class="indent-level-2 hidden"></tbody>
+
+                                <tbody>
+                                    <!-- LABOR SUBS -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('labor-subs')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="labor-subs-toggle-icon">▼</span> LABOR SUBS
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="labor-subs-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="labor-subs-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-total-gna">$0</td>
+                                        <td class="cost-col numeric" id="labor-subs-total-cost">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="labor-subs-tbody" class="indent-level-2 hidden"></tbody>
+
+                                <!-- EXPENSES Section -->
+                                <tbody>
+                                    <tr class="section-header-row">
+                                        <td class="frozen-col section-header">EXPENSES</td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header"></td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                    </tr>
+                                    <!-- IPC -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('ipc')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="ipc-toggle-icon">▼</span> IPC
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="ipc-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="ipc-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="ipc-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="ipc-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="ipc-total-gna">$0</td>
+                                        <td class="cost-col numeric" id="ipc-total-cost">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="ipc-tbody" class="indent-level-2 hidden"></tbody>
+
+                                <tbody>
+                                    <!-- ODC'S -->
+                                    <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('odcs')">
+                                        <td class="frozen-col indent-1">
+                                            <span id="odcs-toggle-icon">▼</span> ODC'S
+                                        </td>
+                                        <td colspan="7" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="odcs-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric" id="odcs-avg-rate">$0</td>
+                                        <td class="cost-col numeric" id="odcs-total-labor">$0</td>
+                                        <td class="cost-col numeric" id="odcs-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="odcs-total-gna">$0</td>
+                                        <td class="cost-col numeric" id="odcs-total-cost">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tbody id="odcs-tbody" class="indent-level-2 hidden"></tbody>
+
+                                <!-- ESCALATION Section -->
+                                <tbody>
+                                    <tr class="section-header-row">
+                                        <td class="frozen-col section-header">ESCALATION</td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header"></td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header" id="escalation-total-cost">$0</td>
+                                    </tr>
+                                </tbody>
+
+                                <!-- CONTINGENCY Section -->
+                                <tbody>
+                                    <tr class="section-header-row">
+                                        <td class="frozen-col section-header">CONTINGENCY</td>
+                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td class="mh-col mh-col-keep section-header"></td>
+                                        <td class="mh-col mh-toggle-cell section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header"></td>
+                                        <td class="cost-col section-header" id="contingency-total-cost">$0</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot style="display: none;">
+                                    <!-- Keep tfoot for reference but hide it -->
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="unified-actions">
+                            <button class="btn" onclick="resetUnifiedEstimate()">Reset All</button>
+                            <button class="btn-mh" onclick="applyUnifiedEstimate()">Apply to Budget</button>
+                        </div>
+                    </div>
+
+                    <div class="benchmarking-layout" style="display: none;">
+                        <!-- LEFT COLUMN: MH BENCHMARK ESTIMATOR -->
+                        <div class="benchmarking-column mh-column">
+                            <div id="mh-estimator" class="mh-estimator">
+                                <div class="mh-estimator-header">
+                                    <h3>👥 MH BENCHMARK ESTIMATOR</h3>
+                                    <span id="mh-estimator-status">Configure project parameters</span>
+                                </div>
+
+                                <div id="mh-estimator-body" class="mh-estimator-body">
+                            <!-- Input Parameters -->
+                            <div class="mh-input-grid">
+                                <div class="mh-input-group">
+                                    <label>Project Cost ($)</label>
+                                    <input type="text" id="mh-project-cost" placeholder="500,000,000" inputmode="numeric" onchange="updateMHProjectCost()">
+                                </div>
+                                <div class="mh-input-group">
+                                    <label>Design Duration (Months)</label>
+                                    <input type="number" id="mh-design-duration" value="20" min="6" max="48" onchange="updateMHInputs()">
+                                </div>
+                                <div class="mh-input-group">
+                                    <label>Project Type</label>
+                                    <select id="mh-project-type" onchange="updateMHInputs()">
+                                        <option value="highway" selected>Highway/Interstate</option>
+                                        <option value="transit">Transit/Rail</option>
+                                        <option value="bridge">Bridge</option>
+                                        <option value="utility">Utility</option>
+                                    </select>
+                                </div>
+                                <div class="mh-input-group">
+                                    <label>Complexity</label>
+                                    <select id="mh-complexity" onchange="updateMHInputs()">
+                                        <option value="Low">Low</option>
+                                        <option value="Low-Med">Low-Medium</option>
+                                        <option value="Med" selected>Medium</option>
+                                        <option value="Med-High">Medium-High</option>
+                                        <option value="High">High</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Discipline Quantities Table -->
+                            <div class="mh-table-wrapper">
+                                <table class="mh-estimate-table" id="mh-estimate-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Discipline<span class="header-help" data-tooltip="This is the standard list of KIE Disciplines">?</span></th>
+                                            <th>Account Code<span class="header-help" data-tooltip="Standard KIE account codes">?</span></th>
+                                            <th class="numeric">Quantity<span class="header-help" data-tooltip="This is auto populated from the RFP and needs to be checked by the Discipline Lead">?</span></th>
+                                            <th>Unit<span class="header-help" data-tooltip="Unit rate based on account code used">?</span></th>
+                                            <th class="benchmark-select-header">Benchmark<span class="header-help" data-tooltip="Please click and choose a project">?</span></th>
+                                            <th class="numeric rate-header" title="Production rate using ALL available benchmark projects">All Projects Rate</th>
+                                            <th class="numeric rate-header" title="Production rate using SELECTED benchmark projects only">Selected Rate</th>
+                                            <th class="numeric">Est. MH</th>
+                                            <th class="numeric rate-header">Percent complexity<span class="header-help" data-tooltip="Percentage of Level 4-6 engineers needed">?</span></th>
+                                            <th>Projects Used</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mh-estimate-tbody">
+                                        <!-- Populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Summary Bar -->
+                            <div class="mh-summary-bar">
+                                <div>
+                                    <span class="total-label">TOTAL ESTIMATED MAN-HOURS</span>
+                                    <div id="mh-total-range" style="font-size: 11px; color: #4da6ff; margin-top: 4px; display: none;"></div>
+                                </div>
+                                <div class="total-mh" id="mh-total-display">0</div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="mh-actions">
+                                <button class="btn btn-sm" onclick="resetMHEstimate()">Reset</button>
+                                <button class="btn-mh" onclick="applyMHEstimate()">Apply to Budget</button>
+                            </div>
+                        </div>
+                            </div>
+                        </div><!-- end mh-column -->
+
+                        <!-- RIGHT COLUMN: COST BY DISCIPLINE -->
+                        <div class="benchmarking-column cost-extension-column">
+                            <div class="cost-extension-panel">
+                                <div class="cost-extension-header">
+                                    <h3>💰 COST BY DISCIPLINE</h3>
+                                    <span class="cost-extension-status">Enter cost per discipline</span>
+                                </div>
+                                <div class="cost-extension-body">
+                                    <div class="cost-extension-inputs">
+                                        <div class="cost-extension-group">
+                                            <label for="cost-est-construction">Estimated Construction Cost (District)</label>
+                                            <input type="text" id="cost-est-construction" placeholder="0" inputmode="numeric">
+                                        </div>
+                                        <div class="cost-extension-group">
+                                            <label for="cost-burden-rate">Burden Rate</label>
+                                            <div class="cost-extension-percent">
+                                                <input type="number" id="cost-burden-rate" value="66" min="0" max="200" step="1">
+                                                <span>%</span>
+                                            </div>
+                                        </div>
+                                        <div class="cost-extension-group">
+                                            <label for="cost-gna-rate">G&amp;A Rate</label>
+                                            <div class="cost-extension-percent">
+                                                <input type="number" id="cost-gna-rate" value="104" min="0" max="300" step="1">
+                                                <span>%</span>
+                                            </div>
+                                        </div>
+                                        <div class="cost-extension-group">
+                                            <label for="cost-contingency">Contingency</label>
+                                            <div class="cost-extension-percent">
+                                                <input type="number" id="cost-contingency" value="5" min="0" max="100" step="1">
+                                                <span>%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="budget-table-wrapper">
+                                        <table id="budget-table"></table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div><!-- end cost-extension-column -->
+
+                        <div class="benchmarking-secondary">
+                            <!-- COST ESTIMATOR -->
+                            <div class="benchmarking-column cost-column">
+                            <div id="budget-calculator" class="budget-calculator">
+                                <div class="calculator-header">
+                                    <h3>💰 COST ESTIMATOR</h3>
+                                    <span id="calculator-status">Configure inputs below</span>
+                                </div>
+
+                                <div id="calculator-body" class="calculator-body">
+                                    <div class="calc-grid">
+                                        <div class="calc-group">
+                                            <label>Total Construction Cost ($)</label>
+                                            <input type="text" id="calc-construction-cost" placeholder="5,000,000" inputmode="numeric">
+                                        </div>
+
+                                        <div class="calc-group">
+                                            <label>Design Fee (% of Construction)</label>
+                                            <input type="number" id="calc-design-fee-pct" value="15" min="1" max="30" step="0.5">
+                                        </div>
+
+                                        <div class="calc-group">
+                                            <label>Project Type</label>
+                                            <select id="calc-project-type" onchange="updateComplexityDefaults()">
+                                                <option value="Bridge">Bridge</option>
+                                                <option value="Highway/Roadway" selected>Highway/Roadway</option>
+                                                <option value="Drainage/Utilities">Drainage/Utilities</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="calc-group">
+                                            <label>Project Complexity (Reference)</label>
+                                            <select id="calc-global-complexity">
+                                                <option value="Low">Low</option>
+                                                <option value="Medium" selected>Medium</option>
+                                                <option value="High">High</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="calc-total-fee-box">
+                                        <span>Total Design Fee:</span>
+                                        <span id="calc-total-fee" class="fee-value">$0</span>
+                                    </div>
+
+                                    <div class="calc-actions">
+                                        <button class="btn btn-sm" onclick="showComplexityOverrides()">Advanced Settings</button>
+                                        <button class="btn btn-primary btn-sm" onclick="calculateBudgets()">Calculate Estimates</button>
+                                    </div>
+
+                                    <!-- Advanced Complexity Overrides (hidden by default) -->
+                                    <div id="complexity-overrides" class="hidden complexity-overrides-panel">
+                                        <div class="complexity-overrides-label">
+                                            Override auto-assigned complexity levels per discipline:
+                                        </div>
+                                        <div id="complexity-grid" class="complexity-override-grid"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Budget Summary Table -->
+                            <div class="budget-summary-section">
+                                <h4>📋 Budget Breakdown</h4>
+                                <div class="budget-total-row">
+                                    <span>TOTAL PROJECT BUDGET:</span>
+                                    <span id="total-budget" class="budget-total-value">$0</span>
+                                </div>
+                            </div>
+                        </div><!-- end cost-column -->
+                        </div><!-- end benchmarking-secondary -->
+                    </div><!-- end benchmarking-layout -->
+                </div>
+
+                <!-- Step 5: Claiming -->
+                <div id="step5" class="step-content hidden">
+                    <div class="section-title">CLAIMING SCHEME</div>
+                    <div class="section-desc">Set claiming % per package (must total 100%)</div>
+
+                    <!-- PRESET SELECTOR PANEL -->
+                    <div class="claiming-preset-panel">
+                        <div class="preset-header" onclick="toggleClaimingPresets()">
+                            <span>▼ SCHEME PRESETS</span>
+                            <span id="preset-status" style="color: #888; font-size: 11px;">Click to apply a preset</span>
+                        </div>
+
+                        <div id="preset-body" class="preset-body">
+                            <div class="preset-options">
+                                <label class="preset-option">
+                                    <input type="radio" name="claiming-scheme" value="frontLoaded">
+                                    <div class="preset-label">
+                                        <span class="preset-name">Front-Loaded</span>
+                                        <span class="preset-desc">Higher % early, declining (30→10%)</span>
+                                    </div>
+                                </label>
+
+                                <label class="preset-option">
+                                    <input type="radio" name="claiming-scheme" value="backLoaded">
+                                    <div class="preset-label">
+                                        <span class="preset-name">Back-Loaded</span>
+                                        <span class="preset-desc">Lower % early, increasing (10→30%)</span>
+                                    </div>
+                                </label>
+
+                                <label class="preset-option">
+                                    <input type="radio" name="claiming-scheme" value="bellCurve">
+                                    <div class="preset-label">
+                                        <span class="preset-name">Bell Curve</span>
+                                        <span class="preset-desc">Peak in middle (10-20-40-20-10)</span>
+                                    </div>
+                                </label>
+
+                                <label class="preset-option">
+                                    <input type="radio" name="claiming-scheme" value="linear">
+                                    <div class="preset-label">
+                                        <span class="preset-name">Linear/Even</span>
+                                        <span class="preset-desc">Equal distribution across all</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="preset-actions">
+                                <button class="btn btn-sm" onclick="previewScheme()">Preview</button>
+                                <button class="btn btn-primary btn-sm" onclick="applyClaimingScheme()">Apply to All Disciplines</button>
+                            </div>
+
+                            <div id="preview-display" class="preset-preview hidden"></div>
+                        </div>
+                    </div>
+
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table id="claiming-table"></table>
+                    </div>
+                </div>
+
+                <!-- Step 6: Schedule -->
+                <div id="step6" class="step-content hidden">
+                    <div class="section-title">PROJECT SCHEDULE</div>
+                    <div class="section-desc">Set start/end dates per package</div>
+                    
+                    <!-- AI Schedule Generator -->
+                    <div class="ai-schedule-section">
+                        <button class="btn btn-ai" onclick="generateAISchedule()" id="ai-schedule-btn">
+                            <span class="ai-btn-icon">🤖</span>
+                            <span>AI GENERATE SCHEDULE</span>
+                        </button>
+                        <div class="ai-schedule-options">
+                            <label>Project Start:</label>
+                            <input type="date" id="ai-schedule-start" value="">
+                            <label>Duration Target:</label>
+                            <select id="ai-schedule-duration">
+                                <option value="6">6 months</option>
+                                <option value="9">9 months</option>
+                                <option value="12" selected>12 months</option>
+                                <option value="18">18 months</option>
+                                <option value="24">24 months</option>
+                            </select>
+                        </div>
+                        <div id="ai-schedule-loading" class="ai-schedule-loading hidden">
+                            <span class="ai-loading-spinner">◐</span>
+                            <span>Analyzing project scope and generating schedule...</span>
+                        </div>
+                    </div>
+                    
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table id="dates-table"></table>
+                    </div>
+                </div>
+
+            </div>
+
+                <!-- Step 7: Project Info -->
+                <div id="step7" class="step-content hidden">
+                    <div class="section-title">> PROJECT INFORMATION</div>
+                    <div class="section-desc">Enter project details for the Design Fee Book</div>
+                    
+                    <!-- Project Information Section -->
+                    <div class="project-info-section">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="project-name">Project Name</label>
+                                <input type="text" id="project-name" placeholder="Enter project name" onchange="saveProjectInfo()">
+                            </div>
+                            <div class="form-group">
+                                <label for="project-location">Project Location</label>
+                                <input type="text" id="project-location" placeholder="City, State or corridor description" onchange="saveProjectInfo()">
+                            </div>
+                        </div>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="lead-district">Lead District</label>
+                                <input type="text" id="lead-district" placeholder="e.g., Southeast" onchange="saveProjectInfo()">
+                            </div>
+                            <div class="form-group">
+                                <label for="partnering-districts">Partnering District(s)</label>
+                                <input type="text" id="partnering-districts" placeholder="e.g., Southwest, Central" onchange="saveProjectInfo()">
+                            </div>
+                        </div>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="kie-nonsp-percentage">KIE Non-SP Percentage (%)</label>
+                                <input type="number" id="kie-nonsp-percentage" min="0" max="100" placeholder="0" onchange="saveProjectInfo()">
+                            </div>
+                            <div class="form-group">
+                                <label for="keg-entity">KEG Entity</label>
+                                <select id="keg-entity" onchange="saveProjectInfo()">
+                                    <option value="">Select Entity</option>
+                                    <option value="Kimley-Horn">Kimley-Horn</option>
+                                    <option value="KEG JV">KEG JV</option>
+                                    <option value="KEG Partnership">KEG Partnership</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="project-organization">Project Organization</label>
+                            <textarea id="project-organization" rows="4" placeholder="Describe the project team organization, roles, and responsibilities..." onchange="saveProjectInfo()"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Key Dates Section -->
+                    <div class="section-divider">KEY DATES</div>
+                    <div class="project-info-section">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="technical-proposal-due">Technical Proposal Due</label>
+                                <input type="date" id="technical-proposal-due" onchange="saveProjectInfo()">
+                            </div>
+                            <div class="form-group">
+                                <label for="price-proposal-due">Price Proposal Due</label>
+                                <input type="date" id="price-proposal-due" onchange="saveProjectInfo()">
+                            </div>
+                        </div>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="interview-date">Interview Date</label>
+                                <input type="date" id="interview-date" onchange="saveProjectInfo()">
+                            </div>
+                            <div class="form-group">
+                                <label for="contract-award">Contract Award</label>
+                                <input type="date" id="contract-award" onchange="saveProjectInfo()">
+                            </div>
+                        </div>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="notice-to-proceed">Notice to Proceed</label>
+                                <input type="date" id="notice-to-proceed" onchange="saveProjectInfo()">
+                            </div>
+                            <div class="form-group">
+                                <label for="stipend-amount">Stipend Amount ($)</label>
+                                <input type="text" id="stipend-amount" placeholder="e.g., 50,000" onchange="saveProjectInfo()">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="owner-contract-type">Owner Contract Type</label>
+                            <select id="owner-contract-type" onchange="saveProjectInfo()">
+                                <option value="">Select Contract Type</option>
+                                <option value="Design-Build">Design-Build</option>
+                                <option value="Design-Bid-Build">Design-Bid-Build</option>
+                                <option value="CMAR">CMAR</option>
+                                <option value="Progressive Design-Build">Progressive Design-Build</option>
+                                <option value="Best Value">Best Value</option>
+                                <option value="Low Bid">Low Bid</option>
+                                <option value="Qualifications Based">Qualifications Based</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- RFP Extracted Info (if available) -->
+                    <div id="rfp-extracted-info" class="rfp-info-section hidden">
+                        <div class="section-divider">RFP EXTRACTED DATA</div>
+                        <div class="rfp-info-note">The following was extracted from the RFP. Review and edit as needed.</div>
+                        <div class="form-group full-width">
+                            <label for="evaluation-criteria">Owner Evaluation Criteria</label>
+                            <textarea id="evaluation-criteria" rows="4" placeholder="Scoring criteria and weights..." onchange="saveProjectInfo()"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="dbe-goals">DBE / SBE Goals</label>
+                            <textarea id="dbe-goals" rows="2" placeholder="e.g., 15% DBE, 5% SBE" onchange="saveProjectInfo()"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="hidden" style="margin-top: 20px;">
+            <!-- KPIs -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpi-budget">$0</div>
+                    <div class="kpi-label">TOTAL BUDGET</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpi-wbs">0</div>
+                    <div class="kpi-label">WBS ELEMENTS</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpi-disc">0</div>
+                    <div class="kpi-label">DISCIPLINES</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpi-months">0</div>
+                    <div class="kpi-label">MONTHS</div>
+                </div>
+            </div>
+
+            <!-- AI Insights Panel -->
+            <div class="insights-panel">
+                <div class="insights-header" onclick="toggleInsightsPanel()">
+                    <span>🤖 AI INSIGHTS & FORECASTING</span>
+                    <span class="insights-toggle-icon">▼</span>
+                </div>
+                <div id="insights-body" class="insights-body hidden">
+                    <div class="insights-grid">
+                        <!-- Risk Score -->
+                        <div class="card-base insight-card">
+                            <div class="insight-card-header">
+                                <span class="insight-icon">⚠️</span>
+                                <span class="insight-title">Risk Assessment</span>
+                            </div>
+                            <div id="insight-risk-score" class="insight-value risk-medium">MEDIUM</div>
+                            <div id="insight-risk-details" class="insight-details">Analyzing project complexity...</div>
+                        </div>
+
+                        <!-- Cost Forecast -->
+                        <div class="card-base insight-card">
+                            <div class="insight-card-header">
+                                <span class="insight-icon">💰</span>
+                                <span class="insight-title">Cost Forecast</span>
+                            </div>
+                            <div id="insight-cost-forecast" class="insight-value">$0</div>
+                            <div id="insight-cost-details" class="insight-details">Projected final cost...</div>
+                        </div>
+
+                        <!-- Schedule Forecast -->
+                        <div class="card-base insight-card">
+                            <div class="insight-card-header">
+                                <span class="insight-icon">📅</span>
+                                <span class="insight-title">Schedule Forecast</span>
+                            </div>
+                            <div id="insight-schedule-forecast" class="insight-value">On Track</div>
+                            <div id="insight-schedule-details" class="insight-details">Completion estimate...</div>
+                        </div>
+
+                        <!-- Budget Health -->
+                        <div class="card-base insight-card">
+                            <div class="insight-card-header">
+                                <span class="insight-icon">📊</span>
+                                <span class="insight-title">Budget Distribution</span>
+                            </div>
+                            <div id="insight-budget-health" class="insight-value">Balanced</div>
+                            <div id="insight-budget-details" class="insight-details">Analyzing discipline allocation...</div>
+                        </div>
+                    </div>
+
+                    <!-- AI Suggestions -->
+                    <div class="insights-suggestions">
+                        <div class="suggestions-header">
+                            <span>💡 AI Optimization Suggestions</span>
+                            <button class="btn btn-sm btn-ai" onclick="generateAIInsights()" id="generate-insights-btn">
+                                Generate Insights
+                            </button>
+                        </div>
+                        <div id="ai-suggestions-list" class="suggestions-list">
+                            <div class="suggestion-placeholder">
+                                Click "Generate Insights" to get AI-powered recommendations for your project.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WBS Table -->
+            <div class="terminal">
+                <div class="terminal-header">
+                    <span>■ WBS COST TABLE</span>
+                    <div>
+                        <button class="btn btn-sm" onclick="expandAllWBS()">EXPAND ALL</button>
+                        <button class="btn btn-sm" onclick="collapseAllWBS()" style="margin-left: 8px;">COLLAPSE ALL</button>
+                        <span style="margin: 0 12px; color: #666;">|</span>
+                        <button class="btn btn-sm" onclick="importData()">IMPORT</button>
+                        <button id="wbs-edit-toggle" class="btn btn-sm" onclick="toggleWBSEditMode()" style="margin-left: 8px;">✏️ EDIT MODE</button>
+                        <button class="btn btn-sm" onclick="editWBS()" style="margin-left: 8px;">⚙️ WIZARD</button>
+                    </div>
+                </div>
+                
+                <!-- WBS Edit Toolbar (shown in edit mode) -->
+                <div id="wbs-edit-toolbar" class="wbs-edit-toolbar hidden">
+                    <div class="wbs-edit-toolbar-section">
+                        <span class="toolbar-label">ADD:</span>
+                        <button class="toolbar-btn" onclick="showAddDisciplineModal()">+ Discipline</button>
+                        <button class="toolbar-btn" onclick="showAddPackageModal()">+ Package</button>
+                        <button class="toolbar-btn" onclick="showAddPhaseModal()">+ Phase</button>
+                    </div>
+                    <div class="wbs-edit-toolbar-section">
+                        <span class="toolbar-label">ACTIONS:</span>
+                        <button class="toolbar-btn" onclick="recalculateBudgets()">🔄 Recalculate</button>
+                        <button class="toolbar-btn danger" onclick="confirmClearWBS()">🗑️ Clear All</button>
+                    </div>
+                    <div class="wbs-edit-toolbar-tip">
+                        💡 Click any value in the table to edit directly
+                    </div>
+                </div>
+                
+                <div class="terminal-body">
+                    <div class="results-table">
+                        <table id="wbs-table"></table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="terminal" style="margin-top: 20px;">
+                <div class="terminal-header">
+                    <span>■ PERFORMANCE CHART</span>
+                </div>
+                <div class="terminal-body">
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label>PHASE</label>
+                            <select id="filter-phase" onchange="updateChart()">
+                                <option value="all">All Phases</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>DISCIPLINE</label>
+                            <select id="filter-discipline" onchange="updateChart()">
+                                <option value="all">All Disciplines</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>VIEW</label>
+                            <select id="view-type" onchange="updateChart()">
+                                <option value="cumulative">Cumulative</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>CHART</label>
+                            <select id="chart-type" onchange="updateChart()">
+                                <option value="line">Line</option>
+                                <option value="bar">Bar</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="performance-chart" height="300"></canvas>
+                    </div>
+                    
+                    <div style="margin-top: 16px; font-size: 12px; display: flex; gap: 24px;">
+                        <span><span style="color: #ffd700;">━━</span> PLANNED (BCWS)</span>
+                        <span><span style="color: #00ff00;">┅┅</span> ACTUAL (ACWP) - TBD</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gantt Chart -->
+            <div class="terminal" style="margin-top: 20px;">
+                <div class="terminal-header">
+                    <span>■ PROJECT SCHEDULE</span>
+                    <div>
+                        <button class="btn btn-sm" onclick="expandAllGantt()">EXPAND ALL</button>
+                        <button class="btn btn-sm" onclick="collapseAllGantt()" style="margin-left: 8px;">COLLAPSE ALL</button>
+                    </div>
+                </div>
+                <div class="terminal-body">
+                    <div id="gantt-container" class="gantt-container">
+                        <!-- Gantt chart will be rendered here -->
+                    </div>
+                    <div class="gantt-legend">
+                        <div class="gantt-legend-item">
+                            <div class="gantt-legend-color discipline"></div>
+                            <span>Discipline Timeline</span>
+                        </div>
+                        <div class="gantt-legend-item">
+                            <div class="gantt-legend-color package"></div>
+                            <span>Package Deliverable</span>
+                        </div>
+                        <div class="gantt-legend-item" style="margin-left: auto; color: #666;">
+                            <span>Click discipline rows to expand/collapse</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+
+    <!-- RFP Wizard Modal -->
+    <div id="rfp-modal" class="modal-base rfp-modal" onclick="if(event.target===this)closeRfpWizard()">
+        <div class="modal-base-content">
+            <div class="modal-base-header">
+                <h2>📄 RFP Wizard - Extract Project Data</h2>
+                <button class="modal-base-close" onclick="closeRfpWizard()">×</button>
+            </div>
+            <div class="modal-base-body">
+                <!-- Stage Indicator -->
+                <div class="rfp-stage-indicator">
+                    <div class="rfp-stage active" data-stage="1">1. Upload PDF</div>
+                    <div class="rfp-stage" data-stage="2">2. Select Pages</div>
+                    <div class="rfp-stage" data-stage="3">3. Review & Apply</div>
+                </div>
+
+                <!-- Stage 1: Upload -->
+                <div id="rfp-stage-1" class="rfp-stage-content active">
+                    <div class="rfp-dropzone" id="rfp-dropzone" onclick="document.getElementById('rfp-file-input').click()">
+                        <div class="rfp-dropzone-icon">📁</div>
+                        <div class="rfp-dropzone-text">Drag & drop your RFP PDF here</div>
+                        <div class="rfp-dropzone-hint">or click to browse</div>
+                    </div>
+                    <input type="file" id="rfp-file-input" accept=".pdf" style="display: none;" onchange="handleRfpFileSelect(event)">
+                    
+                    <div id="rfp-file-info" class="rfp-file-info">
+                        <div class="rfp-file-icon">📄</div>
+                        <div class="rfp-file-details">
+                            <div id="rfp-file-name" class="rfp-file-name">document.pdf</div>
+                            <div id="rfp-file-meta" class="rfp-file-meta">2.4 MB</div>
+                        </div>
+                        <button class="rfp-file-remove" onclick="removeRfpFile()">Remove</button>
+                    </div>
+
+                    <div class="rfp-modal-actions">
+                        <button class="rfp-btn" onclick="closeRfpWizard()">Cancel</button>
+                        <button id="rfp-next-1" class="rfp-btn rfp-btn-primary" onclick="goToRfpStage(2)" disabled>Next: Select Pages →</button>
+                    </div>
+                </div>
+
+                <!-- Stage 2: Page Selection -->
+                <div id="rfp-stage-2" class="rfp-stage-content">
+                    <div class="rfp-page-info">
+                        <div class="rfp-page-count" id="rfp-page-count">0</div>
+                        <div class="rfp-page-label">Total pages in document</div>
+                    </div>
+
+                    <div class="rfp-page-input-group">
+                        <label>Which pages contain scope/project information?</label>
+                        <input type="text" id="rfp-page-range" placeholder="e.g., 1-10 or 5,7,12-15 or leave blank for all">
+                        <div class="rfp-page-hint">
+                            Tip: Usually the scope of work, deliverables, and schedule are in the first 10-20 pages. 
+                            Leave blank to analyze all pages.
+                        </div>
+                    </div>
+
+                    <!-- Text Preview Section -->
+                    <div id="rfp-text-preview-section" style="display: none; margin-top: 20px;">
+                        <div class="rfp-preview-card" style="background: #1a1a1a; border: 1px solid #333;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h4 style="margin: 0; color: #ffd700;">Extracted Text Preview</h4>
+                                <button class="rfp-btn" style="padding: 6px 12px; font-size: 11px;" onclick="toggleTextPreview()">
+                                    <span id="rfp-preview-toggle-text">Show</span> Preview
+                                </button>
+                            </div>
+                            <div id="rfp-text-preview-stats" style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 11px; color: #888;">
+                                <span>Pages: <strong id="rfp-preview-page-count" style="color: #ffd700;">0</strong></span>
+                                <span>Characters: <strong id="rfp-preview-char-count" style="color: #ffd700;">0</strong></span>
+                                <span>Est. Tokens: <strong id="rfp-preview-token-est" style="color: #ffd700;">~0</strong></span>
+                            </div>
+                            <div id="rfp-text-preview-content" style="display: none;">
+                                <div style="background: #000; border: 1px solid #444; border-radius: 4px; padding: 12px; max-height: 300px; overflow-y: auto; font-size: 11px; color: #ccc; line-height: 1.6; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">
+                                    <div id="rfp-text-preview-snippet"></div>
+                                    <div id="rfp-text-preview-full" style="display: none;"></div>
+                                </div>
+                                <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                    <button class="rfp-btn" style="padding: 6px 12px; font-size: 11px;" onclick="toggleFullTextPreview()">
+                                        <span id="rfp-full-text-toggle">Show</span> Full Text
+                                    </button>
+                                    <button class="rfp-btn" style="padding: 6px 12px; font-size: 11px; background: transparent; border-color: #666; color: #888;" onclick="copyExtractedText()">Copy Text</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rfp-modal-actions">
+                        <button class="rfp-btn" onclick="goToRfpStage(1)">← Back</button>
+                        <button id="rfp-preview-text-btn" class="rfp-btn" onclick="previewExtractedText()" style="display: none;">Preview Text</button>
+                        <button class="rfp-btn rfp-btn-primary" onclick="analyzeRfpDocument()">Analyze with AI →</button>
+                    </div>
+                </div>
+
+                <!-- Stage 3: Preview -->
+                <div id="rfp-stage-3" class="rfp-stage-content">
+                    <!-- Loading State -->
+                    <div id="rfp-loading" class="rfp-loading visible">
+                        <div class="rfp-spinner"></div>
+                        <div class="rfp-loading-text">Analyzing document with AI...</div>
+                    </div>
+
+                    <!-- Preview Content -->
+                    <div id="rfp-preview" style="display: none;">
+                        <div class="rfp-preview-grid">
+                            <div class="rfp-preview-card">
+                                <h4>Phases <span id="rfp-conf-phases" class="rfp-confidence high">HIGH</span></h4>
+                                <textarea id="rfp-preview-phases" placeholder="e.g., Base, ESDC, TSCD"></textarea>
+                            </div>
+                            <div class="rfp-preview-card">
+                                <h4>Disciplines <span id="rfp-conf-disciplines" class="rfp-confidence high">HIGH</span></h4>
+                                <textarea id="rfp-preview-disciplines" placeholder="e.g., Structures, Civil, Traffic"></textarea>
+                            </div>
+                            <div class="rfp-preview-card full-width">
+                                <h4>Discipline-Specific Scopes <span id="rfp-conf-disciplines-scope" class="rfp-confidence medium">MED</span></h4>
+                                <div style="color: #666; font-size: 10px; margin-bottom: 12px; font-style: italic;">
+                                    Detailed scope of work for each discipline. Edit as needed for accuracy.
+                                </div>
+                                <div id="rfp-discipline-scopes-container" style="display: flex; flex-direction: column; gap: 12px;">
+                                    <!-- Discipline scopes will be dynamically added here -->
+                                </div>
+                            </div>
+                            <div class="rfp-preview-card">
+                                <h4>Packages <span id="rfp-conf-packages" class="rfp-confidence medium">MED</span></h4>
+                                <textarea id="rfp-preview-packages" placeholder="e.g., Preliminary, Interim, Final, RFC"></textarea>
+                            </div>
+                            <div class="rfp-preview-card">
+                                <h4>Budgets</h4>
+                                <div style="color: #666; font-size: 11px; padding: 10px; background: #000; border-radius: 4px;">
+                                    Budgets will be set to $0 initially. Use the Cost Estimator in Step 4 to calculate budgets based on construction cost.
+                                </div>
+                            </div>
+                            <div class="rfp-preview-card full-width">
+                                <h4>Scope Summary <span id="rfp-conf-scope" class="rfp-confidence medium">MED</span></h4>
+                                <textarea id="rfp-preview-scope" placeholder="Project scope and work description extracted from RFP..."></textarea>
+                            </div>
+                            <div class="rfp-preview-card full-width">
+                                <h4>Schedule Notes <span id="rfp-conf-schedule" class="rfp-confidence medium">MED</span></h4>
+                                <textarea id="rfp-preview-schedule" placeholder="Schedule information extracted from RFP..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Quantity Estimates Section -->
+                        <div id="rfp-quantities-section" class="rfp-quantities-section" style="display: none;">
+                            <h4>📐 Quantity Estimates for MH Benchmark <span id="rfp-conf-quantities" class="rfp-confidence medium">MED</span></h4>
+                            <p class="rfp-quantities-desc">AI-estimated quantities from RFP. Review and adjust values before applying.</p>
+                            <div class="rfp-quantities-grid" id="rfp-quantities-grid">
+                                <!-- Populated by JS -->
+                            </div>
+                            <div class="rfp-quantities-project-info" id="rfp-project-info-section">
+                                <div class="rfp-project-info-grid">
+                                    <div class="rfp-project-info-item">
+                                        <label>Est. Project Cost ($M)</label>
+                                        <input type="text" id="rfp-qty-projectCostM" value="0" />
+                                    </div>
+                                    <div class="rfp-project-info-item">
+                                        <label>Design Duration (Months)</label>
+                                        <input type="number" id="rfp-qty-designDurationMonths" value="20" min="6" max="60" />
+                                    </div>
+                                    <div class="rfp-project-info-item">
+                                        <label>Project Type</label>
+                                        <select id="rfp-qty-projectType">
+                                            <option value="highway">Highway/Interstate</option>
+                                            <option value="transit">Transit/Rail</option>
+                                            <option value="bridge">Bridge</option>
+                                            <option value="utility">Utility</option>
+                                        </select>
+                                    </div>
+                                    <div class="rfp-project-info-item">
+                                        <label>Complexity</label>
+                                        <select id="rfp-qty-complexity">
+                                            <option value="Low">Low</option>
+                                            <option value="Medium" selected>Medium</option>
+                                            <option value="High">High</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="rfp-truncation-notice" class="rfp-notes" style="display: none; background: #2a1a00; border-color: #ff8800;">
+                            <h4>⚠️ Document Truncated</h4>
+                            <p id="rfp-truncation-text">Only the first portion of the document was analyzed due to size limits.</p>
+                        </div>
+
+                        <div id="rfp-notes" class="rfp-notes" style="display: none;">
+                            <h4>📝 AI Notes</h4>
+                            <p id="rfp-notes-text">Analysis notes will appear here...</p>
+                        </div>
+
+                        <div id="rfp-risks" class="rfp-risks-section" style="display: none;">
+                            <h4>⚠️ Identified Risks</h4>
+                            <div id="rfp-risks-list" class="rfp-risks-list">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <div id="rfp-usage-stats" class="rfp-notes" style="display: none;">
+                            <h4>📊 Usage Statistics</h4>
+                            <div class="rfp-usage-grid">
+                                <div class="rfp-usage-item">
+                                    <span class="rfp-usage-label">API Calls</span>
+                                    <span class="rfp-usage-value" id="rfp-stats-calls">0</span>
+                                </div>
+                                <div class="rfp-usage-item">
+                                    <span class="rfp-usage-label">Model</span>
+                                    <span class="rfp-usage-value" id="rfp-stats-model">-</span>
+                                </div>
+                                <div class="rfp-usage-item">
+                                    <span class="rfp-usage-label">Prompt Tokens</span>
+                                    <span class="rfp-usage-value" id="rfp-stats-prompt">0</span>
+                                </div>
+                                <div class="rfp-usage-item">
+                                    <span class="rfp-usage-label">Completion Tokens</span>
+                                    <span class="rfp-usage-value" id="rfp-stats-completion">0</span>
+                                </div>
+                                <div class="rfp-usage-item">
+                                    <span class="rfp-usage-label">Total Tokens</span>
+                                    <span class="rfp-usage-value" id="rfp-stats-tokens">0</span>
+                                </div>
+                                <div class="rfp-usage-item">
+                                    <span class="rfp-usage-label">Processing Time</span>
+                                    <span class="rfp-usage-value time" id="rfp-stats-time">0s</span>
+                                </div>
+                                <div class="rfp-usage-item full-width">
+                                    <span class="rfp-usage-label">Estimated Cost</span>
+                                    <span class="rfp-usage-value cost" id="rfp-stats-cost">$0.0000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rfp-modal-actions">
+                            <button class="rfp-btn" onclick="goToRfpStage(2)">← Re-analyze</button>
+                            <button class="rfp-btn" onclick="generateDesignFeeBook()">📥 Export</button>
+                            <button class="rfp-btn rfp-btn-primary" onclick="applyRfpData()">Apply to Project ✓</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat FAB Button -->
+    <button id="chat-fab" class="chat-fab" onclick="toggleChat()" title="AI Assistant">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+        </svg>
+    </button>
+
+    <!-- Chat Panel -->
+    <div id="chat-panel" class="chat-panel">
+        <div class="chat-header">
+            <div class="chat-header-title">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                <span>WBS Assistant</span>
+            </div>
+            <span id="chat-context-badge" class="chat-context-badge">STEP 1</span>
+            <div class="chat-header-actions">
+                <button class="chat-header-btn" onclick="resetChatPosition()" title="Reset position">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                </button>
+                <button class="chat-header-btn" onclick="clearChat()" title="Clear chat">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                </button>
+                <button class="chat-header-btn" onclick="openChatSettings()" title="Settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </button>
+                <button class="chat-header-btn" onclick="toggleChat()" title="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-area">
+            <textarea 
+                id="chat-input" 
+                class="chat-input" 
+                placeholder="Ask about this step..." 
+                rows="1"
+                onkeydown="handleChatKeydown(event)"
+                oninput="autoResizeChatInput()"
+            ></textarea>
+            <button id="chat-send-btn" class="chat-send-btn" onclick="sendMessage()" title="Send">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- WBS Add Discipline Modal -->
+    <div id="wbs-add-discipline-modal" class="modal-base wbs-add-modal" onclick="if(event.target===this)closeAddModal('discipline')">
+        <div class="modal-base-content">
+            <div class="modal-base-header">
+                <h3>Add New Discipline</h3>
+                <button class="modal-base-close" onclick="closeAddModal('discipline')">✕</button>
+            </div>
+            <div class="modal-base-body">
+                <label>Discipline Name</label>
+                <input type="text" id="add-discipline-name" placeholder="e.g., Environmental">
+                <label>Initial Budget ($)</label>
+                <input type="number" id="add-discipline-budget" placeholder="0" value="0">
+                <div class="wbs-add-modal-actions">
+                    <button class="btn btn-sm" onclick="closeAddModal('discipline')">Cancel</button>
+                    <button class="btn btn-sm btn-primary" onclick="confirmAddDiscipline()">Add Discipline</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WBS Add Package Modal -->
+    <div id="wbs-add-package-modal" class="modal-base wbs-add-modal" onclick="if(event.target===this)closeAddModal('package')">
+        <div class="modal-base-content">
+            <div class="modal-base-header">
+                <h3>Add New Package</h3>
+                <button class="modal-base-close" onclick="closeAddModal('package')">✕</button>
+            </div>
+            <div class="modal-base-body">
+                <label>Package Name</label>
+                <input type="text" id="add-package-name" placeholder="e.g., Quality Assurance">
+                <label>Default Claim % (distributed from existing)</label>
+                <input type="number" id="add-package-claim" placeholder="0" value="0" min="0" max="100">
+                <div class="wbs-add-modal-actions">
+                    <button class="btn btn-sm" onclick="closeAddModal('package')">Cancel</button>
+                    <button class="btn btn-sm btn-primary" onclick="confirmAddPackage()">Add Package</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WBS Add Phase Modal -->
+    <div id="wbs-add-phase-modal" class="modal-base wbs-add-modal" onclick="if(event.target===this)closeAddModal('phase')">
+        <div class="modal-base-content">
+            <div class="modal-base-header">
+                <h3>Add New Phase</h3>
+                <button class="modal-base-close" onclick="closeAddModal('phase')">✕</button>
+            </div>
+            <div class="modal-base-body">
+                <label>Phase Name</label>
+                <input type="text" id="add-phase-name" placeholder="e.g., Construction Support">
+                <div class="wbs-add-modal-actions">
+                    <button class="btn btn-sm" onclick="closeAddModal('phase')">Cancel</button>
+                    <button class="btn btn-sm btn-primary" onclick="confirmAddPhase()">Add Phase</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Panel Modal -->
+    <div id="reports-modal" class="modal-base reports-modal" onclick="if(event.target===this)closeReportsPanel()">
+        <div class="modal-base-content">
+            <div class="modal-base-header">
+                <h3>📄 Export Report</h3>
+                <button class="modal-base-close" onclick="closeReportsPanel()">✕</button>
+            </div>
+            
+            <div class="modal-base-body">
+                <!-- Design Fee Book -->
+                <div class="reports-section">
+                    <div class="reports-section-title">Design Fee Book</div>
+                    <div class="reports-grid">
+                        <div class="card-base report-card report-card-featured" onclick="closeReportsPanel(); generateDesignFeeBook();">
+                            <div class="card-base-icon" style="font-size: 32px;">📄</div>
+                            <div class="report-card-info">
+                                <div class="card-base-title" style="color: #c9a227; font-size: 14px;">Design Fee Book</div>
+                                <div class="card-base-desc">KEG Design Fee Review Document: Ch1 Project Overview, Ch2 Commercial Status, Ch3 Team/Scope, Ch4 Schedule, Ch5 Design Fee Estimate, Ch6 Resources, Ch7 Risk Register + Appendices</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RFP Results Panel Modal -->
+    <div id="rfp-results-modal" class="modal-base rfp-results-modal" onclick="if(event.target===this)closeRfpResultsPanel()">
+        <div class="modal-base-content rfp-results-content">
+            <div class="modal-base-header">
+                <h3>📋 RFP Extracted Data</h3>
+                <button class="modal-base-close" onclick="closeRfpResultsPanel()">✕</button>
+            </div>
+            
+            <div class="modal-base-body rfp-results-body">
+                <div id="rfp-results-empty" class="rfp-results-empty">
+                    <div class="rfp-results-empty-icon">📄</div>
+                    <div class="rfp-results-empty-text">No RFP data available</div>
+                    <div class="rfp-results-empty-hint">Use the RFP Wizard to analyze an RFP document</div>
+                    <button class="btn btn-sm btn-primary" onclick="closeRfpResultsPanel(); openRfpWizard();">Open RFP Wizard</button>
+                </div>
+                
+                <div id="rfp-results-content" class="rfp-results-sections hidden">
+                    <!-- Project Overview Section -->
+                    <div class="rfp-result-section">
+                        <div class="rfp-result-section-header" onclick="toggleRfpResultSection('overview')">
+                            <span>📊 Project Overview</span>
+                            <span class="rfp-section-toggle">▼</span>
+                        </div>
+                        <div id="rfp-result-overview" class="rfp-result-section-body">
+                            <div class="rfp-result-kpi-grid" id="rfp-result-kpis"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Scope Section -->
+                    <div class="rfp-result-section">
+                        <div class="rfp-result-section-header" onclick="toggleRfpResultSection('scope')">
+                            <span>📋 Project Scope</span>
+                            <span class="rfp-section-toggle">▼</span>
+                        </div>
+                        <div id="rfp-result-scope" class="rfp-result-section-body">
+                            <div id="rfp-result-scope-text" class="rfp-result-text"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quantities Section -->
+                    <div class="rfp-result-section">
+                        <div class="rfp-result-section-header" onclick="toggleRfpResultSection('quantities')">
+                            <span>📐 Key Quantities</span>
+                            <span class="rfp-section-toggle">▼</span>
+                        </div>
+                        <div id="rfp-result-quantities" class="rfp-result-section-body">
+                            <div id="rfp-result-quantities-grid" class="rfp-result-quantities-grid"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Schedule Section -->
+                    <div class="rfp-result-section">
+                        <div class="rfp-result-section-header" onclick="toggleRfpResultSection('schedule')">
+                            <span>📅 Schedule Information</span>
+                            <span class="rfp-section-toggle">▼</span>
+                        </div>
+                        <div id="rfp-result-schedule" class="rfp-result-section-body">
+                            <div id="rfp-result-schedule-text" class="rfp-result-text"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Disciplines Section -->
+                    <div class="rfp-result-section">
+                        <div class="rfp-result-section-header" onclick="toggleRfpResultSection('disciplines')">
+                            <span>🔧 Discipline Scopes</span>
+                            <span class="rfp-section-toggle">▼</span>
+                        </div>
+                        <div id="rfp-result-disciplines" class="rfp-result-section-body">
+                            <div id="rfp-result-disciplines-list" class="rfp-result-disciplines-list"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Risks Section -->
+                    <div class="rfp-result-section">
+                        <div class="rfp-result-section-header" onclick="toggleRfpResultSection('risks')">
+                            <span>⚠️ Identified Risks</span>
+                            <span class="rfp-section-toggle">▼</span>
+                        </div>
+                        <div id="rfp-result-risks" class="rfp-result-section-body">
+                            <div id="rfp-result-risks-list" class="rfp-result-risks-list"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Project Info Section -->
+                    <div class="rfp-result-section">
+                        <div class="rfp-result-section-header" onclick="toggleRfpResultSection('project-info')">
+                            <span>📋 Project Information & Key Dates</span>
+                            <span class="rfp-section-toggle">▼</span>
+                        </div>
+                        <div id="rfp-result-project-info" class="rfp-result-section-body">
+                            <div class="rfp-result-text empty">No project info extracted.</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Commercial Terms Section -->
+                    <div class="rfp-result-section">
+                        <div class="rfp-result-section-header" onclick="toggleRfpResultSection('commercial-terms')">
+                            <span>⚖️ Commercial Terms</span>
+                            <span class="rfp-section-toggle">▼</span>
+                        </div>
+                        <div id="rfp-result-commercial-terms" class="rfp-result-section-body">
+                            <div class="rfp-result-text empty">No commercial terms extracted.</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Confidence Scores Section -->
+                    <div class="rfp-result-section">
+                        <div class="rfp-result-section-header" onclick="toggleRfpResultSection('confidence')">
+                            <span>📈 AI Confidence Scores</span>
+                            <span class="rfp-section-toggle">▼</span>
+                        </div>
+                        <div id="rfp-result-confidence" class="rfp-result-section-body">
+                            <div id="rfp-result-confidence-grid" class="rfp-result-confidence-grid"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="rfp-result-actions">
+                        <button class="btn btn-sm" onclick="closeRfpResultsPanel(); openRfpWizard();">Re-analyze RFP</button>
+                        <button class="btn btn-sm btn-primary" onclick="closeRfpResultsPanel(); generateDesignFeeBook();">Export PDF Report</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects Manager Modal -->
+    <div id="projects-modal" class="modal-base projects-modal" onclick="if(event.target===this)closeProjectManager()">
+        <div class="modal-base-content">
+            <div class="modal-base-header">
+                <h3>📁 Project Manager</h3>
+                <button class="modal-base-close" onclick="closeProjectManager()">✕</button>
+            </div>
+            
+            <div class="modal-base-body">
+                <!-- Save Current Project -->
+                <div class="projects-section">
+                    <div class="projects-section-title">Save Current Project</div>
+                    <div class="projects-save-form">
+                        <input type="text" id="project-save-name" placeholder="Enter project name...">
+                        <button class="btn btn-primary btn-sm" onclick="saveNamedProject()">SAVE</button>
+                    </div>
+                </div>
+                
+                <!-- Saved Projects List -->
+                <div class="projects-section">
+                    <div class="projects-section-title">Saved Projects</div>
+                    <div id="projects-list" class="projects-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Compare Projects -->
+                <div id="compare-section" class="projects-section hidden">
+                    <div class="projects-section-title">Compare Selected Projects</div>
+                    <div id="compare-view" class="compare-view">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recovery Modal -->
+    <div id="recovery-modal" class="modal-base recovery-modal" onclick="if(event.target===this)dismissRecovery()">
+        <div class="modal-base-content">
+            <h3>💾 Recover Previous Session?</h3>
+            <p>We found unsaved work from a previous session. Would you like to restore it?</p>
+            <div class="recovery-preview" id="recovery-preview">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="recovery-modal-actions">
+                <button class="btn btn-danger" onclick="discardRecovery()">Start Fresh</button>
+                <button class="btn btn-primary" onclick="restoreRecovery()">Restore Session</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Autosave Indicator -->
+    <div id="autosave-indicator" class="autosave-indicator">
+        <span id="autosave-icon">●</span>
+        <span id="autosave-text">Saved</span>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="chat-api-modal" class="modal-base chat-api-modal" onclick="if(event.target===this)hideApiKeyModal()">
+        <div class="modal-base-content">
+            <h3>🔑 OpenAI API Key Required</h3>
+            <p>Enter your OpenAI API key to enable the AI assistant. Your key is stored locally in your browser and never sent anywhere except OpenAI.</p>
+            <input 
+                type="password" 
+                id="api-key-input" 
+                placeholder="sk-..." 
+                onkeydown="if(event.key==='Enter')saveApiKey()"
+            >
+            <div class="chat-api-modal-actions">
+                <button class="btn" onclick="hideApiKeyModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveApiKey()">Save Key</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vite Entry Point -->
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

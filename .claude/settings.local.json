@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npx vite:*)",
+      "Bash(cmd.exe /c \"npm run dev\")",
+      "Bash(timeout 60 npm run build:*)",
+      "Bash(start cmd /k \"npm run dev\")",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd collapse functionality for Cost Calculation Parameters section\n\nFEATURES:\n- Cost Calculation Parameters section now has a collapse/expand button\n- Click the header or arrow icon to minimize/maximize the section\n- Arrow icon rotates when collapsed \\(▼ → ▶\\)\n- Matches the existing MH Estimation Parameters collapse behavior\n\nUI UPDATES:\n- Added param-header wrapper with collapse button to Cost Parameters\n- Added param-content wrapper for collapsible content\n- Added toggleCostParams\\(\\) function with collapse logic\n- Exported toggleCostParams to window for HTML onclick handler\n\nFIXES:\n- Removed handleWallMetricChange export \\(function was already deleted\\)\n- Both parameter sections now have consistent collapse UX\n\nUSAGE:\n- Click on \"🟢 COST CALCULATION PARAMETERS\" header to collapse/expand\n- Click the arrow button \\(▼/▶\\) to toggle\n- Section remembers expanded/collapsed state during session\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}

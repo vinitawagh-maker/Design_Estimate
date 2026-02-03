@@ -2209,6 +2209,30 @@ ${reasoning}`;
                     }
                 }
 
+                // Load account codes from Summary file for Wall projects
+                const accountCodeMap = {};
+                if (activeBenchmarkDataset === 'border-wall') {
+                    try {
+                        const summaryPath = './data/benchmarking/Wall/JSON Wall/Summary_-MH.json';
+                        const summaryResponse = await fetch(summaryPath);
+                        if (summaryResponse.ok) {
+                            const summaryData = await summaryResponse.json();
+                            if (summaryData.rows && Array.isArray(summaryData.rows)) {
+                                summaryData.rows.forEach(row => {
+                                    const discName = row.Discipline?.value;
+                                    const accountCode = row['Account Codes']?.value;
+                                    if (discName && accountCode) {
+                                        accountCodeMap[discName.toLowerCase()] = accountCode;
+                                    }
+                                });
+                            }
+                            console.log('Loaded account codes from Summary:', accountCodeMap);
+                        }
+                    } catch (error) {
+                        console.warn('Failed to load Summary_-MH.json for account codes:', error);
+                    }
+                }
+
                 // Transform the loaded data to match the expected format
                 // For Wall format: each file can contain multiple disciplines
                 // For standard format: each file maps to one discipline ID
@@ -2240,6 +2264,20 @@ ${reasoning}`;
                             // Calculate statistical rates
                             const rateStats = BenchmarkStats.calculateRateStats(transformedProjects);
 
+                            // Look up account code from Summary file
+                            const baseDisciplineLower = discData.discipline.toLowerCase();
+                            let accountCode = accountCodeMap[baseDisciplineLower] || discData.account_code || '—';
+
+                            // Try alternative matching for partial names
+                            if (accountCode === '—') {
+                                for (const [key, value] of Object.entries(accountCodeMap)) {
+                                    if (baseDisciplineLower.includes(key) || key.includes(baseDisciplineLower)) {
+                                        accountCode = value;
+                                        break;
+                                    }
+                                }
+                            }
+
                             loadedData[disciplineId] = {
                                 projects: transformedProjects,
                                 defaultRate: rateStats.mean,
@@ -2247,7 +2285,7 @@ ${reasoning}`;
                                 rateStats: rateStats,
                                 discipline: discData.discipline,
                                 displayName: discData.displayName,
-                                account_code: discData.account_code,
+                                account_code: accountCode,
                                 eqty_metric: discData.eqty_metric
                             };
                         }
