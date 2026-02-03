@@ -1801,8 +1801,10 @@ let projectData = {
             
             const benchmarks = getBenchmarkDataSync(discId);
             if (!benchmarks || !benchmarks.projects) return;
-            
-            const config = DISCIPLINE_CONFIG[discId];
+
+            const config = DISCIPLINE_CONFIG[discId] || {
+                unit: benchmarks.eqty_metric?.uom || 'EA'
+            };
             const allProjects = benchmarks.projects;
             const selectedProjects = allProjects.filter(p => p.applicable);
             
@@ -2263,6 +2265,12 @@ ${reasoning}`;
                         }
 
                         for (const discData of disciplinesFromFile) {
+                            // Skip Design Directs disciplines for Wall Projects
+                            if (discData.discipline && discData.discipline.toLowerCase().includes('design directs')) {
+                                console.log(`🔷 Skipping Design Directs discipline: ${discData.discipline}`);
+                                continue;
+                            }
+
                             const projects = discData.projects || [];
                             const disciplineId = discData.id;
 
@@ -3310,7 +3318,10 @@ ${reasoning}`;
 
                     const rateElem = document.getElementById(`unified-rate-${discId}`);
                     if (rateElem) {
-                        rateElem.textContent = formatRate(result.rate, DISCIPLINE_CONFIG[discId].unit);
+                        const config = DISCIPLINE_CONFIG[discId];
+                        const benchmarks = getBenchmarkDataSync(discId);
+                        const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
+                        rateElem.textContent = formatRate(result.rate, unit);
                     }
 
                     // Recalculate costs
@@ -3547,6 +3558,7 @@ ${reasoning}`;
             const qtyInput = document.getElementById(`mh-qty-${discId}`);
             const config = DISCIPLINE_CONFIG[discId];
             const benchmarks = getBenchmarkDataSync(discId);
+            const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
 
             if (state.active) {
                 row.classList.remove('discipline-row-inactive');
@@ -3564,16 +3576,16 @@ ${reasoning}`;
             const allProjectsRate = allProjects.length > 0 ? BenchmarkStats.calculateRateStats(allProjects).mean : 0;
             const rateAllEl = document.getElementById(`mh-rate-all-${discId}`);
             if (rateAllEl) {
-                rateAllEl.textContent = formatRate(allProjectsRate, config.unit);
-                rateAllEl.title = buildAllProjectsRateTooltip(discId, allProjectsRate, allProjects.length, config.unit);
+                rateAllEl.textContent = formatRate(allProjectsRate, unit);
+                rateAllEl.title = buildAllProjectsRateTooltip(discId, allProjectsRate, allProjects.length, unit);
             }
 
             // Update "Selected Projects" rate column
             const applicableProjects = getApplicableProjects(discId);
             const selectedRateEl = document.getElementById(`mh-rate-${discId}`);
             if (selectedRateEl) {
-                selectedRateEl.textContent = formatRate(state.rate, config.unit);
-                selectedRateEl.title = buildSelectedRateTooltip(discId, state.rate, applicableProjects.length, config.unit, state.rateStats);
+                selectedRateEl.textContent = formatRate(state.rate, unit);
+                selectedRateEl.title = buildSelectedRateTooltip(discId, state.rate, applicableProjects.length, unit, state.rateStats);
             }
 
             // Update quantity input tooltip with RFP reasoning if available
@@ -3664,19 +3676,25 @@ ${reasoning}`;
          */
         function updateMHQuantity(discId) {
             const input = document.getElementById(`mh-qty-${discId}`);
+            if (!input) return;
+
             const value = parseFloat(input.value.replace(/[,$]/g, '')) || 0;
             const state = mhEstimateState.disciplines[discId];
+            if (!state) return;
+
             const config = DISCIPLINE_CONFIG[discId];
-            
+            const benchmarks = getBenchmarkDataSync(discId);
+            const calculationType = config?.calculationType || (benchmarks ? 'benchmark' : null);
+
             state.quantity = value;
-            
+
             // Format input with commas
             if (value > 0) {
                 input.value = value.toLocaleString('en-US');
             }
-            
+
             // Calculate MH based on discipline type
-            if (config.calculationType === 'percentage' && discId === 'miscStructures') {
+            if (calculationType === 'percentage' && discId === 'miscStructures') {
                 // Misc Structures needs roadway + drainage + traffic MH
                 const rdwyMH = mhEstimateState.disciplines.roadway?.mh || 0;
                 const drnMH = mhEstimateState.disciplines.drainage?.mh || 0;
@@ -3684,12 +3702,12 @@ ${reasoning}`;
                 const result = calculateMiscStructuresMH(rdwyMH, drnMH, trfMH);
                 state.mh = result.mh;
                 state.rate = result.rate;
-            } else if (config.calculationType === 'benchmark') {
+            } else if (calculationType === 'benchmark') {
                 const result = estimateMH(discId, value);
                 state.mh = result.mh;
                 state.rate = result.rate;
             }
-            
+
             updateMHRowDisplay(discId, state);
             recalculateTotalMH();
         }
@@ -4090,15 +4108,25 @@ ${reasoning}`;
          */
         function toggleBenchmarkSection(discId) {
             const section = document.getElementById(`benchmark-projects-${discId}`);
+            if (!section) return;
+
             const header = section.previousElementSibling;
+            if (!header) return;
+
             const arrow = header.querySelector('span:first-child');
-            
+            if (!arrow) return;
+
+            // Get discipline name from config or benchmarks
+            const config = DISCIPLINE_CONFIG[discId];
+            const benchmarks = getBenchmarkDataSync(discId);
+            const disciplineName = config?.name || benchmarks?.displayName || benchmarks?.discipline || discId;
+
             if (section.classList.contains('hidden')) {
                 section.classList.remove('hidden');
-                arrow.textContent = `▼ ${DISCIPLINE_CONFIG[discId].name}`;
+                arrow.textContent = `▼ ${disciplineName}`;
             } else {
                 section.classList.add('hidden');
-                arrow.textContent = `▶ ${DISCIPLINE_CONFIG[discId].name}`;
+                arrow.textContent = `▶ ${disciplineName}`;
             }
         }
 
@@ -4145,10 +4173,13 @@ ${reasoning}`;
             for (const [discId, state] of Object.entries(mhEstimateState.disciplines)) {
                 if (state.active && state.quantity > 0) {
                     const config = DISCIPLINE_CONFIG[discId];
+                    const benchmarks = getBenchmarkDataSync(discId);
 
-                    if (config.calculationType === 'benchmark') {
+                    // For Wall disciplines, config may not exist - use benchmarks data
+                    const calculationType = config?.calculationType || (benchmarks ? 'benchmark' : null);
+
+                    if (calculationType === 'benchmark') {
                         const applicableProjects = getApplicableProjects(discId);
-                        const benchmarks = getBenchmarkDataSync(discId);
                         const rate = applicableProjects.length > 0 ? calculateWeightedRate(applicableProjects) : benchmarks?.customRate || 0;
 
                         state.rate = rate;
@@ -4172,7 +4203,8 @@ ${reasoning}`;
                             unifiedMhElem.textContent = formatMH(state.mh);
                         }
                         if (unifiedRateElem) {
-                            unifiedRateElem.textContent = formatRate(rate, config.unit);
+                            const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
+                            unifiedRateElem.textContent = formatRate(rate, unit);
                         }
 
                         // Recalculate costs for unified table
@@ -4374,7 +4406,9 @@ ${reasoning}`;
                 const rateElem = document.getElementById(`unified-rate-${discId}`);
                 if (rateElem && state.rate) {
                     const config = DISCIPLINE_CONFIG[discId];
-                    rateElem.textContent = formatRate(state.rate, config.unit);
+                    const benchmarks = getBenchmarkDataSync(discId);
+                    const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
+                    rateElem.textContent = formatRate(state.rate, unit);
                 }
             }
 
@@ -4488,9 +4522,13 @@ ${reasoning}`;
          */
         function updateUnifiedQuantity(discId) {
             const qtyInput = document.getElementById(`unified-qty-${discId}`);
+            if (!qtyInput) return;
+
             const quantity = parseFloat(qtyInput.value.replace(/,/g, '')) || 0;
 
             const state = mhEstimateState.disciplines[discId];
+            if (!state) return;
+
             state.quantity = quantity;
 
             // Use existing estimateMH function
@@ -4499,10 +4537,18 @@ ${reasoning}`;
             state.rate = result.rate;
 
             // Update MH display
-            document.getElementById(`unified-mh-${discId}`).textContent = formatMH(result.mh);
-            document.getElementById(`unified-rate-${discId}`).textContent =
-                formatRate(result.rate, DISCIPLINE_CONFIG[discId].unit);
+            const mhElem = document.getElementById(`unified-mh-${discId}`);
+            if (mhElem) {
+                mhElem.textContent = formatMH(result.mh);
+            }
 
+            const rateElem = document.getElementById(`unified-rate-${discId}`);
+            if (rateElem) {
+                const config = DISCIPLINE_CONFIG[discId];
+                const benchmarks = getBenchmarkDataSync(discId);
+                const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
+                rateElem.textContent = formatRate(result.rate, unit);
+            }
 
             // Format quantity input with commas
             qtyInput.value = quantity.toLocaleString('en-US');
@@ -4521,11 +4567,16 @@ ${reasoning}`;
          */
         function updateUnifiedL4(discId) {
             const l4Input = document.getElementById(`unified-l4-${discId}`);
+            if (!l4Input) return;
+
             const value = parseFloat(l4Input.value);
             // Allow 0 - only use default if NaN/empty
             const l4Pct = isNaN(value) ? 60 : Math.max(0, Math.min(100, value));
 
-            mhEstimateState.disciplines[discId].l4Percentage = l4Pct;
+            const state = mhEstimateState.disciplines[discId];
+            if (!state) return;
+
+            state.l4Percentage = l4Pct;
 
             // Update complexity breakdown display
             updateComplexityBreakdown(discId);
@@ -4611,10 +4662,22 @@ ${reasoning}`;
          */
         function recalculateUnifiedCosts(discId) {
             const state = mhEstimateState.disciplines[discId];
+            if (!state) return; // Skip if no state
+
             const config = DISCIPLINE_CONFIG[discId];
+            const benchmarks = getBenchmarkDataSync(discId);
+
+            // For Wall disciplines, config may not exist
+            if (!config && !benchmarks) {
+                console.warn(`No config or benchmarks for discipline: ${discId}`);
+                return;
+            }
+
+            // Get discipline name from config or benchmarks
+            const disciplineName = config?.name || benchmarks?.displayName || benchmarks?.discipline || discId;
 
             // Get discipline-specific resources
-            const resources = getDisciplineResources(config.name);
+            const resources = getDisciplineResources(disciplineName);
 
             // Calculate weighted hourly rate based on L4%
             // Allow 0% (all junior) - only use default if undefined
@@ -4624,9 +4687,9 @@ ${reasoning}`;
             const weightedRate = (resources.lowRate * lowPct) + (resources.highRate * highPct);
 
             // Get global parameters
-            const burdenRate = parseFloat(document.getElementById('unified-burden').value) || 66;
-            const gnaRate = parseFloat(document.getElementById('unified-gna').value) || 104;
-            const contingencyRate = parseFloat(document.getElementById('unified-contingency').value) || 5;
+            const burdenRate = parseFloat(document.getElementById('unified-burden')?.value) || 66;
+            const gnaRate = parseFloat(document.getElementById('unified-gna')?.value) || 104;
+            const contingencyRate = parseFloat(document.getElementById('unified-contingency')?.value) || 5;
 
             // Calculate costs using weighted rate
             const rawLabor = state.mh * weightedRate;
@@ -4641,20 +4704,37 @@ ${reasoning}`;
             state.totalCost = totalCosts; // Keep as totalCost for backward compatibility
             state.weightedRate = weightedRate;
 
-            // Update display with weighted rate and resource codes
+            // Update display with weighted rate and resource codes (only if elements exist)
             const rateDisplay = `$${weightedRate.toFixed(2)}<br><span style="font-size: 8px; color: #666;">${Math.round(lowPct * 100)}% ${resources.lowCode} + ${Math.round(highPct * 100)}% ${resources.highCode}</span>`;
-            document.getElementById(`unified-hourly-rate-${discId}`).innerHTML = rateDisplay;
+            const hourlyRateElem = document.getElementById(`unified-hourly-rate-${discId}`);
+            if (hourlyRateElem) {
+                hourlyRateElem.innerHTML = rateDisplay;
+            }
 
-            document.getElementById(`unified-raw-labor-${discId}`).textContent =
-                '$' + Math.round(rawLabor).toLocaleString('en-US');
-            document.getElementById(`unified-burden-${discId}`).textContent =
-                '$' + Math.round(burdenCost).toLocaleString('en-US');
-            document.getElementById(`unified-total-labor-${discId}`).textContent =
-                '$' + Math.round(totalLabor).toLocaleString('en-US');
-            document.getElementById(`unified-expenses-${discId}`).textContent =
-                '$' + Math.round(expenses).toLocaleString('en-US');
-            document.getElementById(`unified-total-costs-${discId}`).textContent =
-                '$' + Math.round(totalCosts).toLocaleString('en-US');
+            const rawLaborElem = document.getElementById(`unified-raw-labor-${discId}`);
+            if (rawLaborElem) {
+                rawLaborElem.textContent = '$' + Math.round(rawLabor).toLocaleString('en-US');
+            }
+
+            const burdenElem = document.getElementById(`unified-burden-${discId}`);
+            if (burdenElem) {
+                burdenElem.textContent = '$' + Math.round(burdenCost).toLocaleString('en-US');
+            }
+
+            const totalLaborElem = document.getElementById(`unified-total-labor-${discId}`);
+            if (totalLaborElem) {
+                totalLaborElem.textContent = '$' + Math.round(totalLabor).toLocaleString('en-US');
+            }
+
+            const expensesElem = document.getElementById(`unified-expenses-${discId}`);
+            if (expensesElem) {
+                expensesElem.textContent = '$' + Math.round(expenses).toLocaleString('en-US');
+            }
+
+            const totalCostsElem = document.getElementById(`unified-total-costs-${discId}`);
+            if (totalCostsElem) {
+                totalCostsElem.textContent = '$' + Math.round(totalCosts).toLocaleString('en-US');
+            }
         }
 
         /**
@@ -5655,7 +5735,8 @@ ${reasoning}`;
                         const rateElem = document.getElementById(`unified-rate-${discId}`);
                         if (rateElem) {
                             const config = DISCIPLINE_CONFIG[discId];
-                            rateElem.textContent = formatRate(calculatedRate, config.unit);
+                            const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
+                            rateElem.textContent = formatRate(calculatedRate, unit);
                         }
                     }
                 }

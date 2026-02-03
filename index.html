@@ -29,10 +29,10 @@
             <div class="terminal-body">
                 <!-- Progress Bar -->
                 <div id="progress-section" class="progress-bar">
-                    <div class="progress-step active" onclick="goToStep(4)">1:BENCHMARKING</div>
-                    <div class="progress-step" onclick="goToStep(1)">2:PHASES</div>
-                    <div class="progress-step" onclick="goToStep(2)">3:DISCIPLINES</div>
-                    <div class="progress-step" onclick="goToStep(3)">4:PACKAGES</div>
+                    <div class="progress-step active" onclick="goToStep(4)">1:BENCHMARKING*</div>
+                    <div class="progress-step" onclick="goToStep(1)">2:PHASES*</div>
+                    <div class="progress-step" onclick="goToStep(2)">3:DISCIPLINES*</div>
+                    <div class="progress-step" onclick="goToStep(3)">4:PACKAGES*</div>
                     <div class="progress-step" onclick="goToStep(5)">5:CLAIMING</div>
                     <div class="progress-step" onclick="goToStep(6)">6:SCHEDULE</div>
                     <div class="progress-step" onclick="goToStep(7)">7:PROJECT</div>
@@ -218,11 +218,11 @@
                                             <input type="text" id="calc-est-construction-cost" placeholder="0" inputmode="numeric">
                                         </div>
                                         <div class="input-group">
-                                            <label>NTP Date</label>
+                                            <label>NTP Date*</label>
                                             <input type="date" id="calc-ntp-date" placeholder="MM/DD/YYYY">
                                         </div>
                                         <div class="input-group">
-                                            <label>Design Duration (Months)</label>
+                                            <label>Design Duration (Months)*</label>
                                             <input type="number" id="calc-design-duration" placeholder="0" min="0" step="1">
                                         </div>
                                     </div>
@@ -756,7 +756,7 @@
                                     <input type="text" id="mh-project-cost" placeholder="500,000,000" inputmode="numeric" onchange="updateMHProjectCost()">
                                 </div>
                                 <div class="mh-input-group">
-                                    <label>Design Duration (Months)</label>
+                                    <label>Design Duration (Months)*</label>
                                     <input type="number" id="mh-design-duration" value="20" min="6" max="48" onchange="updateMHInputs()">
                                 </div>
                                 <div class="mh-input-group">
@@ -831,7 +831,7 @@
                                 <div class="cost-extension-body">
                                     <div class="cost-extension-inputs">
                                         <div class="cost-extension-group">
-                                            <label for="cost-est-construction">Estimated Construction Cost (District)</label>
+                                            <label for="cost-est-construction">Estimated Construction Cost (District)*</label>
                                             <input type="text" id="cost-est-construction" placeholder="0" inputmode="numeric">
                                         </div>
                                         <div class="cost-extension-group">
@@ -1513,7 +1513,7 @@
                                         <input type="text" id="rfp-qty-projectCostM" value="0" />
                                     </div>
                                     <div class="rfp-project-info-item">
-                                        <label>Design Duration (Months)</label>
+                                        <label>Design Duration (Months)*</label>
                                         <input type="number" id="rfp-qty-designDurationMonths" value="20" min="6" max="60" />
                                     </div>
                                     <div class="rfp-project-info-item">
