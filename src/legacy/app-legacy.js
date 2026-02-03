@@ -2214,22 +2214,34 @@ ${reasoning}`;
                 if (activeBenchmarkDataset === 'border-wall') {
                     try {
                         const summaryPath = '/data/benchmarking/Wall/JSON Wall/Summary_-MH.json';
+                        console.log('🔷 Loading Summary file from:', summaryPath);
                         const summaryResponse = await fetch(summaryPath);
+                        console.log('🔷 Summary response ok:', summaryResponse.ok, 'status:', summaryResponse.status);
+
                         if (summaryResponse.ok) {
                             const summaryData = await summaryResponse.json();
-                            if (summaryData.rows && Array.isArray(summaryData.rows)) {
-                                summaryData.rows.forEach(row => {
-                                    const discName = row.Discipline?.value;
-                                    const accountCode = row['Account Codes']?.value;
-                                    if (discName && accountCode) {
-                                        accountCodeMap[discName.toLowerCase()] = accountCode;
+                            console.log('🔷 Summary data loaded:', summaryData ? 'YES' : 'NO', 'rows:', summaryData?.rows?.length);
+
+                            if (summaryData && summaryData.rows && Array.isArray(summaryData.rows)) {
+                                summaryData.rows.forEach((row, idx) => {
+                                    try {
+                                        if (!row) return;
+                                        const discName = row.Discipline?.value;
+                                        const accountCode = row['Account Codes']?.value;
+                                        if (discName && accountCode) {
+                                            accountCodeMap[discName.toLowerCase()] = accountCode;
+                                        }
+                                    } catch (rowError) {
+                                        console.warn(`Error processing Summary row ${idx}:`, rowError);
                                     }
                                 });
                             }
-                            console.log('Loaded account codes from Summary:', accountCodeMap);
+                            console.log('🔷 Loaded account codes from Summary:', accountCodeMap);
+                        } else {
+                            console.warn('Failed to load Summary file, status:', summaryResponse.status);
                         }
                     } catch (error) {
-                        console.warn('Failed to load Summary_-MH.json for account codes:', error);
+                        console.error('❌ Failed to load Summary_-MH.json for account codes:', error);
                     }
                 }
 
@@ -2273,29 +2285,35 @@ ${reasoning}`;
                             const rateStats = BenchmarkStats.calculateRateStats(transformedProjects);
 
                             // Look up account code from Summary file
-                            const baseDisciplineLower = discData.discipline.toLowerCase();
-                            let accountCode = accountCodeMap[baseDisciplineLower] || discData.account_code || '—';
+                            let accountCode = '—';
+                            try {
+                                const baseDisciplineLower = (discData.discipline || '').toLowerCase();
+                                accountCode = accountCodeMap[baseDisciplineLower] || discData.account_code || '—';
 
-                            // Try alternative matching for partial names
-                            if (accountCode === '—') {
-                                for (const [key, value] of Object.entries(accountCodeMap)) {
-                                    if (baseDisciplineLower.includes(key) || key.includes(baseDisciplineLower)) {
-                                        accountCode = value;
-                                        break;
+                                // Try alternative matching for partial names
+                                if (accountCode === '—' && accountCodeMap) {
+                                    for (const [key, value] of Object.entries(accountCodeMap)) {
+                                        if (baseDisciplineLower && (baseDisciplineLower.includes(key) || key.includes(baseDisciplineLower))) {
+                                            accountCode = value;
+                                            break;
+                                        }
                                     }
                                 }
-                            }
 
-                            // Split account codes for disciplines with multiple codes (Alignment vs Barrier)
-                            // Format: "code1, code2" where code1 = Alignment, code2 = Barrier
-                            if (accountCode && accountCode.includes(',')) {
-                                const codes = accountCode.split(',').map(c => c.trim());
-                                const metricName = discData.eqty_metric?.name || '';
-                                if (metricName.toLowerCase().includes('alignment')) {
-                                    accountCode = codes[0]; // First code for Alignment
-                                } else if (metricName.toLowerCase().includes('barrier')) {
-                                    accountCode = codes[1] || codes[0]; // Second code for Barrier, fallback to first
+                                // Split account codes for disciplines with multiple codes (Alignment vs Barrier)
+                                // Format: "code1, code2" where code1 = Alignment, code2 = Barrier
+                                if (accountCode && typeof accountCode === 'string' && accountCode.includes(',')) {
+                                    const codes = accountCode.split(',').map(c => c.trim());
+                                    const metricName = discData.eqty_metric?.name || '';
+                                    if (metricName.toLowerCase().includes('alignment')) {
+                                        accountCode = codes[0]; // First code for Alignment
+                                    } else if (metricName.toLowerCase().includes('barrier')) {
+                                        accountCode = codes[1] || codes[0]; // Second code for Barrier, fallback to first
+                                    }
                                 }
+                            } catch (accountCodeError) {
+                                console.warn('Error processing account code for discipline:', discData.discipline, accountCodeError);
+                                accountCode = '—';
                             }
 
                             loadedData[disciplineId] = {
