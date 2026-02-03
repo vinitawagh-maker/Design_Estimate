@@ -1512,10 +1512,10 @@ let projectData = {
         // Wall Projects mapping (separate JSON files in Wall subdirectory)
         const BENCHMARK_FILE_MAPPING_BORDER_WALL = {
             drainage: './data/benchmarking/Wall/JSON Wall/Drainage.json',
-            mot: './data/benchmarking/Wall/JSON Wall/Direcrs.json',
+            mot: './data/benchmarking/Wall/JSON Wall/Directs.json',
             roadway: './data/benchmarking/Wall/JSON Wall/roadway.json',
-            traffic: './data/benchmarking/Wall/JSON Wall/Direcrs.json',
-            utilities: './data/benchmarking/Wall/JSON Wall/Direcrs.json',
+            traffic: './data/benchmarking/Wall/JSON Wall/Directs.json',
+            utilities: './data/benchmarking/Wall/JSON Wall/Directs.json',
             retainingWalls: './data/benchmarking/Wall/JSON Wall/Structures.json',
             bridgesPCGirder: './data/benchmarking/Wall/JSON Wall/Structures.json',
             bridgesSteel: './data/benchmarking/Wall/JSON Wall/Structures.json',
