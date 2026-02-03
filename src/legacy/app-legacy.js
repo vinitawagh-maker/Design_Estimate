@@ -4222,6 +4222,13 @@ ${reasoning}`;
 
             tbody.innerHTML = '';
 
+            // Ensure DIRECTS section is expanded when reinitializing
+            tbody.classList.remove('hidden');
+            const directsIcon = document.getElementById('directs-toggle-icon');
+            if (directsIcon) {
+                directsIcon.textContent = '▼';
+            }
+
             // Determine which disciplines to display based on active dataset
             let disciplineOrder;
             if (activeBenchmarkDataset === 'border-wall') {
