@@ -2278,6 +2278,18 @@ ${reasoning}`;
                                 }
                             }
 
+                            // Split account codes for disciplines with multiple codes (Alignment vs Barrier)
+                            // Format: "code1, code2" where code1 = Alignment, code2 = Barrier
+                            if (accountCode && accountCode.includes(',')) {
+                                const codes = accountCode.split(',').map(c => c.trim());
+                                const metricName = discData.eqty_metric?.name || '';
+                                if (metricName.toLowerCase().includes('alignment')) {
+                                    accountCode = codes[0]; // First code for Alignment
+                                } else if (metricName.toLowerCase().includes('barrier')) {
+                                    accountCode = codes[1] || codes[0]; // Second code for Barrier, fallback to first
+                                }
+                            }
+
                             loadedData[disciplineId] = {
                                 projects: transformedProjects,
                                 defaultRate: rateStats.mean,
@@ -4331,7 +4343,26 @@ ${reasoning}`;
             const selectedRate = state.rate || allProjectsRate;
 
             // Use data from JSON when available, fallback to config
-            const disciplineName = (benchmarks && benchmarks.discipline) ? benchmarks.discipline : config.name;
+            // For Wall projects, use displayName which includes metric type (Alignment/Barrier)
+            let disciplineName = (benchmarks && benchmarks.displayName)
+                ? benchmarks.displayName
+                : (benchmarks && benchmarks.discipline)
+                    ? benchmarks.discipline
+                    : config.name;
+
+            // Add visual badge for Wall projects to distinguish Alignment vs Barrier
+            let metricBadge = '';
+            if (activeBenchmarkDataset === 'border-wall' && benchmarks && benchmarks.displayName) {
+                if (benchmarks.displayName.toLowerCase().includes('alignment length')) {
+                    metricBadge = '<span style="display: inline-block; background: #1976d2; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; margin-left: 6px; font-weight: bold;">ALIGNMENT</span>';
+                } else if (benchmarks.displayName.toLowerCase().includes('barrier length')) {
+                    metricBadge = '<span style="display: inline-block; background: #d32f2f; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; margin-left: 6px; font-weight: bold;">BARRIER</span>';
+                }
+                // Use just the base discipline name + badge for cleaner display
+                const baseName = benchmarks.discipline || disciplineName.split(' - ')[0];
+                disciplineName = baseName + metricBadge;
+            }
+
             const accountCode = (benchmarks && benchmarks.account_code) ? benchmarks.account_code : (config.accountCode || '—');
             const unit = (benchmarks && benchmarks.eqty_metric && benchmarks.eqty_metric.uom) ? benchmarks.eqty_metric.uom : config.unit;
 
