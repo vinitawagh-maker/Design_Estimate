@@ -5535,25 +5535,26 @@ ${reasoning}`;
         }
 
         function toggleKieLaborSection() {
-            const directsHeader = document.getElementById('unified-estimate-tbody-header');
+            // Get the DIRECTS summary row (child of directsHeader tbody)
+            const directsSummaryRow = document.querySelector('#unified-estimate-tbody-header tr.summary-row');
             const directsTbody = document.getElementById('unified-estimate-tbody');
             const indirectsSection = document.getElementById('unified-indirects-section');
             const indirectsTbody = document.getElementById('unified-indirects-tbody');
             const icon = document.getElementById('kie-labor-toggle-icon');
 
             if (icon) {
-                const isCollapsed = directsHeader && directsHeader.classList.contains('hidden');
+                const isCollapsed = directsTbody && directsTbody.classList.contains('hidden');
 
                 if (isCollapsed) {
                     // Expand - show DIRECTS and INDIRECTS rows
-                    if (directsHeader) directsHeader.classList.remove('hidden');
+                    if (directsSummaryRow) directsSummaryRow.classList.remove('hidden');
                     if (directsTbody) directsTbody.classList.remove('hidden');
                     if (indirectsSection) indirectsSection.classList.remove('hidden');
                     if (indirectsTbody) indirectsTbody.classList.remove('hidden');
                     icon.textContent = '▼';
                 } else {
-                    // Collapse - hide all subsections, show only KIE LABOR total
-                    if (directsHeader) directsHeader.classList.add('hidden');
+                    // Collapse - hide all subsections, keep only KIE LABOR header visible
+                    if (directsSummaryRow) directsSummaryRow.classList.add('hidden');
                     if (directsTbody) directsTbody.classList.add('hidden');
                     if (indirectsSection) indirectsSection.classList.add('hidden');
                     if (indirectsTbody) indirectsTbody.classList.add('hidden');
@@ -5574,10 +5575,11 @@ ${reasoning}`;
             const icon = document.getElementById('subs-section-toggle-icon');
 
             if (icon) {
-                const isCollapsed = subsHeader && subsHeader.classList.contains('hidden');
+                const isCollapsed = lsSubsTbody && lsSubsTbody.classList.contains('hidden');
 
+                // Only toggle detail rows, keep main SUBS header visible
                 const allElements = [
-                    subsHeader, lsSubsTbody,
+                    lsSubsTbody,
                     surveySection, surveyTbody,
                     subsurfaceSection, subsurfaceTbody,
                     laborSubsSection, laborSubsTbody
@@ -5590,7 +5592,7 @@ ${reasoning}`;
                     });
                     icon.textContent = '▼';
                 } else {
-                    // Collapse - hide all 4 subsection rows, show only SUBS total
+                    // Collapse - hide all 4 subsection rows, keep SUBS header visible
                     allElements.forEach(elem => {
                         if (elem) elem.classList.add('hidden');
                     });
@@ -5607,9 +5609,10 @@ ${reasoning}`;
             const icon = document.getElementById('expenses-section-toggle-icon');
 
             if (icon) {
-                const isCollapsed = expensesHeader && expensesHeader.classList.contains('hidden');
+                const isCollapsed = ipcTbody && ipcTbody.classList.contains('hidden');
 
-                const allElements = [expensesHeader, ipcTbody, odcsSection, odcsTbody];
+                // Only toggle detail rows, keep main EXPENSES header visible
+                const allElements = [ipcTbody, odcsSection, odcsTbody];
 
                 if (isCollapsed) {
                     // Expand - show IPC and ODC'S rows
@@ -5618,7 +5621,7 @@ ${reasoning}`;
                     });
                     icon.textContent = '▼';
                 } else {
-                    // Collapse - hide IPC and ODC'S rows, show only EXPENSES total
+                    // Collapse - hide IPC and ODC'S rows, keep EXPENSES header visible
                     allElements.forEach(elem => {
                         if (elem) elem.classList.add('hidden');
                     });
