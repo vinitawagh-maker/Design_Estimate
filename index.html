@@ -179,9 +179,17 @@
                                 </div>
 
                                 <!-- Cost Parameters (Green) -->
-                                <div class="input-section cost-params">
-                                    <h4>🟢 COST CALCULATION PARAMETERS</h4>
-                                    <p style="font-size: 8px; margin: -6px 0 6px 0; color: #2e7d32; line-height: 1.2;">Hourly rates auto-calculated per discipline based on complexity % and resource codes</p>
+                                <div class="input-section cost-params" id="cost-params-section">
+                                    <div class="param-header" onclick="toggleCostParams()">
+                                        <div>
+                                            <h4>🟢 COST CALCULATION PARAMETERS</h4>
+                                            <p style="font-size: 8px; margin: -6px 0 6px 0; color: #2e7d32; line-height: 1.2;">Hourly rates auto-calculated per discipline based on complexity % and resource codes</p>
+                                        </div>
+                                        <button class="param-toggle-btn" id="cost-params-toggle" title="Expand/Collapse">
+                                            <span id="cost-params-icon">▼</span>
+                                        </button>
+                                    </div>
+                                    <div class="param-content" id="cost-params-content">
                                     <div class="input-row" style="grid-template-columns: repeat(3, 1fr);">
                                         <div class="input-group">
                                             <label>Burden Rate (%)</label>
@@ -218,6 +226,7 @@
                                             <input type="number" id="calc-design-duration" placeholder="0" min="0" step="1">
                                         </div>
                                     </div>
+                                    </div><!-- /param-content -->
                                 </div>
                             </div><!-- /unified-input-content -->
                         </div><!-- /unified-input-panel -->

@@ -5208,6 +5208,25 @@ ${reasoning}`;
         }
 
         /**
+         * Toggle Cost Calculation Parameters section
+         */
+        function toggleCostParams() {
+            const section = document.getElementById('cost-params-section');
+            const icon = document.getElementById('cost-params-icon');
+            const content = document.getElementById('cost-params-content');
+
+            if (section.classList.contains('collapsed')) {
+                // Expand
+                section.classList.remove('collapsed');
+                icon.textContent = '▼';
+            } else {
+                // Collapse
+                section.classList.add('collapsed');
+                icon.textContent = '▶';
+            }
+        }
+
+        /**
          * Toggle Unified Input Panel visibility
          */
         function toggleUnifiedPanel() {
@@ -5409,8 +5428,8 @@ ${reasoning}`;
         window.applyGlobalComplexity = applyGlobalComplexity;
         window.calculateMHEstimates = calculateMHEstimates;
         window.handleBenchmarkDatasetChange = handleBenchmarkDatasetChange;
-        window.handleWallMetricChange = handleWallMetricChange;
         window.toggleMHParams = toggleMHParams;
+        window.toggleCostParams = toggleCostParams;
         window.toggleUnifiedPanel = toggleUnifiedPanel;
         window.toggleUnifiedTable = toggleUnifiedTable;
         window.toggleDirectsRows = toggleDirectsRows;
