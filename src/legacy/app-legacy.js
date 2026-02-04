@@ -5173,7 +5173,7 @@ ${reasoning}`;
                 recalcTimer = setTimeout(recalculateAllUnifiedCosts, 300);
             };
 
-            const costParams = ['unified-burden', 'unified-gna', 'unified-contingency', 'unified-ipc-fee', 'unified-escalation', 'calc-est-construction-cost'];
+            const costParams = ['unified-burden', 'unified-gna', 'unified-contingency', 'unified-ipc-fee', 'unified-escalation', 'calc-est-construction-cost', 'calc-kie-multiplier', 'calc-sub-multiplier'];
             costParams.forEach(id => {
                 const elem = document.getElementById(id);
                 if (elem) {
