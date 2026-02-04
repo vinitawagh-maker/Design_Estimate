@@ -5180,6 +5180,25 @@ ${reasoning}`;
                     elem.addEventListener('input', debouncedRecalc);
                 }
             });
+
+            // Add accounting format to Est. Construction Cost field
+            const estCostInput = document.getElementById('calc-est-construction-cost');
+            if (estCostInput) {
+                estCostInput.addEventListener('blur', function() {
+                    const cleanValue = this.value.replace(/[^0-9.]/g, '');
+                    if (cleanValue) {
+                        const numValue = parseFloat(cleanValue);
+                        if (!isNaN(numValue)) {
+                            this.value = Math.round(numValue).toLocaleString('en-US');
+                        }
+                    }
+                });
+
+                estCostInput.addEventListener('focus', function() {
+                    // Remove commas when user focuses for easier editing
+                    this.value = this.value.replace(/,/g, '');
+                });
+            }
         }
 
         /**
