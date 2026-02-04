@@ -680,7 +680,7 @@
 
 .unified-input-grid {
     display: grid;
-    grid-template-columns: 9fr 5fr; /* MH section (9fr) + Cost section (5fr) to match table column ratio */
+    grid-template-columns: 5fr 9fr; /* MH section (5fr) + Cost section (9fr) - Cost section expanded */
     gap: 10px;
     padding: 10px;
     align-items: stretch;
