@@ -2050,21 +2050,21 @@ let projectData = {
         // Mapping of discipline IDs to their JSON benchmark files
         // Use relative paths (no leading /) to work with GitHub Pages subdirectory deployment
         const BENCHMARK_FILE_MAPPING_ALL_OTHER = {
-            drainage: './data/benchmarking/All other projects/benchmarking-drainage.json',
-            mot: './data/benchmarking/All other projects/benchmarking-mot.json',
-            roadway: './data/benchmarking/All other projects/benchmarking-roadway.json',
-            traffic: './data/benchmarking/All other projects/benchmarking-traffic.json',
-            utilities: './data/benchmarking/All other projects/benchmarking-utilities.json',
-            retainingWalls: './data/benchmarking/All other projects/benchmarking-retainingwalls.json',
-            bridgesPCGirder: './data/benchmarking/All other projects/benchmarking-bridges.json',
-            bridgesSteel: './data/benchmarking/All other projects/benchmarking-bridges.json',
-            bridgesRehab: './data/benchmarking/All other projects/benchmarking-bridges.json',
-            miscStructures: './data/benchmarking/All other projects/benchmarking-miscstructures.json',
-            geotechnical: './data/benchmarking/All other projects/benchmarking-geotechnical.json',
-            systems: './data/benchmarking/All other projects/benchmarking-systems.json',
-            track: './data/benchmarking/All other projects/benchmarking-track.json',
-            esdc: './data/benchmarking/All other projects/benchmarking-esdc.json',
-            tscd: './data/benchmarking/All other projects/benchmarking-tsdc.json'
+            drainage: './data/benchmarking/All Other Projects/benchmarking-drainage.json',
+            mot: './data/benchmarking/All Other Projects/benchmarking-mot.json',
+            roadway: './data/benchmarking/All Other Projects/benchmarking-roadway.json',
+            traffic: './data/benchmarking/All Other Projects/benchmarking-traffic.json',
+            utilities: './data/benchmarking/All Other Projects/benchmarking-utilities.json',
+            retainingWalls: './data/benchmarking/All Other Projects/benchmarking-retainingwalls.json',
+            bridgesPCGirder: './data/benchmarking/All Other Projects/benchmarking-bridges.json',
+            bridgesSteel: './data/benchmarking/All Other Projects/benchmarking-bridges.json',
+            bridgesRehab: './data/benchmarking/All Other Projects/benchmarking-bridges.json',
+            miscStructures: './data/benchmarking/All Other Projects/benchmarking-miscstructures.json',
+            geotechnical: './data/benchmarking/All Other Projects/benchmarking-geotechnical.json',
+            systems: './data/benchmarking/All Other Projects/benchmarking-systems.json',
+            track: './data/benchmarking/All Other Projects/benchmarking-track.json',
+            esdc: './data/benchmarking/All Other Projects/benchmarking-esdc.json',
+            tscd: './data/benchmarking/All Other Projects/benchmarking-tsdc.json'
         };
 
         // Wall Projects mapping (separate JSON files in Wall subdirectory)
@@ -2344,6 +2344,87 @@ let projectData = {
                 return `y = ${aStr}x^${bStr}`;
             }
         };
+
+        /**
+         * Build (quantity, rate) points for benchmark curve — same logic as chart
+         */
+        function buildRatePoints(projects, isRevenueBased) {
+            if (isRevenueBased) return [];
+            const toRatePoint = (p) => {
+                const q = p.quantity || 0;
+                const mh = p.mh || 0;
+                const rate = (p.rate != null && p.rate !== '') ? Number(p.rate) : (q > 0 ? mh / q : 0);
+                return { x: q, y: rate };
+            };
+            return projects.map(toRatePoint).filter(p => p.x > 0 && p.y >= 0);
+        }
+
+        /**
+         * Interpolate rate at quantity from points (log-log linear interpolation).
+         * Used when power regression is invalid; ensures rate varies with quantity.
+         */
+        function interpolateRateAtQuantity(points, quantity) {
+            if (!points.length || quantity <= 0) return null;
+            const sorted = points.filter(p => p.x > 0 && p.y > 0).sort((a, b) => a.x - b.x);
+            if (sorted.length === 0) return null;
+            const logQ = Math.log(quantity);
+            if (quantity <= sorted[0].x) return sorted[0].y;
+            if (quantity >= sorted[sorted.length - 1].x) return sorted[sorted.length - 1].y;
+            let i = 0;
+            while (i + 1 < sorted.length && sorted[i + 1].x < quantity) i++;
+            const a = sorted[i], b = sorted[i + 1];
+            const logR = Math.log(a.y) + (Math.log(b.y) - Math.log(a.y)) * (logQ - Math.log(a.x)) / (Math.log(b.x) - Math.log(a.x));
+            const rate = Math.exp(logR);
+            return typeof rate === 'number' && Number.isFinite(rate) && rate > 0 ? rate : null;
+        }
+
+        /**
+         * Get rate from All Projects regression curve at a given quantity (y = a*x^b).
+         * Falls back to log-log interpolation if regression invalid so rate always varies with quantity.
+         * @param {string} discId - Discipline ID
+         * @param {number} quantity - Quantity (x)
+         * @returns {number|null} Rate at that quantity or null if no data
+         */
+        function getRateFromAllProjectsCurve(discId, quantity) {
+            const q = Number(quantity);
+            if (!(q > 0)) return null;
+            const benchmarks = getBenchmarkDataSync(discId);
+            if (!benchmarks || !benchmarks.projects || benchmarks.projects.length < 2) return null;
+            if (discId === 'esdc' || discId === 'tscd') return null;
+            const allPoints = buildRatePoints(benchmarks.projects, false);
+            if (allPoints.length < 2) return null;
+            const reg = PowerRegression.calculate(allPoints);
+            if (reg.valid) {
+                const rate = reg.a * Math.pow(q, reg.b);
+                if (typeof rate === 'number' && !Number.isNaN(rate) && Number.isFinite(rate) && rate > 0) return rate;
+            }
+            return interpolateRateAtQuantity(allPoints, q);
+        }
+
+        /**
+         * Get rate from Selected Projects regression curve at a given quantity (y = a*x^b).
+         * Falls back to log-log interpolation if regression invalid.
+         * @param {string} discId - Discipline ID
+         * @param {number} quantity - Quantity (x)
+         * @returns {number|null} Rate at that quantity or null if no data
+         */
+        function getRateFromSelectedProjectsCurve(discId, quantity) {
+            const q = Number(quantity);
+            if (!(q > 0)) return null;
+            const benchmarks = getBenchmarkDataSync(discId);
+            if (!benchmarks || !benchmarks.projects) return null;
+            if (discId === 'esdc' || discId === 'tscd') return null;
+            const selectedProjects = benchmarks.projects.filter(p => p.applicable);
+            if (selectedProjects.length < 2) return null;
+            const selectedPoints = buildRatePoints(selectedProjects, false);
+            if (selectedPoints.length < 2) return null;
+            const reg = PowerRegression.calculate(selectedPoints);
+            if (reg.valid) {
+                const rate = reg.a * Math.pow(q, reg.b);
+                if (typeof rate === 'number' && !Number.isNaN(rate) && Number.isFinite(rate) && rate > 0) return rate;
+            }
+            return interpolateRateAtQuantity(selectedPoints, q);
+        }
         
         // Benchmark chart instance (for the modal)
         let benchmarkChart = null;
@@ -2372,7 +2453,7 @@ let projectData = {
             // Update chart title dynamically
             const chartTitle = document.getElementById('benchmark-chart-title');
             if (chartTitle) {
-                chartTitle.textContent = isRevenueBased ? '📈 Revenue vs Project Cost' : '📈 MH vs Quantity Regression';
+                chartTitle.textContent = isRevenueBased ? '📈 Revenue vs Project Cost' : '📈 Rate vs Quantity';
             }
             
             // Convert to chart data points
@@ -2394,18 +2475,15 @@ let projectData = {
                     rate: p.production_pct || 0
                 })).filter(p => p.x > 0 && p.y > 0);
             } else {
-                // Standard: MH vs quantity
-                allPoints = allProjects.map(p => ({ 
-                    x: p.quantity || p.mh, 
-                    y: p.mh || 0,
-                    name: p.name 
-                })).filter(p => p.x > 0 && p.y > 0);
-                
-                selectedPoints = selectedProjects.map(p => ({ 
-                    x: p.quantity || p.mh, 
-                    y: p.mh || 0,
-                    name: p.name 
-                })).filter(p => p.x > 0 && p.y > 0);
+                // Standard: plot Quantity (x) vs Rate (y) — same Rate values shown in the project list
+                const toRatePoint = (p) => {
+                    const q = p.quantity || 0;
+                    const mh = p.mh || 0;
+                    const rate = (p.rate != null && p.rate !== '') ? Number(p.rate) : (q > 0 ? mh / q : 0);
+                    return { x: q, y: rate, name: p.name, mh, quantity: q };
+                };
+                allPoints = allProjects.map(toRatePoint).filter(p => p.x > 0 && p.y >= 0);
+                selectedPoints = selectedProjects.map(toRatePoint).filter(p => p.x > 0 && p.y >= 0);
             }
             
             // Calculate regressions
@@ -2505,7 +2583,7 @@ let projectData = {
             
             // Y-axis max: use the highest curve value with buffer
             const allYValues = [...allPoints.map(p => p.y), ...allCurvePoints.map(p => p.y)];
-            const yMax = Math.max(...allYValues) * 1.1 || 10000;
+            const yMax = Math.max(...allYValues) * 1.1 || (isRevenueBased ? 10000 : 100);
             
             const chartConfig = {
                 type: 'scatter',
@@ -2532,10 +2610,14 @@ let projectData = {
                                         }
                                         return `$${point.y.toLocaleString()}K Revenue`;
                                     } else {
+                                        const rate = point.y;
+                                        const mh = point.mh != null ? point.mh : (point.x * rate);
+                                        const q = point.x;
+                                        const unit = config?.unit || 'units';
                                         if (point.name) {
-                                            return `${point.name}: ${point.y.toLocaleString()} MH @ ${point.x.toLocaleString()} ${config?.unit || 'units'}`;
+                                            return `${point.name}: ${rate.toFixed(2)} MH/${unit} (${Number(mh).toLocaleString()} MH @ ${Number(q).toLocaleString()} ${unit})`;
                                         }
-                                        return `${point.y.toLocaleString()} MH`;
+                                        return `${rate.toFixed(2)} MH/${unit}`;
                                     }
                                 }
                             }
@@ -2568,13 +2650,13 @@ let projectData = {
                             max: yMax,
                             title: {
                                 display: true,
-                                text: isRevenueBased ? 'Revenue (K$)' : 'Forecast Man-hours',
+                                text: isRevenueBased ? 'Revenue (K$)' : `Rate (MH/${config?.unit || 'unit'})`,
                                 color: '#888'
                             },
                             ticks: {
                                 color: '#888',
                                 callback: function(value) {
-                                    return isRevenueBased ? '$' + value.toLocaleString() + 'K' : value.toLocaleString();
+                                    return isRevenueBased ? '$' + value.toLocaleString() + 'K' : Number(value).toFixed(3);
                                 }
                             },
                             grid: {
@@ -3590,17 +3672,36 @@ ${reasoning}`;
             // Get projects to use for rate calculation
             const projects = selectedProjects || getApplicableProjects(disciplineId);
             
-            // Calculate rate and statistical bounds
-            let rate, bounds = null;
+            // For benchmark (non-revenue) disciplines with quantity: use regression curves
+            const isRevenueBased = (disciplineId === 'esdc' || disciplineId === 'tscd');
+            const useCurves = !isRevenueBased && quantity > 0 && (config.calculationType === 'benchmark' || benchmarks.projects?.length >= 2);
             
-            if (useStatistical && projects.length >= 2) {
-                // Use statistical analysis with avg ± std_dev
+            let rate, allRate, bounds = null;
+            
+            if (useCurves) {
+                const selectedCurveRate = getRateFromSelectedProjectsCurve(disciplineId, quantity);
+                const allCurveRate = getRateFromAllProjectsCurve(disciplineId, quantity);
+                if (selectedCurveRate != null && selectedCurveRate > 0) {
+                    rate = selectedCurveRate;
+                    allRate = (allCurveRate != null && allCurveRate > 0) ? allCurveRate : (BenchmarkStats.calculateRateStats(benchmarks.projects).mean);
+                } else {
+                    allRate = (allCurveRate != null && allCurveRate > 0) ? allCurveRate : (BenchmarkStats.calculateRateStats(benchmarks.projects).mean);
+                    if (useStatistical && projects.length >= 2) {
+                        const rateStats = BenchmarkStats.calculateRateStats(projects);
+                        rate = rateStats.mean;
+                        bounds = BenchmarkStats.estimateWithBounds(quantity, rateStats);
+                    } else {
+                        rate = projects.length > 0 ? calculateWeightedRate(projects) : benchmarks.customRate || benchmarks.defaultRate;
+                    }
+                }
+            } else if (useStatistical && projects.length >= 2) {
                 const rateStats = BenchmarkStats.calculateRateStats(projects);
                 rate = rateStats.mean;
+                allRate = benchmarks.projects?.length > 0 ? BenchmarkStats.calculateRateStats(benchmarks.projects).mean : rate;
                 bounds = BenchmarkStats.estimateWithBounds(quantity, rateStats);
             } else {
-                // Fall back to weighted rate calculation
                 rate = projects.length > 0 ? calculateWeightedRate(projects) : benchmarks.customRate || benchmarks.defaultRate;
+                allRate = benchmarks.projects?.length > 0 ? BenchmarkStats.calculateRateStats(benchmarks.projects).mean : rate;
             }
             
             // Calculate MH
@@ -3609,6 +3710,7 @@ ${reasoning}`;
             return {
                 mh: Math.round(mh),
                 rate: rate,
+                allRate: allRate,
                 projects: projects,
                 quantity: quantity,
                 unit: config.unit,
@@ -4052,7 +4154,8 @@ ${reasoning}`;
                         <div class="qty-input-wrapper">
                             <input type="text" class="qty-input" id="mh-qty-${discId}"
                                    value="0" inputmode="numeric"
-                                   onchange="updateMHQuantity('${discId}')">
+                                   onchange="updateMHQuantity('${discId}')"
+                                   onblur="updateMHQuantity('${discId}')">
                             <span class="qty-source-indicator" id="mh-qty-source-${discId}" style="display: none;" title=""></span>
                         </div>
                     </td>
@@ -4225,9 +4328,17 @@ ${reasoning}`;
 
             qtyInput.value = state.quantity.toLocaleString('en-US');
 
-            // Update "All Projects" rate column
+            // Update "All Projects" rate column: always use All curve at current quantity when qty > 0
             const allProjects = benchmarks ? benchmarks.projects || [] : [];
-            const allProjectsRate = allProjects.length > 0 ? BenchmarkStats.calculateRateStats(allProjects).mean : 0;
+            const allProjectsMean = allProjects.length > 0 ? BenchmarkStats.calculateRateStats(allProjects).mean : 0;
+            const qtyNum = Number(state.quantity) || 0;
+            let allProjectsRate = allProjectsMean;
+            if (discId !== 'esdc' && discId !== 'tscd' && qtyNum > 0 && allProjects.length >= 2) {
+                const curveRate = getRateFromAllProjectsCurve(discId, qtyNum);
+                if (curveRate != null) allProjectsRate = curveRate;
+            } else if (state.allRate != null && qtyNum > 0) {
+                allProjectsRate = state.allRate;
+            }
             const rateAllEl = document.getElementById(`mh-rate-all-${discId}`);
             if (rateAllEl) {
                 // ESDC/TSCD: Show rate as percentage of project cost
@@ -4236,7 +4347,8 @@ ${reasoning}`;
                     rateAllEl.title = `Avg: ${allProjectsRate.toFixed(2)}% of Project Cost (${allProjects.length} projects)`;
                 } else {
                     rateAllEl.textContent = formatRate(allProjectsRate, unit);
-                    rateAllEl.title = buildAllProjectsRateTooltip(discId, allProjectsRate, allProjects.length, unit);
+                    const curveNote = (state.quantity > 0 && allProjects.length >= 2) ? ' (curve at qty)' : '';
+                    rateAllEl.title = buildAllProjectsRateTooltip(discId, allProjectsRate, allProjects.length, unit) + curveNote;
                 }
             }
 
@@ -4389,6 +4501,20 @@ ${reasoning}`;
                 const result = estimateMH(discId, value);
                 state.mh = result.mh;
                 state.rate = result.rate;
+                if (result.allRate != null) state.allRate = result.allRate;
+                // Force All Rate cell to curve value when quantity > 0 (so it always updates)
+                if (value > 0 && discId !== 'esdc' && discId !== 'tscd' && benchmarks?.projects?.length >= 2) {
+                    const curveRate = getRateFromAllProjectsCurve(discId, value);
+                    if (curveRate != null && curveRate > 0) {
+                        state.allRate = curveRate;
+                        const rateAllEl = document.getElementById(`mh-rate-all-${discId}`);
+                        const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
+                        if (rateAllEl) {
+                            rateAllEl.textContent = formatRate(curveRate, unit);
+                            rateAllEl.title = buildAllProjectsRateTooltip(discId, curveRate, benchmarks.projects.length, unit) + ' (curve at qty)';
+                        }
+                    }
+                }
             }
 
             updateMHRowDisplay(discId, state);
@@ -4716,7 +4842,7 @@ ${reasoning}`;
                         <div class="benchmark-modal-right">
                             <div class="benchmark-chart-container">
                                 <div class="benchmark-chart-header">
-                                    <h4 id="benchmark-chart-title">📈 ${(singleDiscipline === 'esdc' || singleDiscipline === 'tscd') ? 'Revenue vs Project Cost' : 'MH vs Quantity Regression'}</h4>
+                                    <h4 id="benchmark-chart-title">📈 ${(singleDiscipline === 'esdc' || singleDiscipline === 'tscd') ? 'Revenue vs Project Cost' : 'Rate vs Quantity'}</h4>
                                     <div class="benchmark-chart-legend">
                                         <div class="legend-item">
                                             <span class="legend-dot all-projects"></span>
@@ -4874,10 +5000,15 @@ ${reasoning}`;
 
                     if (calculationType === 'benchmark') {
                         const applicableProjects = getApplicableProjects(discId);
-                        const rate = applicableProjects.length > 0 ? calculateWeightedRate(applicableProjects) : benchmarks?.customRate || 0;
+                        const qty = state.quantity;
+                        const selectedCurveRate = getRateFromSelectedProjectsCurve(discId, qty);
+                        const allCurveRate = getRateFromAllProjectsCurve(discId, qty);
+                        const fallbackRate = applicableProjects.length > 0 ? calculateWeightedRate(applicableProjects) : benchmarks?.customRate || 0;
+                        const allMean = benchmarks?.projects?.length > 0 ? BenchmarkStats.calculateRateStats(benchmarks.projects).mean : fallbackRate;
 
-                        state.rate = rate;
-                        state.mh = Math.round(state.quantity * rate);
+                        state.rate = (selectedCurveRate != null && selectedCurveRate > 0) ? selectedCurveRate : fallbackRate;
+                        state.allRate = (allCurveRate != null && allCurveRate > 0) ? allCurveRate : allMean;
+                        state.mh = Math.round(qty * state.rate);
                         state.selectedProjects = applicableProjects;
 
                         // Store statistical bounds if available
@@ -4892,13 +5023,17 @@ ${reasoning}`;
                         // Update unified table row if it exists
                         const unifiedMhElem = document.getElementById(`unified-mh-${discId}`);
                         const unifiedRateElem = document.getElementById(`unified-rate-${discId}`);
+                        const unifiedRateAllElem = document.getElementById(`unified-rate-all-${discId}`);
+                        const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
 
                         if (unifiedMhElem) {
                             unifiedMhElem.textContent = formatMH(state.mh);
                         }
                         if (unifiedRateElem) {
-                            const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
-                            unifiedRateElem.textContent = formatRate(rate, unit);
+                            unifiedRateElem.textContent = formatRate(state.rate, unit);
+                        }
+                        if (unifiedRateAllElem && state.allRate != null) {
+                            unifiedRateAllElem.textContent = formatRate(state.allRate, unit);
                         }
 
                         // Recalculate costs for unified table
@@ -5123,9 +5258,13 @@ ${reasoning}`;
 
             const state = mhEstimateState.disciplines[discId];
             const allProjects = benchmarks ? benchmarks.projects || [] : [];
-            const allProjectsRate = allProjects.length > 0
+            let allProjectsRate = allProjects.length > 0
                 ? BenchmarkStats.calculateRateStats(allProjects).mean
                 : 0;
+            if (discId !== 'esdc' && discId !== 'tscd' && state.quantity > 0 && allProjects.length >= 2) {
+                const curveRate = getRateFromAllProjectsCurve(discId, state.quantity);
+                if (curveRate != null) allProjectsRate = curveRate;
+            }
 
             // Selected rate: use the same as All Rate initially (since all projects are selected by default)
             // This will be updated when user changes selection or enters quantity
@@ -5160,8 +5299,10 @@ ${reasoning}`;
                 <td class="mh-col">${accountCode}</td>
                 <td class="mh-col numeric">
                     <input type="text" class="qty-input" id="unified-qty-${discId}"
-                           value="0" inputmode="numeric"
-                           onchange="updateUnifiedQuantity('${discId}')">
+                           value="${(state.quantity || 0).toLocaleString('en-US')}" inputmode="numeric"
+                           oninput="(function(d){ clearTimeout(window._uqD[d]); window._uqD=window._uqD||{}; window._uqD[d]=setTimeout(function(){ updateUnifiedQuantity(d); }, 350); })('${discId}')"
+                           onchange="updateUnifiedQuantity('${discId}')"
+                           onblur="updateUnifiedQuantity('${discId}')">
                 </td>
                 <td class="mh-col">${unit}</td>
                 <td class="mh-col">
@@ -5218,6 +5359,9 @@ ${reasoning}`;
             return row;
         }
 
+        /** Debounce timers for unified quantity input (so All Rate updates as you type) */
+        const unifiedQtyDebounceTimers = {};
+
         /**
          * Update quantity and recalculate MH
          */
@@ -5225,10 +5369,14 @@ ${reasoning}`;
             const qtyInput = document.getElementById(`unified-qty-${discId}`);
             if (!qtyInput) return;
 
-            const quantity = parseFloat(qtyInput.value.replace(/,/g, '')) || 0;
+            const quantity = parseFloat(String(qtyInput.value).replace(/[,\s]/g, '')) || 0;
 
             const state = mhEstimateState.disciplines[discId];
             if (!state) return;
+
+            const config = DISCIPLINE_CONFIG[discId];
+            const benchmarks = getBenchmarkDataSync(discId);
+            const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
 
             state.quantity = quantity;
 
@@ -5236,6 +5384,23 @@ ${reasoning}`;
             const result = estimateMH(discId, quantity, state.selectedProjects);
             state.mh = result.mh;
             state.rate = result.rate;
+            if (result.allRate != null) state.allRate = result.allRate;
+
+            // All Rate = always from All curve at this quantity when qty > 0 (not the mean)
+            const allRateEl = document.getElementById(`unified-rate-all-${discId}`);
+            if (allRateEl) {
+                if (quantity > 0 && discId !== 'esdc' && discId !== 'tscd' && benchmarks?.projects?.length >= 2) {
+                    const curveRate = getRateFromAllProjectsCurve(discId, quantity);
+                    if (curveRate != null) {
+                        state.allRate = curveRate;
+                        allRateEl.textContent = formatRate(curveRate, unit);
+                    } else {
+                        if (result.allRate != null) allRateEl.textContent = formatRate(result.allRate, unit);
+                    }
+                } else if (result.allRate != null) {
+                    allRateEl.textContent = formatRate(result.allRate, unit);
+                }
+            }
 
             // Update MH display
             const mhElem = document.getElementById(`unified-mh-${discId}`);
@@ -5245,9 +5410,6 @@ ${reasoning}`;
 
             const rateElem = document.getElementById(`unified-rate-${discId}`);
             if (rateElem) {
-                const config = DISCIPLINE_CONFIG[discId];
-                const benchmarks = getBenchmarkDataSync(discId);
-                const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
                 rateElem.textContent = formatRate(result.rate, unit);
             }
 
