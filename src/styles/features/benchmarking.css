@@ -1129,7 +1129,8 @@
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    font-size: 10px;
+    font-size: 11px;
+    font-family: Arial, Helvetica, sans-serif;
     background: #ffffff;
     table-layout: auto; /* Allow columns to size based on content */
 }
@@ -1181,6 +1182,17 @@
     padding: 1px 2px;
     border-bottom: 1px solid #e3f2fd;
     line-height: 1;
+}
+
+/* Discipline rows under DIRECTS - larger font */
+#unified-estimate-tbody tr td {
+    font-size: 12px;
+    padding: 4px 4px;
+}
+
+#unified-estimate-tbody tr td.frozen-col {
+    font-size: 12px;
+    font-weight: 500;
 }
 
 .unified-estimate-table tbody tr:hover td.mh-col {

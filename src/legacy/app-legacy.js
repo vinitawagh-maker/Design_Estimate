@@ -5015,14 +5015,15 @@ ${reasoning}`;
                 disciplineOrder = Object.keys(benchmarkDataCache);
                 console.log('Loading Wall disciplines:', disciplineOrder);
             } else {
-                // All Other Projects: use standard 18 disciplines
+                // All Other Projects: use standard 16 disciplines
+                // ESDC and TSCD are excluded - they have their own separate sections
                 disciplineOrder = [
                     'roadway', 'drainage', 'mot', 'traffic', 'utilities',
                     'retainingWalls', 'noiseWalls',
                     'bridgesPCGirder', 'bridgesSteel', 'bridgesRehab',
                     'miscStructures', 'geotechnical',
                     'systems', 'track', 'environmental',
-                    'digitalDelivery', 'esdc', 'tscd'
+                    'digitalDelivery'
                 ];
             }
 
