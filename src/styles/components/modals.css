@@ -320,3 +320,156 @@
     gap: 8px;
     justify-content: flex-end;
 }
+
+/* Escalation Modal */
+.escalation-modal {
+    z-index: 1005;
+}
+
+.escalation-modal .modal-base-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.escalation-details-btn {
+    background: none;
+    border: 1px solid #5c6bc0;
+    color: #5c6bc0;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.escalation-details-btn:hover {
+    background: #5c6bc0;
+    color: white;
+}
+
+.escalation-formula-section {
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.escalation-formula-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #333;
+}
+
+.formula-explanation {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+.formula-explanation code {
+    background: #e8e8e8;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.escalation-global-settings {
+    margin-top: 12px;
+}
+
+.escalation-global-settings .input-group label {
+    display: block;
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.escalation-global-settings .input-group input {
+    width: 100px;
+    padding: 6px 10px;
+    font-size: 13px;
+}
+
+.escalation-chart-section {
+    margin-bottom: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.escalation-chart-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #ffd700;
+}
+
+.escalation-chart-section canvas {
+    max-height: 220px;
+    width: 100% !important;
+}
+
+.escalation-table-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #333;
+}
+
+.escalation-breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.escalation-breakdown-table th,
+.escalation-breakdown-table td {
+    border: 1px solid #e0e0e0;
+    padding: 8px 10px;
+    text-align: right;
+}
+
+.escalation-breakdown-table th {
+    background: #f0f0f0;
+    font-weight: 600;
+    text-align: center;
+    font-size: 11px;
+}
+
+.escalation-breakdown-table th:first-child,
+.escalation-breakdown-table td:first-child {
+    text-align: left;
+}
+
+.escalation-breakdown-table input[type="number"] {
+    width: 80px;
+    padding: 4px 6px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    text-align: right;
+}
+
+.escalation-breakdown-table input[type="text"] {
+    width: 100px;
+    padding: 4px 6px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    text-align: right;
+}
+
+.escalation-total-row {
+    background: #e8f5e9;
+    font-weight: 600;
+}
+
+.escalation-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e0e0e0;
+}

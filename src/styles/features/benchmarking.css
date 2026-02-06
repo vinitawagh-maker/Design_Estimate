@@ -296,12 +296,14 @@
 .cost-column .calc-group input,
 .cost-column .calc-group select {
     width: 100%;
-    padding: 10px 12px;
+    padding: 4px 6px;
     border: 1px solid var(--color-pastel-green-dark);
-    border-radius: 6px;
+    border-radius: 4px;
     background: #ffffff;
     color: var(--color-text-dark);
-    font-size: 13px;
+    font-size: 11px;
+    height: 26px;
+    box-sizing: border-box;
 }
 
 .cost-column .calc-group input:focus,
@@ -314,14 +316,16 @@
 /* Fee Total Box */
 .calc-total-fee-box {
     margin-top: 16px;
-    padding: 12px 16px;
+    padding: 14px 18px;
     background: #c8e6c9;
-    border: 1px solid #a5d6a7;
+    border: 2px solid #a5d6a7;
     border-radius: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    min-height: 50px;
 }
 
 .calc-total-fee-box .fee-value {
@@ -697,9 +701,41 @@
     border: 1px solid var(--color-pastel-blue-dark);
 }
 
+/* Compact inputs for MH parameters */
+.input-section.mh-params .input-step,
+.input-section.mh-params input,
+.input-section.mh-params select {
+    padding: 3px 6px;
+    font-size: 10px;
+    height: 22px;
+    border-radius: 3px;
+}
+
 .input-section.cost-params {
     background: var(--color-pastel-green);
     border: 1px solid var(--color-pastel-green-dark);
+}
+
+/* Compact inputs for cost parameters */
+.input-section.cost-params .input-group input,
+.input-section.cost-params .input-group select {
+    padding: 3px 6px;
+    font-size: 10px;
+    height: 22px;
+    border-radius: 3px;
+    width: 50%;
+    min-width: 60px;
+}
+
+.input-section.cost-params .input-group label {
+    font-size: 8px;
+    margin-bottom: 2px;
+}
+
+.input-section.cost-params .input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
 .input-section h4 {
@@ -780,29 +816,31 @@
 /* Step-based parameter layout */
 .param-step {
     display: grid;
-    grid-template-columns: 140px 1fr;
-    gap: 8px;
+    grid-template-columns: 120px 1fr;
+    gap: 6px;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
 .param-step-label {
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 600;
     color: #1565c0;
     text-align: right;
-    padding-right: 8px;
+    padding-right: 6px;
 }
 
 .input-step {
     width: 100%;
-    padding: 5px 8px;
+    padding: 3px 6px;
     border: 1px solid #90caf9;
-    border-radius: 4px;
+    border-radius: 3px;
     font-size: 10px;
-    line-height: 1.3;
+    line-height: 1.2;
     background: #ffffff;
     color: var(--color-text-dark);
+    height: 22px;
+    box-sizing: border-box;
 }
 
 .input-step:focus {
@@ -819,15 +857,16 @@
 
 .btn-step {
     width: 100%;
-    padding: 5px 12px;
+    padding: 3px 8px;
     background: linear-gradient(135deg, #64b5f6 0%, #2196f3 100%);
     border: 1px solid #1e88e5;
     color: #ffffff;
-    border-radius: 4px;
-    font-size: 10px;
+    border-radius: 3px;
+    font-size: 9px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
+    height: 22px;
 }
 
 .btn-step:hover {
@@ -838,18 +877,20 @@
 
 .btn-calculate {
     width: 100%;
-    padding: 8px 16px;
+    padding: 12px 20px;
     background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
     border: 2px solid #43a047;
     color: #ffffff;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
-    box-shadow: 0 3px 8px rgba(76, 175, 80, 0.3);
+    box-shadow: 0 3px 10px rgba(76, 175, 80, 0.4);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    height: auto;
+    min-height: 42px;
 }
 
 .btn-calculate:hover {
@@ -866,13 +907,23 @@
 .input-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
+    gap: 4px 8px;
+}
+
+.input-group {
+    margin-bottom: 0;
+}
+
+/* Tighter spacing for advanced parameters */
+.input-section.cost-params .input-row {
+    gap: 2px 6px;
+    margin-bottom: 4px;
 }
 
 .input-group label {
     font-size: 9px;
     font-weight: 600;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
     display: block;
     color: var(--color-text-dark);
 }
@@ -880,11 +931,13 @@
 .input-group input,
 .input-group select {
     width: 100%;
-    padding: 5px 6px;
+    padding: 3px 5px;
     border: 1px solid #ccc;
     border-radius: 3px;
     font-size: 10px;
-    line-height: 1.2;
+    line-height: 1.1;
+    height: 24px;
+    box-sizing: border-box;
 }
 
 /* Unified Table */
@@ -1238,6 +1291,25 @@
     font-weight: 700;
 }
 
+/* Benchmark Button in Section Headers */
+.unified-estimate-table .section-header .benchmark-btn {
+    background: none;
+    border: 1px solid #5c6bc0;
+    color: #5c6bc0;
+    cursor: pointer;
+    font-size: 10px;
+    padding: 1px 4px;
+    margin-left: 6px;
+    border-radius: 3px;
+    transition: all 0.2s;
+    vertical-align: middle;
+}
+
+.unified-estimate-table .section-header .benchmark-btn:hover {
+    background: #5c6bc0;
+    color: white;
+}
+
 /* Indentation Levels */
 .unified-estimate-table .indent-1 {
     padding-left: 20px !important;
@@ -1404,6 +1476,46 @@ tbody.hidden {
 .unified-actions .btn-mh {
     padding: 6px 12px;
     font-size: 10px;
+}
+
+/* Revenue Detail Columns - Hidden by Default */
+.revenue-detail-col {
+    display: none;
+}
+
+.revenue-details-visible .revenue-detail-col {
+    display: table-cell;
+}
+
+/* Clickable Revenue Cell */
+.clickable-revenue {
+    cursor: pointer;
+    background: rgba(76, 175, 80, 0.1) !important;
+    position: relative;
+    padding-right: 18px !important; /* Make room for the arrow */
+}
+
+.clickable-revenue:hover {
+    background: rgba(76, 175, 80, 0.2) !important;
+}
+
+.clickable-revenue::after {
+    content: "▶";
+    font-size: 8px;
+    color: #4CAF50;
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.revenue-details-visible .clickable-revenue::after {
+    content: "▼";
+}
+
+/* Align non-clickable revenue cells with clickable ones */
+.unified-estimate-table td.cost-col.numeric:not(.clickable-revenue):not(.revenue-detail-col) {
+    padding-right: 18px;
 }
 
 /* Responsive */

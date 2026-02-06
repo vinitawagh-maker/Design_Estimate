@@ -583,6 +583,564 @@ let projectData = {
         }
 
         /**
+         * Toggles a field between disabled (greyed out) and enabled (editable)
+         * @param {string} fieldId - The ID of the field to toggle
+         * @param {boolean} enabled - Whether to enable or disable the field
+         */
+        function toggleFieldEdit(fieldId, enabled) {
+            const field = document.getElementById(fieldId);
+            if (!field) return;
+            
+            if (enabled) {
+                field.disabled = false;
+                field.style.backgroundColor = '#ffffff';
+                field.style.color = '#333';
+                field.style.cursor = 'text';
+            } else {
+                field.disabled = true;
+                field.style.backgroundColor = '#e0e0e0';
+                field.style.color = '#666';
+                field.style.cursor = 'not-allowed';
+            }
+        }
+
+        /**
+         * Formats an input field value as accounting format (e.g., $1,234,567.00)
+         * @param {HTMLInputElement} input - The input element to format
+         */
+        function formatAccountingInput(input) {
+            // Remove any non-numeric characters except decimal point
+            let value = input.value.replace(/[^0-9.]/g, '');
+            
+            // Parse as number
+            let numValue = parseFloat(value) || 0;
+            
+            // Format as accounting (US currency with 2 decimal places)
+            input.value = numValue.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            
+            // Trigger the assumed construction cost calculation
+            calculateAssumedConstructionCost();
+        }
+
+        /**
+         * Calculates Assumed Construction Cost = Initial Project Value / (1 + Margin%)
+         */
+        function calculateAssumedConstructionCost() {
+            const initialValueInput = document.getElementById('calc-est-construction-cost');
+            const marginInput = document.getElementById('calc-construction-margin');
+            const assumedCostOutput = document.getElementById('calc-assumed-construction-cost');
+            
+            if (!initialValueInput || !marginInput || !assumedCostOutput) return;
+            
+            // Parse the initial value (remove currency formatting)
+            let initialValue = parseFloat(initialValueInput.value.replace(/[^0-9.]/g, '')) || 0;
+            let marginPercent = parseFloat(marginInput.value) || 15;
+            
+            // Calculate assumed construction cost: Initial Value / (1 + margin%)
+            let divisor = 1 + (marginPercent / 100);
+            let assumedCost = initialValue / divisor;
+            
+            // Format and display
+            assumedCostOutput.value = assumedCost.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        /**
+         * Toggles the visibility of revenue detail columns (Raw Labor, Burden, G&A, Margin)
+         */
+        function toggleRevenueDetails() {
+            const table = document.getElementById('unified-estimate-table');
+            if (table) {
+                table.classList.toggle('revenue-details-visible');
+            }
+        }
+
+        /**
+         * Calculates and displays the Margin % based on KIE Multiplier, Burden Rate, and G&A Rate
+         * Margin % = KIE Multiplier - 1 (raw labor) - Burden Rate - G&A Rate
+         */
+        function calculateMarginPercent() {
+            const kieMultiplierInput = document.getElementById('calc-kie-multiplier');
+            const burdenRateInput = document.getElementById('unified-burden');
+            const gnaRateInput = document.getElementById('unified-gna');
+            const marginPercentOutput = document.getElementById('calc-margin-percent');
+            
+            if (!kieMultiplierInput || !marginPercentOutput) return;
+            
+            const kieMultiplier = parseFloat(kieMultiplierInput.value) || 2.85;
+            const burdenRate = (parseFloat(burdenRateInput?.value) || 66) / 100; // Convert 66 to 0.66
+            const gnaRate = (parseFloat(gnaRateInput?.value) || 104) / 100; // Convert 104 to 1.04
+            
+            // Margin % = KIE Multiplier - Raw Labor (1) - Burden Rate - G&A Rate
+            const marginPercent = kieMultiplier - 1 - burdenRate - gnaRate;
+            
+            // Display as percentage
+            marginPercentOutput.value = (marginPercent * 100).toFixed(2) + '%';
+            
+            // Store margin percent for use in calculations
+            window.calculatedMarginPercent = marginPercent;
+        }
+
+        // ============================================
+        // ESCALATION MODAL FUNCTIONS
+        // ============================================
+        
+        // Store escalation data for the modal
+        let escalationData = {
+            baseRate: 5,
+            years: 3,
+            totalHours: 0,
+            totalCost: 0,
+            yearlyBreakdown: [],
+            manualOverrides: {}
+        };
+        
+        let escalationChart = null;
+
+        /**
+         * Opens the escalation breakdown modal
+         */
+        function openEscalationModal() {
+            const modal = document.getElementById('escalation-modal');
+            if (!modal) return;
+            
+            // Get current values from the main form
+            const escalationRateInput = document.getElementById('unified-escalation');
+            const durationInput = document.getElementById('calc-design-duration');
+            
+            escalationData.baseRate = parseFloat(escalationRateInput?.value) || 5;
+            escalationData.years = Math.ceil((parseFloat(durationInput?.value) || 12) / 12);
+            if (escalationData.years < 1) escalationData.years = 1;
+            if (escalationData.years > 10) escalationData.years = 10;
+            
+            // Get total hours from the table
+            const totalMHElement = document.getElementById('kie-labor-total-mh');
+            escalationData.totalHours = parseFloat(totalMHElement?.textContent?.replace(/,/g, '')) || 0;
+            
+            // Update modal inputs
+            document.getElementById('escalation-base-rate').value = escalationData.baseRate;
+            document.getElementById('escalation-duration-years').value = escalationData.years;
+            
+            // Set NTP date to today if not already set
+            const ntpDateInput = document.getElementById('escalation-ntp-date');
+            if (ntpDateInput && !ntpDateInput.value) {
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+                ntpDateInput.value = todayStr;
+            }
+            
+            // Calculate and render
+            recalculateEscalation();
+            
+            modal.classList.add('open');
+        }
+
+        /**
+         * Closes the escalation modal
+         */
+        function closeEscalationModal() {
+            const modal = document.getElementById('escalation-modal');
+            if (modal) modal.classList.remove('open');
+        }
+
+        /**
+         * Recalculates escalation based on current inputs
+         */
+        function recalculateEscalation() {
+            const baseRate = parseFloat(document.getElementById('escalation-base-rate')?.value) || 5;
+            const years = parseInt(document.getElementById('escalation-duration-years')?.value) || 3;
+            
+            escalationData.baseRate = baseRate;
+            escalationData.years = years;
+            
+            // Get total hours and base cost
+            const totalMHElement = document.getElementById('kie-labor-total-mh');
+            const totalHours = parseFloat(totalMHElement?.textContent?.replace(/,/g, '')) || 0;
+            escalationData.totalHours = totalHours;
+            
+            // Get base cost (Total Revenue from KIE LABOR + SUBS)
+            const kieLaborCosts = parseFloat(document.getElementById('kie-labor-total-revenue')?.textContent?.replace(/[$,]/g, '')) || 0;
+            const subsCosts = parseFloat(document.getElementById('subs-section-total-revenue')?.textContent?.replace(/[$,]/g, '')) || 0;
+            const baseCost = kieLaborCosts + subsCosts;
+            
+            // Determine if Year 1 should have escalation based on NTP date
+            // Financial escalation year starts March 1 each year
+            // Year 1 should never have escalation UNLESS NTP is after March following today's date
+            const ntpDateInput = document.getElementById('escalation-ntp-date');
+            const ntpDate = ntpDateInput?.value ? new Date(ntpDateInput.value) : null;
+            
+            // Calculate the March 1 following today's date
+            const today = new Date();
+            let marchFollowing = new Date(today.getFullYear(), 2, 1); // March 1 of current year
+            if (today >= marchFollowing) {
+                // If we're past March 1 this year, use next year's March 1
+                marchFollowing = new Date(today.getFullYear() + 1, 2, 1);
+            }
+            
+            // Year 1 gets escalation only if NTP is after the March following today
+            const year1HasEscalation = ntpDate && ntpDate > marchFollowing;
+            
+            // Calculate bell curve distribution for hours
+            const hourDistribution = calculateBellCurveDistribution(years);
+            
+            // Calculate yearly breakdown
+            escalationData.yearlyBreakdown = [];
+            let totalEscalation = 0;
+            
+            for (let i = 0; i < years; i++) {
+                const year = i + 1;
+                const yearHours = totalHours * hourDistribution[i];
+                const hourPercent = hourDistribution[i] * 100;
+                const yearBaseCost = baseCost * hourDistribution[i];
+                
+                // Year 1: No escalation unless NTP is after March following today
+                // Year 2+: Escalation starts from Year 1's perspective
+                // e.g., Year 2 = 1 year of escalation, Year 3 = 2 years compounded, etc.
+                let compoundedFactor = 0;
+                let effectiveYears = 0;
+                
+                if (year === 1) {
+                    if (year1HasEscalation) {
+                        // NTP is after March following today, so Year 1 gets 1 year of escalation
+                        effectiveYears = 1;
+                        compoundedFactor = Math.pow(1 + (baseRate / 100), 1) - 1;
+                    } else {
+                        // Year 1 has no escalation (baseline year)
+                        effectiveYears = 0;
+                        compoundedFactor = 0;
+                    }
+                } else {
+                    // Year 2+ gets escalation based on years from baseline
+                    // If Year 1 has no escalation: Year 2 = 1 yr, Year 3 = 2 yrs, etc.
+                    // If Year 1 has escalation: Year 2 = 2 yrs, Year 3 = 3 yrs, etc.
+                    effectiveYears = year1HasEscalation ? year : (year - 1);
+                    compoundedFactor = Math.pow(1 + (baseRate / 100), effectiveYears) - 1;
+                }
+                
+                // Check for manual override
+                const manualOverride = escalationData.manualOverrides[year];
+                let escalationAmount;
+                
+                if (manualOverride !== undefined && manualOverride !== null && manualOverride !== '') {
+                    escalationAmount = parseFloat(manualOverride) || 0;
+                } else {
+                    escalationAmount = yearBaseCost * compoundedFactor;
+                }
+                
+                totalEscalation += escalationAmount;
+                
+                escalationData.yearlyBreakdown.push({
+                    year: year,
+                    hours: yearHours,
+                    hourPercent: hourPercent,
+                    rate: baseRate,
+                    effectiveYears: effectiveYears,
+                    compoundedFactor: compoundedFactor,
+                    escalationAmount: escalationAmount,
+                    manualOverride: manualOverride
+                });
+            }
+            
+            escalationData.totalCost = totalEscalation;
+            
+            // Render the table
+            renderEscalationTable();
+            
+            // Render the bell curve chart
+            renderEscalationChart();
+        }
+
+        /**
+         * Calculates bell curve distribution for hours across years
+         */
+        function calculateBellCurveDistribution(years) {
+            if (years === 1) return [1];
+            
+            const distribution = [];
+            const mean = (years - 1) / 2;
+            const stdDev = years / 4;
+            
+            let total = 0;
+            for (let i = 0; i < years; i++) {
+                // Normal distribution formula
+                const x = i;
+                const value = Math.exp(-Math.pow(x - mean, 2) / (2 * Math.pow(stdDev, 2)));
+                distribution.push(value);
+                total += value;
+            }
+            
+            // Normalize to sum to 1
+            return distribution.map(v => v / total);
+        }
+
+        /**
+         * Renders the escalation breakdown table
+         */
+        function renderEscalationTable() {
+            const tbody = document.getElementById('escalation-breakdown-tbody');
+            if (!tbody) return;
+            
+            let html = '';
+            let totalHours = 0;
+            let totalAmount = 0;
+            
+            escalationData.yearlyBreakdown.forEach(row => {
+                totalHours += row.hours;
+                totalAmount += row.escalationAmount;
+                
+                const manualValue = row.manualOverride !== undefined && row.manualOverride !== null && row.manualOverride !== '' 
+                    ? parseFloat(row.manualOverride).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : '';
+                
+                // Highlight Year 1 with no escalation
+                const isNoEscalation = row.effectiveYears === 0;
+                const rowStyle = isNoEscalation ? 'style="background-color: rgba(76, 175, 80, 0.1);"' : '';
+                const escalationNote = isNoEscalation ? '<span style="font-size: 9px; color: #4CAF50;"> (Baseline)</span>' : '';
+                const effectiveYearsDisplay = row.effectiveYears === 0 ? 'N/A' : row.effectiveYears + ' yr' + (row.effectiveYears > 1 ? 's' : '');
+                
+                html += `
+                    <tr ${rowStyle}>
+                        <td>Year ${row.year}${escalationNote}</td>
+                        <td>${Math.round(row.hours).toLocaleString()}</td>
+                        <td>${row.hourPercent.toFixed(1)}%</td>
+                        <td>${effectiveYearsDisplay}</td>
+                        <td>
+                            <input type="number" value="${row.rate}" min="0" max="20" step="0.1" 
+                                   onchange="updateYearEscalationRate(${row.year}, this.value)" ${isNoEscalation ? 'disabled style="background: #f0f0f0;"' : ''}>
+                        </td>
+                        <td>${(row.compoundedFactor * 100).toFixed(2)}%</td>
+                        <td>$${Math.round(row.escalationAmount).toLocaleString()}</td>
+                        <td>
+                            <input type="text" value="${manualValue}" placeholder="${isNoEscalation ? 'N/A' : 'Auto'}" 
+                                   onchange="updateYearManualOverride(${row.year}, this.value)" ${isNoEscalation ? 'disabled style="background: #f0f0f0;"' : ''}>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+            
+            // Update totals
+            document.getElementById('escalation-modal-total-hours').textContent = Math.round(totalHours).toLocaleString();
+            document.getElementById('escalation-modal-total-amount').textContent = '$' + Math.round(totalAmount).toLocaleString();
+        }
+
+        /**
+         * Updates the escalation rate for a specific year
+         */
+        function updateYearEscalationRate(year, value) {
+            // For now, just recalculate with the base rate
+            // Could be extended to support per-year rates
+            recalculateEscalation();
+        }
+
+        /**
+         * Updates the manual override for a specific year
+         */
+        function updateYearManualOverride(year, value) {
+            if (value === '' || value === null) {
+                delete escalationData.manualOverrides[year];
+            } else {
+                // Remove formatting and store as number
+                escalationData.manualOverrides[year] = parseFloat(value.replace(/[$,]/g, '')) || 0;
+            }
+            recalculateEscalation();
+        }
+
+        /**
+         * Renders the bell curve chart
+         */
+        function renderEscalationChart() {
+            const canvas = document.getElementById('escalation-bell-curve-chart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart
+            if (escalationChart) {
+                escalationChart.destroy();
+            }
+            
+            const labels = escalationData.yearlyBreakdown.map(row => `Year ${row.year}`);
+            const hoursData = escalationData.yearlyBreakdown.map(row => Math.round(row.hours));
+            const escalationData2 = escalationData.yearlyBreakdown.map(row => Math.round(row.escalationAmount));
+            
+            // Calculate max values for better scaling
+            const maxHours = Math.max(...hoursData);
+            const maxEscalation = Math.max(...escalationData2);
+            
+            // Add 10% padding to the max for better visualization
+            const hoursMax = Math.ceil(maxHours * 1.1);
+            const escalationMax = Math.ceil(maxEscalation * 1.1);
+            
+            escalationChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Hours Distribution (Bell Curve)',
+                            data: hoursData,
+                            backgroundColor: 'rgba(92, 107, 192, 0.7)',
+                            borderColor: 'rgba(92, 107, 192, 1)',
+                            borderWidth: 2,
+                            borderRadius: 4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Escalation Cost ($)',
+                            data: escalationData2,
+                            type: 'line',
+                            borderColor: 'rgba(255, 193, 7, 1)',
+                            backgroundColor: 'rgba(255, 193, 7, 0.15)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 3,
+                            pointRadius: 5,
+                            pointBackgroundColor: 'rgba(255, 193, 7, 1)',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#e0e0e0',
+                                font: {
+                                    size: 11
+                                },
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                            titleColor: '#ffd700',
+                            bodyColor: '#e0e0e0',
+                            borderColor: '#ffd700',
+                            borderWidth: 1,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.label.includes('Hours')) {
+                                        return `Hours: ${context.raw.toLocaleString()}`;
+                                    } else {
+                                        return `Escalation: $${context.raw.toLocaleString()}`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#b0b0b0'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            max: hoursMax > 0 ? hoursMax : undefined,
+                            title: {
+                                display: true,
+                                text: 'Hours',
+                                color: '#5c6bc0'
+                            },
+                            ticks: {
+                                color: '#5c6bc0',
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(92, 107, 192, 0.2)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            max: escalationMax > 0 ? escalationMax : undefined,
+                            title: {
+                                display: true,
+                                text: 'Escalation ($)',
+                                color: '#ffc107'
+                            },
+                            ticks: {
+                                color: '#ffc107',
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Resets escalation to default values
+         */
+        function resetEscalationToDefault() {
+            escalationData.manualOverrides = {};
+            const escalationRateInput = document.getElementById('unified-escalation');
+            document.getElementById('escalation-base-rate').value = parseFloat(escalationRateInput?.value) || 5;
+            recalculateEscalation();
+        }
+
+        /**
+         * Applies escalation changes to the main calculation
+         */
+        function applyEscalationChanges() {
+            // Update the main escalation rate
+            const baseRate = parseFloat(document.getElementById('escalation-base-rate')?.value) || 5;
+            const escalationRateInput = document.getElementById('unified-escalation');
+            if (escalationRateInput) {
+                escalationRateInput.value = baseRate;
+            }
+            
+            // Update the escalation total in the main table (now in the margin column)
+            const escalationMarginCell = document.getElementById('escalation-total-margin');
+            if (escalationMarginCell) {
+                escalationMarginCell.innerHTML = '$' + Math.round(escalationData.totalCost).toLocaleString() + 
+                    ' <button class="escalation-details-btn" onclick="openEscalationModal()" title="View Escalation Breakdown">📊</button>';
+            }
+            
+            // Close the modal
+            closeEscalationModal();
+            
+            // Trigger recalculation of the main table
+            if (typeof calculateMHEstimates === 'function') {
+                calculateMHEstimates();
+            }
+        }
+
+        /**
          * Shows the recovery modal with saved data preview
          */
         function showRecoveryModal(savedData) {
@@ -1808,18 +2366,47 @@ let projectData = {
             const allProjects = benchmarks.projects;
             const selectedProjects = allProjects.filter(p => p.applicable);
             
-            // Convert to chart data points
-            const allPoints = allProjects.map(p => ({ 
-                x: p.quantity || p.mh, 
-                y: p.mh || 0,
-                name: p.name 
-            })).filter(p => p.x > 0 && p.y > 0);
+            // Check if this is a revenue-based discipline (ESDC/TSCD)
+            const isRevenueBased = (discId === 'esdc' || discId === 'tscd');
             
-            const selectedPoints = selectedProjects.map(p => ({ 
-                x: p.quantity || p.mh, 
-                y: p.mh || 0,
-                name: p.name 
-            })).filter(p => p.x > 0 && p.y > 0);
+            // Update chart title dynamically
+            const chartTitle = document.getElementById('benchmark-chart-title');
+            if (chartTitle) {
+                chartTitle.textContent = isRevenueBased ? '📈 Revenue vs Project Cost' : '📈 MH vs Quantity Regression';
+            }
+            
+            // Convert to chart data points
+            let allPoints, selectedPoints;
+            
+            if (isRevenueBased) {
+                // ESDC/TSCD: Use revenue (esdc_cost) vs project cost (anticipated_cost)
+                allPoints = allProjects.map(p => ({ 
+                    x: p.anticipated_cost || p.projectCost || 0, // Project cost in K$
+                    y: p.esdc_cost || p.cost || 0, // Revenue in K$
+                    name: p.name,
+                    rate: p.production_pct || 0
+                })).filter(p => p.x > 0 && p.y > 0);
+                
+                selectedPoints = selectedProjects.map(p => ({ 
+                    x: p.anticipated_cost || p.projectCost || 0,
+                    y: p.esdc_cost || p.cost || 0,
+                    name: p.name,
+                    rate: p.production_pct || 0
+                })).filter(p => p.x > 0 && p.y > 0);
+            } else {
+                // Standard: MH vs quantity
+                allPoints = allProjects.map(p => ({ 
+                    x: p.quantity || p.mh, 
+                    y: p.mh || 0,
+                    name: p.name 
+                })).filter(p => p.x > 0 && p.y > 0);
+                
+                selectedPoints = selectedProjects.map(p => ({ 
+                    x: p.quantity || p.mh, 
+                    y: p.mh || 0,
+                    name: p.name 
+                })).filter(p => p.x > 0 && p.y > 0);
+            }
             
             // Calculate regressions
             const allRegression = PowerRegression.calculate(allPoints);
@@ -1938,10 +2525,18 @@ let projectData = {
                             callbacks: {
                                 label: function(context) {
                                     const point = context.raw;
-                                    if (point.name) {
-                                        return `${point.name}: ${point.y.toLocaleString()} MH @ ${point.x.toLocaleString()} ${config?.unit || 'units'}`;
+                                    if (isRevenueBased) {
+                                        // ESDC/TSCD: Show revenue and project cost
+                                        if (point.name) {
+                                            return `${point.name}: $${point.y.toLocaleString()}K Revenue @ $${point.x.toLocaleString()}K Project Cost (${point.rate?.toFixed(2) || 0}%)`;
+                                        }
+                                        return `$${point.y.toLocaleString()}K Revenue`;
+                                    } else {
+                                        if (point.name) {
+                                            return `${point.name}: ${point.y.toLocaleString()} MH @ ${point.x.toLocaleString()} ${config?.unit || 'units'}`;
+                                        }
+                                        return `${point.y.toLocaleString()} MH`;
                                     }
-                                    return `${point.y.toLocaleString()} MH`;
                                 }
                             }
                         }
@@ -1954,13 +2549,13 @@ let projectData = {
                             max: xMax,
                             title: {
                                 display: true,
-                                text: `Quantity (${config?.unit || 'units'})`,
+                                text: isRevenueBased ? 'Project Cost (K$)' : `Quantity (${config?.unit || 'units'})`,
                                 color: '#888'
                             },
                             ticks: {
                                 color: '#888',
                                 callback: function(value) {
-                                    return value.toLocaleString();
+                                    return isRevenueBased ? '$' + value.toLocaleString() + 'K' : value.toLocaleString();
                                 }
                             },
                             grid: {
@@ -1973,13 +2568,13 @@ let projectData = {
                             max: yMax,
                             title: {
                                 display: true,
-                                text: 'Forecast Man-hours',
+                                text: isRevenueBased ? 'Revenue (K$)' : 'Forecast Man-hours',
                                 color: '#888'
                             },
                             ticks: {
                                 color: '#888',
                                 callback: function(value) {
-                                    return value.toLocaleString();
+                                    return isRevenueBased ? '$' + value.toLocaleString() + 'K' : value.toLocaleString();
                                 }
                             },
                             grid: {
@@ -2352,11 +2947,12 @@ ${reasoning}`;
                             let mh = p.fct_mhrs || p.mh || 0;
                             let quantity = p.eqty || p.quantity || 0;
 
-                            // For ESDC/TSDC, handle percentage rates
+                            // For ESDC/TSCD, handle percentage rates
+                            // Keep rate as percentage (e.g., 1.19 for 1.19%) - will be divided by 100 in calculations
                             if (disciplineId === 'esdc' || disciplineId === 'tscd') {
-                                rate = p.production_pct ? p.production_pct / 100 : rate;
-                                mh = p.esdc_cost || p.cost || 0;
-                                quantity = p.eqty || p.projectCost || 0;
+                                rate = p.production_pct || 0; // Keep as percentage (e.g., 1.19%)
+                                mh = p.esdc_cost || p.cost || 0; // This is actually revenue in K$
+                                quantity = p.eqty || p.anticipated_cost || p.projectCost || 0; // Project cost in K$
                             }
 
                             // For bridges, filter by type
@@ -2370,7 +2966,7 @@ ${reasoning}`;
                                 return null; // Skip non-rehab bridges
                             }
 
-                            return {
+                            const transformedProject = {
                                 id: p.project?.toLowerCase().replace(/\s+/g, '_').substring(0, 20) || `proj_${index}`,
                                 name: p.project || p.structure_name || 'Unknown Project',
                                 mh: mh,
@@ -2386,6 +2982,17 @@ ${reasoning}`;
                                 country: p.country,
                                 notes: p.notes
                             };
+                            
+                            // For ESDC/TSCD, add additional revenue-specific fields
+                            if (disciplineId === 'esdc' || disciplineId === 'tscd') {
+                                transformedProject.esdc_cost = p.esdc_cost || 0; // Revenue in K$
+                                transformedProject.anticipated_cost = p.eqty || 0; // Project cost in K$
+                                transformedProject.production_pct = p.production_pct || 0; // % of project cost
+                                transformedProject.cost = p.esdc_cost || 0; // Alias for revenue
+                                transformedProject.projectCost = p.eqty || 0; // Alias for project cost
+                            }
+                            
+                            return transformedProject;
                         }).filter(p => p !== null);
 
                         // Calculate statistical rates
@@ -3064,30 +3671,65 @@ ${reasoning}`;
         }
 
         /**
-         * Calculate ESDC or TSCD MH based on project cost percentage
+         * Calculate ESDC or TSCD based on project cost percentage
+         * For ESDC/TSCD, the benchmark data shows REVENUE (esdc_cost), not hours
+         * We need to calculate Revenue and back-calculate to hours
          * @param {string} disciplineId - 'esdc' or 'tscd'
          * @param {number} projectCostK - Project cost in thousands (K$)
          * @param {Array} selectedProjects - Optional specific projects for rate
-         * @returns {Object} { mh: number, rate: number, costK: number }
+         * @returns {Object} { mh: number, rate: number, revenue: number, rawLabor: number, burden: number, gna: number, margin: number }
          */
         function calculateServicesMH(disciplineId, projectCostK, selectedProjects = null) {
             const benchmarks = getBenchmarkDataSync(disciplineId);
-            if (!benchmarks) return { mh: 0, rate: 0, costK: 0 };
+            if (!benchmarks) return { mh: 0, rate: 0, revenue: 0, rawLabor: 0, burden: 0, gna: 0, margin: 0 };
             
             const projects = selectedProjects || getApplicableProjects(disciplineId);
-            const rate = projects.length > 0 ? calculateWeightedRate(projects, 'average') : benchmarks.customRate;
             
-            // For ESDC/TSCD, rate is a percentage, so MH = projectCost * rate
-            // But actually the "cost" column is in K$, so we need to calculate appropriately
-            const costK = projectCostK * rate;
+            // For ESDC/TSCD, rate is a percentage (production_pct)
+            // e.g., 1.19 means 1.19% of project cost
+            const rate = projects.length > 0 
+                ? calculateWeightedRate(projects, 'average') 
+                : (benchmarks.customRate || 0.01); // Default to 1%
             
-            // Convert cost to MH using average cost per MH (estimate ~$150/hr)
-            const mh = Math.round(costK * 1000 / 150);
+            // Revenue = Project Cost × (rate / 100) since rate is already in percentage form
+            // But looking at the data, production_pct is already a percentage like 1.19 (meaning 1.19%)
+            const revenueK = projectCostK * (rate / 100); // Rate is like 1.19 for 1.19%
+            const revenue = revenueK * 1000; // Convert K$ to $
+            
+            // Get rates from the cost calculation parameters
+            const burdenRate = parseFloat(document.getElementById('unified-burden')?.value) || 66;
+            const gnaRate = parseFloat(document.getElementById('unified-gna')?.value) || 104;
+            const kieMultiplier = parseFloat(document.getElementById('calc-kie-multiplier')?.value) || 2.85;
+            
+            // Calculate margin percent: KIE Multiplier - 1 - Burden Rate - G&A Rate
+            const marginPercent = (kieMultiplier - 1 - (burdenRate / 100) - (gnaRate / 100)) * 100;
+            
+            // Back-calculate from Revenue:
+            // Revenue = Raw Labor × KIE Multiplier (approximately)
+            // More precisely: Revenue = Raw Labor + Burden + G&A + Margin
+            // Where: Burden = Raw Labor × Burden%, G&A = Raw Labor × G&A%, Margin = Raw Labor × Margin%
+            // So: Revenue = Raw Labor × (1 + Burden% + G&A% + Margin%) = Raw Labor × KIE Multiplier
+            const rawLabor = revenue / kieMultiplier;
+            const burden = rawLabor * (burdenRate / 100);
+            const gna = rawLabor * (gnaRate / 100);
+            const margin = rawLabor * (marginPercent / 100);
+            
+            // Get weighted hourly rate for this discipline (default to $150/hr for ESDC/TSCD)
+            const weightedRate = 68; // Using $68/hr as typical rate for ESDC/TSCD services
+            
+            // Calculate hours from Raw Labor
+            const mh = Math.round(rawLabor / weightedRate);
             
             return {
                 mh: mh,
                 rate: rate,
-                costK: costK,
+                revenue: revenue,
+                revenueK: revenueK,
+                rawLabor: rawLabor,
+                burden: burden,
+                gna: gna,
+                margin: margin,
+                weightedRate: weightedRate,
                 projects: projects
             };
         }
@@ -3268,7 +3910,7 @@ ${reasoning}`;
             // Reload benchmark data from new dataset
             try {
                 await loadBenchmarkData();
-                console.log(`Benchmark data loaded from: ${newDataset === 'border-wall' ? 'Wall Projects' : 'All Other Projects'}`);
+                console.log(`Benchmark data loaded from: ${newDataset === 'border-wall' ? 'Wall Projects' : 'Highway/Bridge Projects'}`);
             } catch (error) {
                 console.warn('Failed to load benchmark data:', error);
             }
@@ -3278,7 +3920,7 @@ ${reasoning}`;
 
             updateStatus('READY');
 
-            alert(`✅ Benchmark dataset changed to: ${newDataset === 'border-wall' ? 'Wall Projects' : 'All Other Projects'}\n\nAll projects are now selected by default.`);
+            alert(`✅ Benchmark dataset changed to: ${newDataset === 'border-wall' ? 'Wall Projects' : 'Highway/Bridge Projects'}\n\nAll projects are now selected by default.`);
         }
 
         /**
@@ -3517,27 +4159,39 @@ ${reasoning}`;
                     updateMHRowDisplay('digitalDelivery', ddState);
                 }
                 
-                // ESDC
+                // ESDC - Revenue-based calculation
                 const esdcState = mhEstimateState.disciplines.esdc;
                 const esdcBenchmarks = getBenchmarkDataSync('esdc');
                 if (esdcState) {
                     esdcState.active = true;
                     esdcState.quantity = costK;
                     const esdcResult = calculateServicesMH('esdc', costK);
+                    // Store all the revenue breakdown values
                     esdcState.mh = esdcResult.mh;
-                    esdcState.rate = esdcBenchmarks?.customRate || 0.0103;
+                    esdcState.revenue = esdcResult.revenue;
+                    esdcState.rawLabor = esdcResult.rawLabor;
+                    esdcState.burden = esdcResult.burden;
+                    esdcState.gna = esdcResult.gna;
+                    esdcState.margin = esdcResult.margin;
+                    esdcState.rate = esdcResult.rate;
                     updateMHRowDisplay('esdc', esdcState);
                 }
                 
-                // TSCD
+                // TSCD - Revenue-based calculation
                 const tscdState = mhEstimateState.disciplines.tscd;
                 const tscdBenchmarks = getBenchmarkDataSync('tscd');
                 if (tscdState) {
                     tscdState.active = true;
                     tscdState.quantity = costK;
                     const tscdResult = calculateServicesMH('tscd', costK);
+                    // Store all the revenue breakdown values
                     tscdState.mh = tscdResult.mh;
-                    tscdState.rate = tscdBenchmarks?.customRate || 0.0031;
+                    tscdState.revenue = tscdResult.revenue;
+                    tscdState.rawLabor = tscdResult.rawLabor;
+                    tscdState.burden = tscdResult.burden;
+                    tscdState.gna = tscdResult.gna;
+                    tscdState.margin = tscdResult.margin;
+                    tscdState.rate = tscdResult.rate;
                     updateMHRowDisplay('tscd', tscdState);
                 }
             }
@@ -3576,16 +4230,28 @@ ${reasoning}`;
             const allProjectsRate = allProjects.length > 0 ? BenchmarkStats.calculateRateStats(allProjects).mean : 0;
             const rateAllEl = document.getElementById(`mh-rate-all-${discId}`);
             if (rateAllEl) {
-                rateAllEl.textContent = formatRate(allProjectsRate, unit);
-                rateAllEl.title = buildAllProjectsRateTooltip(discId, allProjectsRate, allProjects.length, unit);
+                // ESDC/TSCD: Show rate as percentage of project cost
+                if (discId === 'esdc' || discId === 'tscd') {
+                    rateAllEl.textContent = `${allProjectsRate.toFixed(2)}%`;
+                    rateAllEl.title = `Avg: ${allProjectsRate.toFixed(2)}% of Project Cost (${allProjects.length} projects)`;
+                } else {
+                    rateAllEl.textContent = formatRate(allProjectsRate, unit);
+                    rateAllEl.title = buildAllProjectsRateTooltip(discId, allProjectsRate, allProjects.length, unit);
+                }
             }
 
             // Update "Selected Projects" rate column
             const applicableProjects = getApplicableProjects(discId);
             const selectedRateEl = document.getElementById(`mh-rate-${discId}`);
             if (selectedRateEl) {
-                selectedRateEl.textContent = formatRate(state.rate, unit);
-                selectedRateEl.title = buildSelectedRateTooltip(discId, state.rate, applicableProjects.length, unit, state.rateStats);
+                // ESDC/TSCD: Show rate as percentage of project cost
+                if (discId === 'esdc' || discId === 'tscd') {
+                    selectedRateEl.textContent = `${state.rate.toFixed(2)}%`;
+                    selectedRateEl.title = `Selected: ${state.rate.toFixed(2)}% of Project Cost (${applicableProjects.length} projects)`;
+                } else {
+                    selectedRateEl.textContent = formatRate(state.rate, unit);
+                    selectedRateEl.title = buildSelectedRateTooltip(discId, state.rate, applicableProjects.length, unit, state.rateStats);
+                }
             }
 
             // Update quantity input tooltip with RFP reasoning if available
@@ -3605,7 +4271,17 @@ ${reasoning}`;
             const mhValueEl = document.getElementById(`mh-value-${discId}`);
             const mhRangeEl = document.getElementById(`mh-range-${discId}`);
 
-            if (state.mhBounds && state.mhBounds.lower !== state.mhBounds.upper && state.mh > 0) {
+            // ESDC/TSCD: MH is back-calculated from revenue
+            if (discId === 'esdc' || discId === 'tscd') {
+                mhValueEl.textContent = formatMH(state.mh);
+                mhValueEl.title = `Back-calculated from Revenue ($${(state.revenue || 0).toLocaleString()})`;
+                mhValueEl.style.cursor = 'help';
+                if (mhRangeEl) {
+                    mhRangeEl.style.display = 'block';
+                    mhRangeEl.innerHTML = `<span style="font-size: 9px; color: #ffd700;">← from Revenue</span>`;
+                    mhRangeEl.title = 'Hours derived from Revenue ÷ KIE Multiplier ÷ Weighted Rate';
+                }
+            } else if (state.mhBounds && state.mhBounds.lower !== state.mhBounds.upper && state.mh > 0) {
                 // Show estimate with visible range below
                 mhValueEl.textContent = formatMH(state.mh);
                 mhValueEl.title = `Best estimate based on avg rate`;
@@ -3647,12 +4323,19 @@ ${reasoning}`;
             const lowPct = (100 - l4Pct) / 100;  // Percentage at low (junior) rate
             const highPct = l4Pct / 100;         // Percentage at high (senior) rate
             
-            // Low Estimate: junior portion (100 - L4%) × MH × Low Rate
-            const lowEstimate = state.mh * lowPct * resources.lowRate;
-            // High Estimate: senior portion L4% × MH × High Rate
-            const highEstimate = state.mh * highPct * resources.highRate;
+            let totalEstimate;
             
-            const totalEstimate = lowEstimate + highEstimate;
+            // ESDC/TSCD: Use raw labor from revenue back-calculation
+            if ((discId === 'esdc' || discId === 'tscd') && state.rawLabor > 0) {
+                totalEstimate = state.rawLabor;
+            } else {
+                // Standard: Calculate from MH × rates
+                // Low Estimate: junior portion (100 - L4%) × MH × Low Rate
+                const lowEstimate = state.mh * lowPct * resources.lowRate;
+                // High Estimate: senior portion L4% × MH × High Rate
+                const highEstimate = state.mh * highPct * resources.highRate;
+                totalEstimate = lowEstimate + highEstimate;
+            }
             
             // Update L4 input value in case it was set programmatically
             const l4Input = document.getElementById(`mh-l4-pct-${discId}`);
@@ -3660,7 +4343,7 @@ ${reasoning}`;
                 l4Input.value = l4Pct;
             }
             
-            const formattedTotal = state.mh > 0
+            const formattedTotal = state.mh > 0 || ((discId === 'esdc' || discId === 'tscd') && state.rawLabor > 0)
                 ? Math.round(totalEstimate).toLocaleString('en-US')
                 : '0';
             const costInput = document.querySelector(`.budget-input[data-disc="${config.name}"]`);
@@ -3996,12 +4679,23 @@ ${reasoning}`;
                     for (const project of benchmarks.projects) {
                         // Ensure all projects have the applicable flag (should already be set during init)
                         const checked = project.applicable ? 'checked' : '';
+                        
+                        // ESDC/TSCD: Show revenue-based stats
+                        let projectStats;
+                        if (discId === 'esdc' || discId === 'tscd') {
+                            const revenueK = project.esdc_cost || project.cost || 0;
+                            const prodPct = project.production_pct || project.rate || 0;
+                            projectStats = `$${revenueK.toLocaleString()}K Revenue | ${prodPct.toFixed(2)}% of Project Cost`;
+                        } else {
+                            projectStats = `${formatMH(project.mh || project.cost || 0)} MH | ${(project.quantity || project.projectCost || 0).toLocaleString()} ${config.unit} | Rate: ${formatRate(project.rate, config.unit)}`;
+                        }
+                        
                         html += `
                             <label class="benchmark-project-item">
                                 <input type="checkbox" ${checked} onchange="toggleBenchmarkProject('${discId}', '${project.id}')">
                                 <div class="benchmark-project-info">
                                     <span class="project-name">${project.name}</span>
-                                    <span class="project-stats">${formatMH(project.mh || project.cost || 0)} MH | ${(project.quantity || project.projectCost || 0).toLocaleString()} ${config.unit} | Rate: ${formatRate(project.rate, config.unit)}</span>
+                                    <span class="project-stats">${projectStats}</span>
                                 </div>
                             </label>
                         `;
@@ -4022,7 +4716,7 @@ ${reasoning}`;
                         <div class="benchmark-modal-right">
                             <div class="benchmark-chart-container">
                                 <div class="benchmark-chart-header">
-                                    <h4>📈 MH vs Quantity Regression</h4>
+                                    <h4 id="benchmark-chart-title">📈 ${(singleDiscipline === 'esdc' || singleDiscipline === 'tscd') ? 'Revenue vs Project Cost' : 'MH vs Quantity Regression'}</h4>
                                     <div class="benchmark-chart-legend">
                                         <div class="legend-item">
                                             <span class="legend-dot all-projects"></span>
@@ -4498,19 +5192,25 @@ ${reasoning}`;
                     <span id="unified-hourly-rate-${discId}">$0</span>
                 </td>
                 <td class="cost-col numeric">
+                    <span id="unified-total-revenue-${discId}">$0</span>
+                </td>
+                <td class="cost-col numeric revenue-detail-col">
                     <span id="unified-raw-labor-${discId}">$0</span>
                 </td>
-                <td class="cost-col numeric">
+                <td class="cost-col numeric revenue-detail-col">
                     <span id="unified-burden-${discId}">$0</span>
                 </td>
-                <td class="cost-col numeric">
-                    <span id="unified-total-labor-${discId}">$0</span>
+                <td class="cost-col numeric revenue-detail-col">
+                    <span id="unified-gna-${discId}">$0</span>
+                </td>
+                <td class="cost-col numeric revenue-detail-col">
+                    <span id="unified-margin-${discId}">$0</span>
                 </td>
                 <td class="cost-col numeric">
                     <span id="unified-expenses-${discId}">$0</span>
                 </td>
                 <td class="cost-col numeric">
-                    <span id="unified-total-costs-${discId}">$0</span>
+                    <span id="unified-total-cost-${discId}">$0</span>
                 </td>
             `;
 
@@ -4659,6 +5359,7 @@ ${reasoning}`;
 
         /**
          * Recalculate costs for a discipline using weighted hourly rate
+         * For ESDC/TSCD: Works backwards from Revenue to Hours
          */
         function recalculateUnifiedCosts(discId) {
             const state = mhEstimateState.disciplines[discId];
@@ -4684,24 +5385,67 @@ ${reasoning}`;
             const l4Pct = (state.l4Percentage !== undefined && state.l4Percentage !== null) ? state.l4Percentage : 30;
             const lowPct = (100 - l4Pct) / 100;  // Junior percentage
             const highPct = l4Pct / 100;         // Senior percentage
-            const weightedRate = (resources.lowRate * lowPct) + (resources.highRate * highPct);
+            // ESDC/TSCD use fixed $68/hr rate; other disciplines use calculated weighted rate
+            const weightedRate = (discId === 'esdc' || discId === 'tscd') 
+                ? 68 
+                : (resources.lowRate * lowPct) + (resources.highRate * highPct);
 
             // Get global parameters
             const burdenRate = parseFloat(document.getElementById('unified-burden')?.value) || 66;
             const gnaRate = parseFloat(document.getElementById('unified-gna')?.value) || 104;
-            const contingencyRate = parseFloat(document.getElementById('unified-contingency')?.value) || 5;
+            const kieMultiplier = parseFloat(document.getElementById('calc-kie-multiplier')?.value) || 2.85;
+            
+            // Calculate margin percent: KIE Multiplier - 1 - Burden Rate - G&A Rate
+            const marginPercent = (kieMultiplier - 1 - (burdenRate / 100) - (gnaRate / 100)) * 100;
 
-            // Calculate costs using weighted rate
-            const rawLabor = state.mh * weightedRate;
-            const burdenCost = rawLabor * (burdenRate / 100);
-            const totalLabor = rawLabor + burdenCost;
-            const expenses = 0; // Discipline rows have no expenses (only section-level)
-            const totalCosts = totalLabor + expenses;
+            let rawLabor, burdenCost, gnaCost, marginCost, totalRevenue;
+            
+            // ESDC/TSCD: Revenue-based calculation (work backwards from revenue)
+            // These disciplines use % of project cost to calculate Revenue first
+            if (discId === 'esdc' || discId === 'tscd') {
+                // For ESDC/TSCD, if we have pre-calculated revenue from benchmark, use it
+                if (state.revenue && state.revenue > 0) {
+                    totalRevenue = state.revenue;
+                    // Back-calculate from Revenue
+                    rawLabor = totalRevenue / kieMultiplier;
+                    burdenCost = rawLabor * (burdenRate / 100);
+                    gnaCost = rawLabor * (gnaRate / 100);
+                    marginCost = rawLabor * (marginPercent / 100);
+                    
+                    // Back-calculate hours from Raw Labor
+                    const calculatedMH = Math.round(rawLabor / weightedRate);
+                    state.mh = calculatedMH;
+                } else {
+                    // If no pre-calculated revenue, calculate from project cost
+                    const projectCostK = state.quantity || 0;
+                    const rate = state.rate || 1; // Rate is % like 1.19 for 1.19%
+                    const revenueK = projectCostK * (rate / 100);
+                    totalRevenue = revenueK * 1000;
+                    
+                    // Back-calculate from Revenue
+                    rawLabor = totalRevenue / kieMultiplier;
+                    burdenCost = rawLabor * (burdenRate / 100);
+                    gnaCost = rawLabor * (gnaRate / 100);
+                    marginCost = rawLabor * (marginPercent / 100);
+                    
+                    // Back-calculate hours
+                    state.mh = Math.round(rawLabor / weightedRate);
+                }
+            } else {
+                // Standard disciplines: Calculate costs from MH using weighted rate
+                rawLabor = state.mh * weightedRate;
+                burdenCost = rawLabor * (burdenRate / 100);
+                gnaCost = rawLabor * (gnaRate / 100);
+                marginCost = rawLabor * (marginPercent / 100);
+                totalRevenue = rawLabor + burdenCost + gnaCost + marginCost;
+            }
 
             // Update state
             state.laborCost = rawLabor; // Keep as laborCost for backward compatibility
             state.burdenCost = burdenCost;
-            state.totalCost = totalCosts; // Keep as totalCost for backward compatibility
+            state.gnaCost = gnaCost;
+            state.marginCost = marginCost;
+            state.totalRevenue = totalRevenue;
             state.weightedRate = weightedRate;
 
             // Update display with weighted rate and resource codes (only if elements exist)
@@ -4721,19 +5465,38 @@ ${reasoning}`;
                 burdenElem.textContent = '$' + Math.round(burdenCost).toLocaleString('en-US');
             }
 
-            const totalLaborElem = document.getElementById(`unified-total-labor-${discId}`);
-            if (totalLaborElem) {
-                totalLaborElem.textContent = '$' + Math.round(totalLabor).toLocaleString('en-US');
+            const gnaElem = document.getElementById(`unified-gna-${discId}`);
+            if (gnaElem) {
+                gnaElem.textContent = '$' + Math.round(gnaCost).toLocaleString('en-US');
             }
+
+            const marginElem = document.getElementById(`unified-margin-${discId}`);
+            if (marginElem) {
+                marginElem.textContent = '$' + Math.round(marginCost).toLocaleString('en-US');
+            }
+
+            const totalRevenueElem = document.getElementById(`unified-total-revenue-${discId}`);
+            if (totalRevenueElem) {
+                totalRevenueElem.textContent = '$' + Math.round(totalRevenue).toLocaleString('en-US');
+            }
+
+            // Calculate and display Expenses and Total Cost for discipline rows
+            // Disciplines have no expenses (expenses are tracked at section level)
+            const disciplineExpenses = 0;
+            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
+            const totalCost = rawLabor + burdenCost + gnaCost + disciplineExpenses;
+            
+            state.expenses = disciplineExpenses;
+            state.totalCost = totalCost;
 
             const expensesElem = document.getElementById(`unified-expenses-${discId}`);
             if (expensesElem) {
-                expensesElem.textContent = '$' + Math.round(expenses).toLocaleString('en-US');
+                expensesElem.textContent = '$' + Math.round(disciplineExpenses).toLocaleString('en-US');
             }
 
-            const totalCostsElem = document.getElementById(`unified-total-costs-${discId}`);
-            if (totalCostsElem) {
-                totalCostsElem.textContent = '$' + Math.round(totalCosts).toLocaleString('en-US');
+            const totalCostElem = document.getElementById(`unified-total-cost-${discId}`);
+            if (totalCostElem) {
+                totalCostElem.textContent = '$' + Math.round(totalCost).toLocaleString('en-US');
             }
         }
 
@@ -4891,6 +5654,14 @@ ${reasoning}`;
                 estConstructionCost = parseFloat(cleanValue) || 0;
             }
 
+            // Get Assumed Construction Cost (needed for SUBS and ESDC/TSCD)
+            const assumedCostInput = document.getElementById('calc-assumed-construction-cost');
+            let assumedConstructionCost = 0;
+            if (assumedCostInput && assumedCostInput.value) {
+                const cleanValue = assumedCostInput.value.replace(/[$,]/g, '');
+                assumedConstructionCost = parseFloat(cleanValue) || 0;
+            }
+
             // Calculate DIRECTS totals (from discipline rows)
             let directsMH = 0;
             let directsRawLabor = 0;
@@ -4899,15 +5670,34 @@ ${reasoning}`;
 
             for (const discId of Object.keys(mhEstimateState.disciplines)) {
                 const state = mhEstimateState.disciplines[discId];
-                if (state.active) {
+                // Exclude ESDC and TSCD from DIRECTS - they have their own sections
+                if (state.active && discId !== 'esdc' && discId !== 'tscd') {
                     directsMH += state.mh || 0;
                     directsRawLabor += state.laborCost || 0;
                     directsBurden += state.burdenCost || 0;
                 }
             }
 
-            const directsTotalLabor = directsRawLabor + directsBurden;
-            const directsTotalCosts = directsTotalLabor + directsExpenses;
+            // Get G&A rate and calculate Margin %
+            const burdenRate = parseFloat(document.getElementById('unified-burden')?.value || 66);
+            const gnaRate = parseFloat(document.getElementById('unified-gna')?.value || 104);
+            const kieMultiplier = parseFloat(document.getElementById('calc-kie-multiplier')?.value || 2.85);
+            
+            // Calculate margin percent: KIE Multiplier - 1 (raw labor) - Burden Rate - G&A Rate
+            const marginPercent = (kieMultiplier - 1 - (burdenRate / 100) - (gnaRate / 100)) * 100;
+            
+            // Update the margin percent display
+            const marginPercentInput = document.getElementById('calc-margin-percent');
+            if (marginPercentInput) {
+                marginPercentInput.value = marginPercent.toFixed(2) + '%';
+            }
+
+            // Calculate G&A and Margin for DIRECTS
+            const directsGna = directsRawLabor * (gnaRate / 100);
+            const directsMargin = directsRawLabor * (marginPercent / 100);
+            const directsTotalLabor = directsRawLabor + directsBurden + directsGna + directsMargin;
+            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
+            const directsTotalCosts = directsRawLabor + directsBurden + directsGna + directsExpenses;
             const directsAvgRate = directsMH > 0 ? directsRawLabor / directsMH : 0;
 
             // Update DIRECTS row
@@ -4918,22 +5708,28 @@ ${reasoning}`;
                 '$' + Math.round(directsRawLabor).toLocaleString('en-US');
             document.getElementById('unified-total-burden').textContent =
                 '$' + Math.round(directsBurden).toLocaleString('en-US');
-            document.getElementById('unified-total-labor').textContent =
+            document.getElementById('unified-total-gna').textContent =
+                '$' + Math.round(directsGna).toLocaleString('en-US');
+            document.getElementById('unified-total-margin').textContent =
+                '$' + Math.round(directsMargin).toLocaleString('en-US');
+            document.getElementById('unified-total-revenue').textContent =
                 '$' + Math.round(directsTotalLabor).toLocaleString('en-US');
             document.getElementById('unified-total-expenses').textContent =
                 '$' + Math.round(directsExpenses).toLocaleString('en-US');
-            document.getElementById('unified-total-costs').textContent =
+            document.getElementById('unified-total-cost').textContent =
                 '$' + Math.round(directsTotalCosts).toLocaleString('en-US');
 
-            // INDIRECTS - calculated as DIRECTS MH ÷ 6 at $87/hr
-            const indirectsMH = directsMH / 6;
+            // INDIRECTS - calculated as DIRECTS MH ÷ 15 at $87/hr (rounded to nearest whole number)
+            const indirectsMH = Math.round(directsMH / 15);
             const indirectsRate = 87; // Fixed rate for indirects
             const indirectsRawLabor = indirectsMH * indirectsRate;
-            const burdenRate = parseFloat(document.getElementById('unified-burden')?.value || 66);
             const indirectsBurden = indirectsRawLabor * (burdenRate / 100);
-            const indirectsTotalLabor = indirectsRawLabor + indirectsBurden;
+            const indirectsGna = indirectsRawLabor * (gnaRate / 100);
+            const indirectsMargin = indirectsRawLabor * (marginPercent / 100);
+            const indirectsTotalLabor = indirectsRawLabor + indirectsBurden + indirectsGna + indirectsMargin;
             const indirectsExpenses = 0;
-            const indirectsTotalCosts = indirectsTotalLabor + indirectsExpenses;
+            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
+            const indirectsTotalCosts = indirectsRawLabor + indirectsBurden + indirectsGna + indirectsExpenses;
 
             // Calculate FTEs based on design duration
             const designDurationInput = document.getElementById('calc-design-duration');
@@ -4947,10 +5743,15 @@ ${reasoning}`;
                 '$' + Math.round(indirectsRawLabor).toLocaleString('en-US');
             document.getElementById('unified-indirect-total-burden').textContent =
                 '$' + Math.round(indirectsBurden).toLocaleString('en-US');
-            document.getElementById('unified-indirect-total-labor').textContent =
+            document.getElementById('unified-indirect-total-gna').textContent =
+                '$' + Math.round(indirectsGna).toLocaleString('en-US');
+            document.getElementById('unified-indirect-total-margin').textContent =
+                '$' + Math.round(indirectsMargin).toLocaleString('en-US');
+            document.getElementById('unified-indirect-total-revenue').textContent =
                 '$' + Math.round(indirectsTotalLabor).toLocaleString('en-US');
-            document.getElementById('unified-indirect-total-expenses').textContent = '$0';
-            document.getElementById('unified-indirect-total-costs').textContent =
+            document.getElementById('unified-indirect-total-expenses').textContent =
+                '$' + Math.round(indirectsExpenses).toLocaleString('en-US');
+            document.getElementById('unified-indirect-total-cost').textContent =
                 '$' + Math.round(indirectsTotalCosts).toLocaleString('en-US');
 
             // Update FTE display in indirects tbody
@@ -4960,9 +5761,12 @@ ${reasoning}`;
             const kieLaborMH = directsMH + indirectsMH;
             const kieLaborRawLabor = directsRawLabor + indirectsRawLabor;
             const kieLaborBurden = directsBurden + indirectsBurden;
-            const kieLaborTotalLabor = kieLaborRawLabor + kieLaborBurden;
+            const kieLaborGna = directsGna + indirectsGna;
+            const kieLaborMargin = directsMargin + indirectsMargin;
+            const kieLaborTotalLabor = kieLaborRawLabor + kieLaborBurden + kieLaborGna + kieLaborMargin;
             const kieLaborExpenses = directsExpenses + indirectsExpenses;
-            const kieLaborTotalCosts = kieLaborTotalLabor + kieLaborExpenses;
+            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
+            const kieLaborTotalCosts = kieLaborRawLabor + kieLaborBurden + kieLaborGna + kieLaborExpenses;
             const kieLaborAvgRate = kieLaborMH > 0 ? kieLaborRawLabor / kieLaborMH : 0;
 
             // Update KIE LABOR section
@@ -4972,16 +5776,20 @@ ${reasoning}`;
                 '$' + Math.round(kieLaborRawLabor).toLocaleString('en-US');
             document.getElementById('kie-labor-total-burden').textContent =
                 '$' + Math.round(kieLaborBurden).toLocaleString('en-US');
-            document.getElementById('kie-labor-total-labor').textContent =
+            document.getElementById('kie-labor-total-gna').textContent =
+                '$' + Math.round(kieLaborGna).toLocaleString('en-US');
+            document.getElementById('kie-labor-total-margin').textContent =
+                '$' + Math.round(kieLaborMargin).toLocaleString('en-US');
+            document.getElementById('kie-labor-total-revenue').textContent =
                 '$' + Math.round(kieLaborTotalLabor).toLocaleString('en-US');
             document.getElementById('kie-labor-total-expenses').textContent =
                 '$' + Math.round(kieLaborExpenses).toLocaleString('en-US');
-            document.getElementById('kie-labor-total-costs').textContent =
+            document.getElementById('kie-labor-total-cost').textContent =
                 '$' + Math.round(kieLaborTotalCosts).toLocaleString('en-US');
 
-            // Calculate SUBS expenses based on Est. Construction Cost
-            // LS SUBS: 0.5% of Est. Construction Cost
-            const lsSubsExpenses = estConstructionCost * 0.005;
+            // Calculate SUBS expenses based on Assumed Construction Cost
+            // LS SUBS: 0.5% of Assumed Construction Cost
+            const lsSubsExpenses = assumedConstructionCost * 0.005;
 
             // Update LS SUBS row
             const lsSubsTotalCosts = lsSubsExpenses; // Only expenses, no labor
@@ -4989,14 +5797,18 @@ ${reasoning}`;
             document.getElementById('ls-subs-avg-rate').textContent = '$0.00';
             document.getElementById('ls-subs-total-raw-labor').textContent = '$0';
             document.getElementById('ls-subs-total-burden').textContent = '$0';
-            document.getElementById('ls-subs-total-labor').textContent = '$0';
+            document.getElementById('ls-subs-total-gna').textContent = '$0';
+            document.getElementById('ls-subs-total-margin').textContent = '$0';
+            // Total Revenue for subs includes expenses
+            document.getElementById('ls-subs-total-revenue').textContent = 
+                '$' + Math.round(lsSubsExpenses).toLocaleString('en-US');
             document.getElementById('ls-subs-total-expenses').textContent =
                 '$' + Math.round(lsSubsExpenses).toLocaleString('en-US');
-            document.getElementById('ls-subs-total-costs').textContent =
+            document.getElementById('ls-subs-total-cost').textContent =
                 '$' + Math.round(lsSubsTotalCosts).toLocaleString('en-US');
 
-            // SURVEY: 0.25% of Est. Construction Cost
-            const surveyExpenses = estConstructionCost * 0.0025;
+            // SURVEY: 0.25% of Assumed Construction Cost
+            const surveyExpenses = assumedConstructionCost * 0.0025;
 
             // Update SURVEY row
             const surveyTotalCosts = surveyExpenses; // Only expenses, no labor
@@ -5004,14 +5816,18 @@ ${reasoning}`;
             document.getElementById('survey-avg-rate').textContent = '$0.00';
             document.getElementById('survey-total-raw-labor').textContent = '$0';
             document.getElementById('survey-total-burden').textContent = '$0';
-            document.getElementById('survey-total-labor').textContent = '$0';
+            document.getElementById('survey-total-gna').textContent = '$0';
+            document.getElementById('survey-total-margin').textContent = '$0';
+            // Total Revenue for subs includes expenses
+            document.getElementById('survey-total-revenue').textContent = 
+                '$' + Math.round(surveyExpenses).toLocaleString('en-US');
             document.getElementById('survey-total-expenses').textContent =
                 '$' + Math.round(surveyExpenses).toLocaleString('en-US');
-            document.getElementById('survey-total-costs').textContent =
+            document.getElementById('survey-total-cost').textContent =
                 '$' + Math.round(surveyTotalCosts).toLocaleString('en-US');
 
-            // SUBSURFACE UTILITY SUBS: 0.25% of Est. Construction Cost
-            const subsurfaceUtilityExpenses = estConstructionCost * 0.0025;
+            // SUBSURFACE UTILITY SUBS: 0.25% of Assumed Construction Cost
+            const subsurfaceUtilityExpenses = assumedConstructionCost * 0.0025;
 
             // Update SUBSURFACE UTILITY SUBS row
             const subsurfaceUtilityTotalCosts = subsurfaceUtilityExpenses; // Only expenses, no labor
@@ -5019,36 +5835,26 @@ ${reasoning}`;
             document.getElementById('subsurface-utility-avg-rate').textContent = '$0.00';
             document.getElementById('subsurface-utility-total-raw-labor').textContent = '$0';
             document.getElementById('subsurface-utility-total-burden').textContent = '$0';
-            document.getElementById('subsurface-utility-total-labor').textContent = '$0';
+            document.getElementById('subsurface-utility-total-gna').textContent = '$0';
+            document.getElementById('subsurface-utility-total-margin').textContent = '$0';
+            // Total Revenue for subs includes expenses
+            document.getElementById('subsurface-utility-total-revenue').textContent = 
+                '$' + Math.round(subsurfaceUtilityExpenses).toLocaleString('en-US');
             document.getElementById('subsurface-utility-total-expenses').textContent =
                 '$' + Math.round(subsurfaceUtilityExpenses).toLocaleString('en-US');
-            document.getElementById('subsurface-utility-total-costs').textContent =
+            document.getElementById('subsurface-utility-total-cost').textContent =
                 '$' + Math.round(subsurfaceUtilityTotalCosts).toLocaleString('en-US');
 
-            // LABOR SUBS - placeholder for now (would be based on actual labor/MH)
-            const laborSubsMH = 0;
-            const laborSubsRawLabor = 0;
-            const laborSubsBurden = 0;
-            const laborSubsTotalLabor = laborSubsRawLabor + laborSubsBurden;
-            const laborSubsExpenses = 0;
-
-            // Update LABOR SUBS row
-            const laborSubsTotalCosts = laborSubsTotalLabor + laborSubsExpenses;
-            document.getElementById('labor-subs-total-mh').textContent = formatMH(laborSubsMH);
-            document.getElementById('labor-subs-avg-rate').textContent = '$0.00';
-            document.getElementById('labor-subs-total-raw-labor').textContent = '$0';
-            document.getElementById('labor-subs-total-burden').textContent = '$0';
-            document.getElementById('labor-subs-total-labor').textContent = '$0';
-            document.getElementById('labor-subs-total-expenses').textContent = '$0';
-            document.getElementById('labor-subs-total-costs').textContent = '$0';
-
-            // Calculate SUBS section totals (all four sub categories)
-            const subsMH = laborSubsMH; // Only LABOR SUBS has MH
-            const subsRawLabor = laborSubsRawLabor;
-            const subsBurden = laborSubsBurden;
-            const subsTotalLabor = subsRawLabor + subsBurden;
-            const subsExpenses = lsSubsExpenses + surveyExpenses + subsurfaceUtilityExpenses + laborSubsExpenses;
-            const subsTotalCosts = subsTotalLabor + subsExpenses;
+            // Calculate SUBS section totals (LS SUBS, SURVEY, SUBSURFACE UTILITY)
+            const subsMH = 0;
+            const subsRawLabor = 0;
+            const subsBurden = 0;
+            const subsGna = 0;
+            const subsMargin = 0;
+            const subsTotalLabor = subsRawLabor + subsBurden + subsGna + subsMargin;
+            const subsExpenses = lsSubsExpenses + surveyExpenses + subsurfaceUtilityExpenses;
+            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
+            const subsTotalCosts = subsRawLabor + subsBurden + subsGna + subsExpenses;
             const subsAvgRate = subsMH > 0 ? subsRawLabor / subsMH : 0;
 
             // Update SUBS section
@@ -5058,11 +5864,16 @@ ${reasoning}`;
                 '$' + Math.round(subsRawLabor).toLocaleString('en-US');
             document.getElementById('subs-section-total-burden').textContent =
                 '$' + Math.round(subsBurden).toLocaleString('en-US');
-            document.getElementById('subs-section-total-labor').textContent =
-                '$' + Math.round(subsTotalLabor).toLocaleString('en-US');
+            document.getElementById('subs-section-total-gna').textContent =
+                '$' + Math.round(subsGna).toLocaleString('en-US');
+            document.getElementById('subs-section-total-margin').textContent =
+                '$' + Math.round(subsMargin).toLocaleString('en-US');
+            // Total Revenue for SUBS section includes expenses (since subs have no labor)
+            document.getElementById('subs-section-total-revenue').textContent =
+                '$' + Math.round(subsExpenses).toLocaleString('en-US');
             document.getElementById('subs-section-total-expenses').textContent =
                 '$' + Math.round(subsExpenses).toLocaleString('en-US');
-            document.getElementById('subs-section-total-costs').textContent =
+            document.getElementById('subs-section-total-cost').textContent =
                 '$' + Math.round(subsTotalCosts).toLocaleString('en-US');
 
             // Calculate IPC based on (KIE LABOR + SUBS) MH × IPC Fee
@@ -5077,10 +5888,12 @@ ${reasoning}`;
             document.getElementById('ipc-avg-rate').textContent = '$0.00';
             document.getElementById('ipc-total-raw-labor').textContent = '$0';
             document.getElementById('ipc-total-burden').textContent = '$0';
-            document.getElementById('ipc-total-labor').textContent = '$0';
+            document.getElementById('ipc-total-gna').textContent = '$0';
+            document.getElementById('ipc-total-margin').textContent = '$0';
+            document.getElementById('ipc-total-revenue').textContent = '$0';
             document.getElementById('ipc-total-expenses').textContent =
                 '$' + Math.round(ipcExpenses).toLocaleString('en-US');
-            document.getElementById('ipc-total-costs').textContent =
+            document.getElementById('ipc-total-cost').textContent =
                 '$' + Math.round(ipcTotalCosts).toLocaleString('en-US');
 
             // Calculate ODC as 0.25% of Est. Construction Cost
@@ -5092,10 +5905,14 @@ ${reasoning}`;
             document.getElementById('odcs-avg-rate').textContent = '$0.00';
             document.getElementById('odcs-total-raw-labor').textContent = '$0';
             document.getElementById('odcs-total-burden').textContent = '$0';
-            document.getElementById('odcs-total-labor').textContent = '$0';
+            document.getElementById('odcs-total-gna').textContent = '$0';
+            document.getElementById('odcs-total-margin').textContent = '$0';
+            // ODC's are billable, so include expenses in revenue
+            document.getElementById('odcs-total-revenue').textContent = 
+                '$' + Math.round(odcsExpenses).toLocaleString('en-US');
             document.getElementById('odcs-total-expenses').textContent =
                 '$' + Math.round(odcsExpenses).toLocaleString('en-US');
-            document.getElementById('odcs-total-costs').textContent =
+            document.getElementById('odcs-total-cost').textContent =
                 '$' + Math.round(odcsTotalCosts).toLocaleString('en-US');
 
             // Calculate EXPENSES section totals (IPC + ODC'S)
@@ -5107,28 +5924,18 @@ ${reasoning}`;
             document.getElementById('expenses-section-avg-rate').textContent = '$0.00';
             document.getElementById('expenses-section-total-raw-labor').textContent = '$0';
             document.getElementById('expenses-section-total-burden').textContent = '$0';
-            document.getElementById('expenses-section-total-labor').textContent = '$0';
+            document.getElementById('expenses-section-total-gna').textContent = '$0';
+            document.getElementById('expenses-section-total-margin').textContent = '$0';
+            // Only ODC's are billable (IPC is not), so revenue = ODC's only
+            document.getElementById('expenses-section-total-revenue').textContent = 
+                '$' + Math.round(odcsExpenses).toLocaleString('en-US');
             document.getElementById('expenses-section-total-expenses').textContent =
                 '$' + Math.round(expensesSectionExpenses).toLocaleString('en-US');
-            document.getElementById('expenses-section-total-costs').textContent =
+            document.getElementById('expenses-section-total-cost').textContent =
                 '$' + Math.round(expensesSectionTotalCosts).toLocaleString('en-US');
 
-            // Calculate G&A as G&A Rate % × KIE LABOR Raw Labor
-            const gnaRateInput = document.getElementById('unified-gna');
-            const gnaRatePercent = gnaRateInput ? parseFloat(gnaRateInput.value) || 0 : 0;
-            const gnaExpenses = kieLaborRawLabor * (gnaRatePercent / 100);
-
-            // Update G&A row
-            const gnaTotalCosts = gnaExpenses; // Only expenses, no labor
-            document.getElementById('gna-total-mh').textContent = '0';
-            document.getElementById('gna-avg-rate').textContent = '$0.00';
-            document.getElementById('gna-total-raw-labor').textContent = '$0';
-            document.getElementById('gna-total-burden').textContent = '$0';
-            document.getElementById('gna-total-labor').textContent = '$0';
-            document.getElementById('gna-total-expenses').textContent =
-                '$' + Math.round(gnaExpenses).toLocaleString('en-US');
-            document.getElementById('gna-total-costs').textContent =
-                '$' + Math.round(gnaTotalCosts).toLocaleString('en-US');
+            // G&A is now calculated as a column, not a row
+            // The G&A column totals are already included in the LABOR section
 
             // Calculate ESCALATION based on raises over design duration
             const escalationExpenses = calculateEscalation(kieLaborMH, kieLaborRawLabor);
@@ -5138,10 +5945,17 @@ ${reasoning}`;
             document.getElementById('escalation-avg-rate').textContent = '$0.00';
             document.getElementById('escalation-total-raw-labor').textContent = '$0';
             document.getElementById('escalation-total-burden').textContent = '$0';
-            document.getElementById('escalation-total-labor').textContent = '$0';
+            document.getElementById('escalation-total-gna').textContent = '$0';
+            // Display escalation value in the margin column (where the button is now)
+            const escalationMarginCell = document.getElementById('escalation-total-margin');
+            if (escalationMarginCell) {
+                escalationMarginCell.innerHTML = '$' + Math.round(escalationExpenses).toLocaleString('en-US') + 
+                    ' <button class="escalation-details-btn" onclick="openEscalationModal()" title="View Escalation Breakdown">📊</button>';
+            }
+            document.getElementById('escalation-total-revenue').textContent = '$0';
             document.getElementById('escalation-total-expenses').textContent =
                 '$' + Math.round(escalationExpenses).toLocaleString('en-US');
-            document.getElementById('escalation-total-costs').textContent =
+            document.getElementById('escalation-total-cost').textContent =
                 '$' + Math.round(escalationExpenses).toLocaleString('en-US');
 
             // Calculate CONTINGENCY as Contingency % × Est. Construction Cost
@@ -5155,11 +5969,110 @@ ${reasoning}`;
             document.getElementById('contingency-avg-rate').textContent = '$0.00';
             document.getElementById('contingency-total-raw-labor').textContent = '$0';
             document.getElementById('contingency-total-burden').textContent = '$0';
-            document.getElementById('contingency-total-labor').textContent = '$0';
+            document.getElementById('contingency-total-gna').textContent = '$0';
+            // Display contingency value in the margin column
+            document.getElementById('contingency-total-margin').textContent = 
+                '$' + Math.round(contingencyExpenses).toLocaleString('en-US');
+            document.getElementById('contingency-total-revenue').textContent = '$0';
             document.getElementById('contingency-total-expenses').textContent =
                 '$' + Math.round(contingencyExpenses).toLocaleString('en-US');
-            document.getElementById('contingency-total-costs').textContent =
+            document.getElementById('contingency-total-cost').textContent =
                 '$' + Math.round(contingencyTotalCosts).toLocaleString('en-US');
+
+            // Calculate ESDC and TSCD based on ASSUMED CONSTRUCTION COST
+            // (assumedConstructionCost already defined at top of function)
+
+            // Helper function to calculate ESDC/TSCD from Assumed Construction Cost
+            function calculateServiceRevenue(discId) {
+                const benchmarks = getBenchmarkDataSync(discId);
+                if (!benchmarks || assumedConstructionCost <= 0) {
+                    return { mh: 0, rate: 0, revenue: 0, rawLabor: 0, burden: 0, gna: 0, margin: 0 };
+                }
+
+                // Get selected projects' average rate (production_pct)
+                const selectedProjects = benchmarks.projects.filter(p => p.applicable);
+                let avgRate = 0;
+                if (selectedProjects.length > 0) {
+                    const totalRate = selectedProjects.reduce((sum, p) => sum + (p.rate || p.production_pct || 0), 0);
+                    avgRate = totalRate / selectedProjects.length;
+                } else {
+                    avgRate = benchmarks.customRate || 1; // Default 1%
+                }
+
+                // Revenue = Assumed Construction Cost × (Rate% / 100)
+                const revenue = assumedConstructionCost * (avgRate / 100);
+
+                // Back-calculate from Revenue:
+                // Raw Labor = Revenue / KIE Multiplier
+                const rawLabor = revenue / kieMultiplier;
+                
+                // Burden = Raw Labor × Burden Rate
+                const burden = rawLabor * (burdenRate / 100);
+                
+                // G&A = Raw Labor × G&A Rate
+                const gna = rawLabor * (gnaRate / 100);
+                
+                // Margin = Raw Labor × Margin %
+                const margin = rawLabor * (marginPercent / 100);
+                
+                // Est MH = Raw Labor / Weighted Hourly Rate (use $68/hr for ESDC/TSCD services)
+                const weightedRate = 68;
+                const mh = Math.round(rawLabor / weightedRate);
+
+                return { mh, rate: avgRate, revenue, rawLabor, burden, gna, margin };
+            }
+
+            // ESDC calculation
+            const esdcCalc = calculateServiceRevenue('esdc');
+
+            // Update ESDC row
+            const esdcMhEl = document.getElementById('esdc-total-mh');
+            const esdcRateEl = document.getElementById('esdc-avg-rate');
+            const esdcRawLaborEl = document.getElementById('esdc-total-raw-labor');
+            const esdcBurdenEl = document.getElementById('esdc-total-burden');
+            const esdcGnaEl = document.getElementById('esdc-total-gna');
+            const esdcMarginEl = document.getElementById('esdc-total-margin');
+            const esdcRevenueEl = document.getElementById('esdc-total-revenue');
+            
+            if (esdcMhEl) esdcMhEl.textContent = formatMH(esdcCalc.mh);
+            if (esdcRateEl) esdcRateEl.textContent = esdcCalc.rate.toFixed(2) + '%';
+            if (esdcRawLaborEl) esdcRawLaborEl.textContent = '$' + Math.round(esdcCalc.rawLabor).toLocaleString('en-US');
+            if (esdcBurdenEl) esdcBurdenEl.textContent = '$' + Math.round(esdcCalc.burden).toLocaleString('en-US');
+            if (esdcGnaEl) esdcGnaEl.textContent = '$' + Math.round(esdcCalc.gna).toLocaleString('en-US');
+            if (esdcMarginEl) esdcMarginEl.textContent = '$' + Math.round(esdcCalc.margin).toLocaleString('en-US');
+            if (esdcRevenueEl) esdcRevenueEl.textContent = '$' + Math.round(esdcCalc.revenue).toLocaleString('en-US');
+            const esdcExpensesEl = document.getElementById('esdc-total-expenses');
+            const esdcCostEl = document.getElementById('esdc-total-cost');
+            if (esdcExpensesEl) esdcExpensesEl.textContent = '$0'; // ESDC is labor-based, no expenses
+            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
+            const esdcTotalCost = esdcCalc.rawLabor + esdcCalc.burden + esdcCalc.gna;
+            if (esdcCostEl) esdcCostEl.textContent = '$' + Math.round(esdcTotalCost).toLocaleString('en-US');
+
+            // TSCD calculation
+            const tscdCalc = calculateServiceRevenue('tscd');
+
+            // Update TSCD row
+            const tscdMhEl = document.getElementById('tscd-total-mh');
+            const tscdRateEl = document.getElementById('tscd-avg-rate');
+            const tscdRawLaborEl = document.getElementById('tscd-total-raw-labor');
+            const tscdBurdenEl = document.getElementById('tscd-total-burden');
+            const tscdGnaEl = document.getElementById('tscd-total-gna');
+            const tscdMarginEl = document.getElementById('tscd-total-margin');
+            const tscdRevenueEl = document.getElementById('tscd-total-revenue');
+            
+            if (tscdMhEl) tscdMhEl.textContent = formatMH(tscdCalc.mh);
+            if (tscdRateEl) tscdRateEl.textContent = tscdCalc.rate.toFixed(2) + '%';
+            if (tscdRawLaborEl) tscdRawLaborEl.textContent = '$' + Math.round(tscdCalc.rawLabor).toLocaleString('en-US');
+            if (tscdBurdenEl) tscdBurdenEl.textContent = '$' + Math.round(tscdCalc.burden).toLocaleString('en-US');
+            if (tscdGnaEl) tscdGnaEl.textContent = '$' + Math.round(tscdCalc.gna).toLocaleString('en-US');
+            if (tscdMarginEl) tscdMarginEl.textContent = '$' + Math.round(tscdCalc.margin).toLocaleString('en-US');
+            if (tscdRevenueEl) tscdRevenueEl.textContent = '$' + Math.round(tscdCalc.revenue).toLocaleString('en-US');
+            const tscdExpensesEl = document.getElementById('tscd-total-expenses');
+            const tscdCostEl = document.getElementById('tscd-total-cost');
+            if (tscdExpensesEl) tscdExpensesEl.textContent = '$0'; // TSCD is labor-based, no expenses
+            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
+            const tscdTotalCost = tscdCalc.rawLabor + tscdCalc.burden + tscdCalc.gna;
+            if (tscdCostEl) tscdCostEl.textContent = '$' + Math.round(tscdTotalCost).toLocaleString('en-US');
         }
 
         /**
@@ -5173,7 +6086,7 @@ ${reasoning}`;
                 recalcTimer = setTimeout(recalculateAllUnifiedCosts, 300);
             };
 
-            const costParams = ['unified-burden', 'unified-gna', 'unified-contingency', 'unified-ipc-fee', 'unified-escalation', 'calc-est-construction-cost', 'calc-kie-multiplier', 'calc-sub-multiplier'];
+            const costParams = ['unified-burden', 'unified-gna', 'unified-contingency', 'unified-ipc-fee', 'unified-escalation', 'calc-est-construction-cost', 'calc-assumed-construction-cost', 'calc-kie-multiplier', 'calc-sub-multiplier'];
             costParams.forEach(id => {
                 const elem = document.getElementById(id);
                 if (elem) {
@@ -5583,35 +6496,32 @@ ${reasoning}`;
         }
 
         function toggleSubsSection() {
-            const subsHeader = document.getElementById('subs-section-header');
+            const lsSubsSection = document.getElementById('ls-subs-section');
             const lsSubsTbody = document.getElementById('ls-subs-tbody');
             const surveySection = document.getElementById('survey-section');
             const surveyTbody = document.getElementById('survey-tbody');
             const subsurfaceSection = document.getElementById('subsurface-utility-section');
             const subsurfaceTbody = document.getElementById('subsurface-utility-tbody');
-            const laborSubsSection = document.getElementById('labor-subs-section');
-            const laborSubsTbody = document.getElementById('labor-subs-tbody');
             const icon = document.getElementById('subs-section-toggle-icon');
 
             if (icon) {
-                const isCollapsed = lsSubsTbody && lsSubsTbody.classList.contains('hidden');
+                const isCollapsed = lsSubsSection && lsSubsSection.classList.contains('hidden');
 
-                // Only toggle detail rows, keep main SUBS header visible
+                // Toggle all sub-section rows (LS SUBS, SURVEY, SUBSURFACE UTILITY)
                 const allElements = [
-                    lsSubsTbody,
+                    lsSubsSection, lsSubsTbody,
                     surveySection, surveyTbody,
-                    subsurfaceSection, subsurfaceTbody,
-                    laborSubsSection, laborSubsTbody
+                    subsurfaceSection, subsurfaceTbody
                 ];
 
                 if (isCollapsed) {
-                    // Expand - show all 4 subsection rows
+                    // Expand - show all subsection rows
                     allElements.forEach(elem => {
                         if (elem) elem.classList.remove('hidden');
                     });
                     icon.textContent = '▼';
                 } else {
-                    // Collapse - hide all 4 subsection rows, keep SUBS header visible
+                    // Collapse - hide all subsection rows, keep SUBS header visible with totals
                     allElements.forEach(elem => {
                         if (elem) elem.classList.add('hidden');
                     });
@@ -5621,26 +6531,26 @@ ${reasoning}`;
         }
 
         function toggleExpensesSection() {
-            const expensesHeader = document.getElementById('expenses-section-header');
+            const ipcSection = document.getElementById('ipc-section');
             const ipcTbody = document.getElementById('ipc-tbody');
             const odcsSection = document.getElementById('odcs-section');
             const odcsTbody = document.getElementById('odcs-tbody');
             const icon = document.getElementById('expenses-section-toggle-icon');
 
             if (icon) {
-                const isCollapsed = ipcTbody && ipcTbody.classList.contains('hidden');
+                const isCollapsed = ipcSection && ipcSection.classList.contains('hidden');
 
-                // Only toggle detail rows, keep EXPENSES, IPC, and ODC'S headers visible
-                const allElements = [ipcTbody, odcsTbody];
+                // Toggle IPC and ODC'S sections (both header rows and detail rows)
+                const allElements = [ipcSection, ipcTbody, odcsSection, odcsTbody];
 
                 if (isCollapsed) {
-                    // Expand - show IPC and ODC'S detail rows
+                    // Expand - show IPC and ODC'S rows
                     allElements.forEach(elem => {
                         if (elem) elem.classList.remove('hidden');
                     });
                     icon.textContent = '▼';
                 } else {
-                    // Collapse - hide detail rows, keep EXPENSES, IPC, and ODC'S summary rows visible
+                    // Collapse - hide IPC and ODC'S rows, keep EXPENSES header visible with totals
                     allElements.forEach(elem => {
                         if (elem) elem.classList.add('hidden');
                     });
@@ -15614,6 +16524,20 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         // Utility functions
         window.formatTimestamp = formatTimestamp;
         window.formatCurrency = formatCurrency;
+        window.formatAccountingInput = formatAccountingInput;
+        window.calculateAssumedConstructionCost = calculateAssumedConstructionCost;
+        window.toggleFieldEdit = toggleFieldEdit;
+        window.calculateMarginPercent = calculateMarginPercent;
+        window.toggleRevenueDetails = toggleRevenueDetails;
+        
+        // Escalation modal functions
+        window.openEscalationModal = openEscalationModal;
+        window.closeEscalationModal = closeEscalationModal;
+        window.recalculateEscalation = recalculateEscalation;
+        window.resetEscalationToDefault = resetEscalationToDefault;
+        window.applyEscalationChanges = applyEscalationChanges;
+        window.updateYearEscalationRate = updateYearEscalationRate;
+        window.updateYearManualOverride = updateYearManualOverride;
         window.escapeHtml = escapeHtml;
         window.triggerAutosave = triggerAutosave;
         window.saveToLocalStorage = saveToLocalStorage;
