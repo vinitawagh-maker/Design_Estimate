@@ -5504,6 +5504,316 @@ ${reasoning}`;
         }
 
         /**
+         * Parse Excel "Summary MH" (or "Summary - MH") sheet and push key quantities into unified quantity fields.
+         * Looks for labels: Alignment Length, Barrier Length, Project Area, Drainage, Roadway, Traffic, MOT, Utilities, Relocations, etc.
+         */
+        function handleDillonFileUpload(event) {
+            const file = event.target && event.target.files && event.target.files[0];
+            if (!file) return;
+            const fileInput = event.target;
+            function runImport(XLSXLib) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSXLib.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames.find(
+                        n => /summary\s*[-]?\s*mh/i.test(String(n).trim())
+                    );
+                    if (!sheetName) {
+                        alert('No sheet named "Summary MH" or "Summary - MH" found.');
+                        return;
+                    }
+                    const sheet = workbook.Sheets[sheetName];
+                    const rows = XLSXLib.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                    const quantities = {};
+                    const notesByDiscipline = {};
+                    // Map Excel Summary MH discipline/category labels to app discIds.
+                    // Match: Drainage, Environmental, MOT, Roadway, Traffic, Utilities, Retaining Walls,
+                    // Noise Walls, Bridges (PC Girder / Steel / Rehabilitation), Misc Structures, Geotechnical.
+                    // Roadway (Civil) = Roadway; same row also fills MOT and Traffic.
+                    function disciplineLabelToDiscId(label) {
+                        const s = String(label || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                        if (!s) return null;
+                        if (/drainage/.test(s)) return 'drainage';
+                        if (/environmental|permit/.test(s)) return 'environmental';
+                        if (/^mot$|maintenance\s*of\s*traffic|m\.?o\.?t\.?/.test(s)) return 'mot';
+                        if (/roadway|alignment\s*length|civil\s*roadway|roadway\s*\(?\s*civil/.test(s)) return 'roadway';
+                        if (/^traffic$|traffic\s+signal|traffic\s+eng/.test(s)) return 'traffic';
+                        if (/utilit(y|ies)|relocation/.test(s)) return 'utilities';
+                        if (/retaining\s*wall|retaining\s*walls|retaining/.test(s)) return 'retainingWalls';
+                        if (/noise\s*wall|noise\s*walls|noise\s*barrier/.test(s)) return 'noiseWalls';
+                        if (/bridge/.test(s)) {
+                            if (/steel|vehicle\s*[-–]\s*steel/.test(s)) return 'bridgesSteel';
+                            if (/rehab|rehabilitation/.test(s)) return 'bridgesRehab';
+                            if (/pc\s*girder|vehicle\s*[-–]\s*pc|precast|girder/.test(s)) return 'bridgesPCGirder';
+                            return 'bridgesPCGirder';
+                        }
+                        if (/geotech|geotechnical|geo\s*tech/.test(s)) return 'geotechnical';
+                        if (/misc\.?\s*struct|miscellaneous\s*struct|misc\s*structures/.test(s) || (s.indexOf('misc') >= 0 && s.indexOf('struct') >= 0)) return 'miscStructures';
+                        if (/digital|dig\.?\s*eng/.test(s)) return 'digitalDelivery';
+                        if (/system|electr/.test(s)) return 'systems';
+                        if (/track/.test(s)) return 'track';
+                        return null;
+                    }
+                    function parseNum(v) {
+                        if (v == null) return null;
+                        if (typeof v === 'number' && !Number.isNaN(v)) return v;
+                        if (typeof v === 'string') return parseFloat(v.replace(/,/g, '')) || null;
+                        return null;
+                    }
+                    function looksLikeAccountCode(v) {
+                        if (v == null) return false;
+                        const s = String(v).trim();
+                        if (/^\d{2,3}\.\d{2}(\.\d{2,3})?(\s*,\s*\d{2,3}\.\d{2}(\.\d{2,3})?)*$/.test(s)) return true;
+                        if (s.length <= 15 && /^\d{1,3}\.\d{2}/.test(s)) return true;
+                        return false;
+                    }
+                    function setFromLabel(labelStr, num, qtyMap) {
+                        const lower = String(labelStr || '').toLowerCase().trim();
+                        if (num == null || Number.isNaN(num)) return;
+                        const n = Math.round(Number(num));
+                        if (lower === 'alignment length' || lower === 'alignment length (lf)' || lower === 'alignment') {
+                            qtyMap.roadway = n; qtyMap.mot = n; qtyMap.traffic = n;
+                        } else if (lower === 'barrier length' || lower === 'barrier length (lf)' || lower === 'barrier') {
+                            if (qtyMap.roadway == null) qtyMap.roadway = n;
+                        } else if (lower.includes('project area') || lower === 'drainage' || lower === 'acres') {
+                            qtyMap.drainage = n;
+                        } else if (lower.includes('utility') || lower.includes('relocation')) {
+                            qtyMap.utilities = n;
+                        } else if (lower.includes('retaining wall')) {
+                            qtyMap.retainingWalls = n;
+                        } else if (lower.includes('noise wall')) {
+                            qtyMap.noiseWalls = n;
+                        } else if (lower.includes('bridge')) {
+                            qtyMap.bridgesPCGirder = n;
+                        } else if (lower.includes('environmental') || lower.includes('permit count')) {
+                            qtyMap.environmental = n;
+                        }
+                    }
+                    var disciplineCol = -1;
+                    var notesCol = -1;
+                    var keyQuantityCol = -1;
+                    var headerRow = 0;
+                    function cellLooksLikeDiscipline(cell) {
+                        var s = String(cell || '').toLowerCase().trim();
+                        return /^discipline[s]?$/.test(s) || s === 'category' || /^discipline\s+name$/.test(s) || /^item\s*description$/.test(s) || s === 'item' || /^work\s*type$/.test(s) || s === 'type';
+                    }
+                    function cellLooksLikeKeyQuantity(cell) {
+                        var s = String(cell || '').toLowerCase().trim();
+                        if (/key\s*quantity|keyquantity|key\s*qty|keyqty|key\s*quantities/.test(s)) return true;
+                        if (s.indexOf('key') >= 0 && (s.indexOf('quantity') >= 0 || s.indexOf('qty') >= 0)) return true;
+                        return false;
+                    }
+                    function cellLooksLikeQuantity(cell) {
+                        var s = String(cell || '').toLowerCase().trim();
+                        return /^quantity$|^quantities$|^qty$/.test(s);
+                    }
+                    for (let r = 0; r < Math.min(rows.length, 20); r++) {
+                        const row = rows[r];
+                        if (!Array.isArray(row)) continue;
+                        for (let c = 0; c < row.length; c++) {
+                            const cell = row[c];
+                            const cellStr = String(cell != null ? cell : '').toLowerCase().trim();
+                            if (disciplineCol < 0 && cellLooksLikeDiscipline(cellStr)) { disciplineCol = c; headerRow = r; }
+                            if (cellStr === 'notes') notesCol = c;
+                            if (keyQuantityCol < 0 && cellLooksLikeKeyQuantity(cellStr)) keyQuantityCol = c;
+                        }
+                        if (disciplineCol >= 0 && keyQuantityCol >= 0) break;
+                        if (disciplineCol >= 0 && (notesCol >= 0 || keyQuantityCol >= 0)) break;
+                    }
+                    if (keyQuantityCol < 0) {
+                        for (let r = 0; r < Math.min(rows.length, 20); r++) {
+                            const row = rows[r];
+                            if (!Array.isArray(row)) continue;
+                            for (let c = 0; c < row.length; c++) {
+                                const cellStr = String(row[c] != null ? row[c] : '').toLowerCase().trim();
+                                if (cellLooksLikeQuantity(cellStr)) { keyQuantityCol = c; break; }
+                            }
+                            if (keyQuantityCol >= 0) break;
+                        }
+                    }
+                    if (disciplineCol >= 0 && keyQuantityCol >= 0) {
+                        var maxInCol = 0;
+                        for (let r = headerRow + 1; r < rows.length; r++) {
+                            var val = parseNum(rows[r][keyQuantityCol]);
+                            if (val != null && val > maxInCol && !looksLikeAccountCode(rows[r][keyQuantityCol])) maxInCol = val;
+                        }
+                        if (maxInCol > 0 && maxInCol < 1000) {
+                            var bestCol = keyQuantityCol;
+                            var bestMax = maxInCol;
+                            var headerRowData = rows[headerRow];
+                            if (Array.isArray(headerRowData)) {
+                                for (var c = 0; c < headerRowData.length; c++) {
+                                    if (c === disciplineCol) continue;
+                                    var colMax = 0;
+                                    for (let dr = headerRow + 1; dr < Math.min(rows.length, headerRow + 50); dr++) {
+                                        var v = parseNum(rows[dr][c]);
+                                        if (v != null && v > colMax && !looksLikeAccountCode(rows[dr][c])) colMax = v;
+                                    }
+                                    if (colMax > bestMax) { bestCol = c; bestMax = colMax; }
+                                }
+                                keyQuantityCol = bestCol;
+                            }
+                        }
+                    }
+                    var dillonQuantityDiscIds = [
+                        'drainage', 'environmental', 'mot', 'roadway', 'traffic', 'utilities',
+                        'retainingWalls', 'noiseWalls',
+                        'bridgesPCGirder', 'bridgesSteel', 'bridgesRehab',
+                        'miscStructures', 'geotechnical'
+                    ];
+                    if (disciplineCol >= 0 && keyQuantityCol >= 0) {
+                        for (let r = headerRow + 1; r < rows.length; r++) {
+                            const row = rows[r];
+                            if (!Array.isArray(row)) continue;
+                            const disciplineLabel = row[disciplineCol];
+                            if (disciplineLabel == null || String(disciplineLabel).trim() === '') continue;
+                            const rawQty = row[keyQuantityCol];
+                            if (rawQty == null && rawQty !== 0) continue;
+                            if (looksLikeAccountCode(rawQty)) continue;
+                            const qtyVal = parseNum(rawQty);
+                            if (qtyVal == null && qtyVal !== 0) continue;
+                            const discId = disciplineLabelToDiscId(disciplineLabel);
+                            if (!discId || dillonQuantityDiscIds.indexOf(discId) < 0) continue;
+                            const rounded = Math.round(Number(qtyVal));
+                            quantities[discId] = rounded;
+                            if (discId === 'roadway') {
+                                quantities.mot = rounded;
+                                quantities.traffic = rounded;
+                            }
+                        }
+                    } else {
+                        for (let r = 0; r < rows.length; r++) {
+                            const row = rows[r];
+                            if (!Array.isArray(row)) continue;
+                            for (let c = 0; c < row.length; c++) {
+                                const cell = row[c];
+                                const nextVal = row[c + 1];
+                                if (looksLikeAccountCode(cell) || looksLikeAccountCode(nextVal)) continue;
+                                const str = (cell != null && typeof cell === 'object' && cell.toString) ? cell.toString() : String(cell || '').trim();
+                                const lower = str.toLowerCase();
+                                let num = parseNum(nextVal);
+                                if (num == null) num = parseNum(cell);
+                                if (num == null || num <= 0) continue;
+                                if (lower === 'alignment length' || lower === 'alignment length (lf)') {
+                                    quantities.roadway = Math.round(num); quantities.mot = Math.round(num); quantities.traffic = Math.round(num);
+                                } else if (lower === 'barrier length' || lower === 'barrier length (lf)') {
+                                    if (quantities.roadway == null) quantities.roadway = Math.round(num);
+                                } else if (lower.includes('project area') || lower === 'drainage') {
+                                    quantities.drainage = Math.round(num);
+                                } else if (lower.includes('utility') || lower.includes('relocation')) {
+                                    quantities.utilities = Math.round(num);
+                                } else if (lower.includes('retaining wall')) quantities.retainingWalls = Math.round(num);
+                                else if (lower.includes('noise wall')) quantities.noiseWalls = Math.round(num);
+                                else if (lower.includes('bridge')) quantities.bridgesPCGirder = Math.round(num);
+                                else if (lower.includes('environmental') || lower.includes('permit')) quantities.environmental = Math.round(num);
+                            }
+                            if (row.length >= 2 && !looksLikeAccountCode(row[0]) && !looksLikeAccountCode(row[1])) {
+                                setFromLabel(row[0], parseNum(row[1]), quantities);
+                            }
+                        }
+                    }
+                    if (disciplineCol >= 0 && notesCol >= 0) {
+                        for (let r = headerRow + 1; r < rows.length; r++) {
+                            const row = rows[r];
+                            if (!Array.isArray(row)) continue;
+                            const disciplineLabel = row[disciplineCol];
+                            const notesText = row[notesCol];
+                            const discId = disciplineLabelToDiscId(disciplineLabel);
+                            if (!discId) continue;
+                            const notesStr = (notesText != null && typeof notesText === 'object' && notesText.toString) ? notesText.toString() : String(notesText || '').trim();
+                            if (!notesStr) continue;
+                            if (!notesByDiscipline[discId]) notesByDiscipline[discId] = [];
+                            notesByDiscipline[discId].push(notesStr);
+                        }
+                        var projectSynonyms = { 'sec 820': ['820', 'ih 820', 'ih 820 southeast'], 'sec820': ['820', 'ih 820'] };
+                        for (const discId of Object.keys(notesByDiscipline)) {
+                            const benchmarks = getBenchmarkDataSync(discId);
+                            if (!benchmarks || !benchmarks.projects || benchmarks.projects.length === 0) continue;
+                            const allNoteText = notesByDiscipline[discId].join(' ');
+                            const tokens = allNoteText.split(/[,;|\n\r]+/).map(t => t.trim().toLowerCase()).filter(t => t.length > 1);
+                            const selectAll = tokens.length === 0 || tokens.some(t => t === 'all' || t === 'all projects');
+                            benchmarks.projects.forEach(p => {
+                                const name = (p.name || p.project || '').toLowerCase();
+                                if (selectAll) {
+                                    p.applicable = true;
+                                } else {
+                                    var matches = tokens.some(tok => {
+                                        if (name.includes(tok)) return true;
+                                        if (tok.length >= 4 && name.includes(tok.substring(0, Math.min(8, tok.length)))) return true;
+                                        var synonyms = projectSynonyms[tok] || (tok.replace(/\s/g, '') in projectSynonyms ? projectSynonyms[tok.replace(/\s/g, '')] : null);
+                                        if (synonyms && synonyms.some(s => name.includes(s))) return true;
+                                        if ((tok.indexOf('sec') >= 0 && tok.indexOf('820') >= 0) && name.includes('820')) return true;
+                                        return false;
+                                    });
+                                    p.applicable = matches;
+                                }
+                            });
+                        }
+                    }
+                    let applied = 0;
+                    for (const discId of dillonQuantityDiscIds) {
+                        if (quantities[discId] == null) continue;
+                        const state = mhEstimateState.disciplines[discId];
+                        if (!state) continue;
+                        const val = quantities[discId];
+                        state.quantity = val;
+                        var unifiedInput = document.getElementById(`unified-qty-${discId}`);
+                        var mhInput = document.getElementById(`mh-qty-${discId}`);
+                        if (unifiedInput) {
+                            unifiedInput.value = val.toLocaleString('en-US');
+                            if (typeof updateUnifiedQuantity === 'function') updateUnifiedQuantity(discId);
+                            applied++;
+                        }
+                        if (mhInput && mhInput !== unifiedInput) {
+                            mhInput.value = val.toLocaleString('en-US');
+                            if (typeof updateMHQuantity === 'function') updateMHQuantity(discId);
+                            if (applied === 0) applied++;
+                        }
+                    }
+                    fileInput.value = '';
+                    if (Object.keys(notesByDiscipline).length > 0 && typeof applyBenchmarkSelection === 'function') {
+                        applyBenchmarkSelection();
+                    }
+                    if (applied > 0 || Object.keys(notesByDiscipline).length > 0) {
+                        updateUnifiedSummary();
+                        saveToLocalStorage();
+                        let msg = 'Dillon file imported.';
+                        if (applied > 0) msg += '\n• ' + applied + ' of 13 quantity field(s) updated.';
+                        if (Object.keys(notesByDiscipline).length > 0) msg += '\n• Benchmark project selection from Notes applied for ' + Object.keys(notesByDiscipline).length + ' discipline(s).';
+                        alert(msg);
+                    } else {
+                        var hint = 'Summary MH sheet should have a "Discipline" (or "Category") column and a "Key quantity" (or "Quantity") column. Data starts in the row below the header.';
+                        if (disciplineCol < 0 || keyQuantityCol < 0) {
+                            hint = 'Could not find required columns. Discipline: ' + (disciplineCol >= 0 ? 'col ' + disciplineCol : 'not found') + ', Key quantity: ' + (keyQuantityCol >= 0 ? 'col ' + keyQuantityCol : 'not found') + '. ' + hint;
+                        } else if (Object.keys(quantities).length > 0) {
+                            hint = 'Quantities were read (' + Object.keys(quantities).length + ' disciplines) but the quantity inputs may not be on screen. Try scrolling to the DIRECTS table or click "Calculate Estimated Hours" first, then re-upload.';
+                        }
+                        alert('No matching quantity labels or Notes found in the Summary MH sheet. ' + hint);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Error reading Excel file: ' + (err.message || err));
+                }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            if (window.XLSX) {
+                runImport(window.XLSX);
+            } else {
+                var script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+                script.onload = function() { runImport(window.XLSX); };
+                script.onerror = function() {
+                    alert('Could not load Excel library. Check your network or run: npm install xlsx');
+                    fileInput.value = '';
+                };
+                document.head.appendChild(script);
+            }
+        }
+
+        /**
          * Update complexity percentage (L4%) and recalculate costs
          */
         function updateUnifiedL4(discId) {
@@ -6828,6 +7138,7 @@ ${reasoning}`;
         window.toggleMHColumns = toggleMHColumns;
         window.handleBenchmarkDatasetChange = handleBenchmarkDatasetChange;
         window.selectAllBenchmarks = selectAllBenchmarks;
+        window.handleDillonFileUpload = handleDillonFileUpload;
 
         // Initialize header help tooltips (click to toggle)
         function initHeaderHelpTooltips() {

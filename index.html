@@ -167,8 +167,10 @@
                                     </div>
 
                                     <!-- Calculate Button -->
-                                    <div class="param-step">
+                                    <div class="param-step" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                                         <button class="btn-calculate" onclick="calculateMHEstimates()">⚡ Calculate Estimated Hours</button>
+                                        <button type="button" class="btn-step" onclick="document.getElementById('dillon-file-input').click()" title="Upload Excel with Summary MH tab to fill quantity fields">📁 Dillon Files - Test</button>
+                                        <input type="file" id="dillon-file-input" accept=".xlsx,.xls" style="display: none;" onchange="handleDillonFileUpload(event)">
                                     </div>
                                     </div><!-- /param-content -->
                                 </div>
