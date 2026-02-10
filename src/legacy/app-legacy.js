@@ -2259,18 +2259,18 @@ let projectData = {
         // ============================================
         
         /**
-         * Power regression calculator for y = a * x^b curves
-         * Used for visualizing MH vs Quantity relationships
+         * Power regression calculator for y = a * x^b curves.
+         * Same basis as Excel: log-log linear regression (ln(y) = ln(a) + b*ln(x)),
+         * i.e. regress ln(rate) on ln(quantity) so Rate = a * Quantity^b. Matches Excel power trendline.
          */
         const PowerRegression = {
             /**
              * Calculate power regression coefficients (y = a * x^b)
-             * Uses logarithmic transformation for linear regression
-             * @param {Array} data - Array of {x, y} points
+             * Uses logarithmic transformation for linear regression (Excel-compatible)
+             * @param {Array} data - Array of {x, y} points (e.g. quantity, rate)
              * @returns {Object} { a, b, r2 } coefficients and R-squared
              */
             calculate: function(data) {
-                // Filter out invalid points (x or y <= 0)
                 const valid = data.filter(p => p.x > 0 && p.y > 0);
                 if (valid.length < 2) {
                     return { a: 0, b: 0, r2: 0, valid: false };
@@ -2379,6 +2379,29 @@ let projectData = {
         }
 
         /**
+         * Get the single "All Rate" for all projects: from JSON all_rate if present, else weighted average (total MH / total quantity).
+         * Use this for Wide Open MH so the rate matches the file-derived value and does not vary with user quantity.
+         * @param {string} discId - Discipline ID
+         * @returns {number|null} All Rate or null if no data
+         */
+        function getAllProjectsAllRate(discId) {
+            const benchmarks = getBenchmarkDataSync(discId);
+            if (!benchmarks || !benchmarks.projects || benchmarks.projects.length === 0) return null;
+            if (discId === 'esdc' || discId === 'tscd') return null;
+            const meta = benchmarks.metadata || {};
+            if (typeof meta.all_rate === 'number' && Number.isFinite(meta.all_rate) && meta.all_rate > 0) return meta.all_rate;
+            let sumMh = 0, sumQty = 0;
+            for (const p of benchmarks.projects) {
+                const mh = p.mh || 0;
+                const q = p.quantity || 0;
+                if (q > 0 && mh >= 0) { sumMh += mh; sumQty += q; }
+            }
+            if (sumQty <= 0) return null;
+            const weighted = sumMh / sumQty;
+            return typeof weighted === 'number' && Number.isFinite(weighted) && weighted > 0 ? weighted : null;
+        }
+
+        /**
          * Get rate from All Projects regression curve at a given quantity (y = a*x^b).
          * Falls back to log-log interpolation if regression invalid so rate always varies with quantity.
          * @param {string} discId - Discipline ID
@@ -2394,11 +2417,18 @@ let projectData = {
             const allPoints = buildRatePoints(benchmarks.projects, false);
             if (allPoints.length < 2) return null;
             const reg = PowerRegression.calculate(allPoints);
+            let rate = null;
             if (reg.valid) {
-                const rate = reg.a * Math.pow(q, reg.b);
-                if (typeof rate === 'number' && !Number.isNaN(rate) && Number.isFinite(rate) && rate > 0) return rate;
+                rate = reg.a * Math.pow(q, reg.b);
+                if (typeof rate !== 'number' || !Number.isFinite(rate) || rate <= 0) rate = null;
             }
-            return interpolateRateAtQuantity(allPoints, q);
+            if (rate == null) rate = interpolateRateAtQuantity(allPoints, q);
+            if (rate == null) return null;
+            const meta = benchmarks.metadata || {};
+            let factor = 1;
+            if (meta.calc && typeof meta.calc.open === 'number' && Number.isFinite(meta.calc.open) && meta.calc.open > 0) factor = meta.calc.open;
+            else if (typeof meta.all_curve_factor === 'number' && Number.isFinite(meta.all_curve_factor) && meta.all_curve_factor > 0) factor = meta.all_curve_factor;
+            return rate * factor;
         }
 
         /**
@@ -2419,11 +2449,25 @@ let projectData = {
             const selectedPoints = buildRatePoints(selectedProjects, false);
             if (selectedPoints.length < 2) return null;
             const reg = PowerRegression.calculate(selectedPoints);
+            let rate = null;
             if (reg.valid) {
-                const rate = reg.a * Math.pow(q, reg.b);
-                if (typeof rate === 'number' && !Number.isNaN(rate) && Number.isFinite(rate) && rate > 0) return rate;
+                rate = reg.a * Math.pow(q, reg.b);
+                if (typeof rate !== 'number' || !Number.isFinite(rate) || rate <= 0) rate = null;
             }
-            return interpolateRateAtQuantity(selectedPoints, q);
+            if (rate == null) rate = interpolateRateAtQuantity(selectedPoints, q);
+            if (rate == null) return null;
+            const meta = benchmarks.metadata || {};
+            let factor = 1;
+            if (meta.calc && meta.calc.custom_from_selected === true && selectedProjects.length >= 2) {
+                const rateStats = BenchmarkStats.calculateRateStats(selectedProjects);
+                if (rateStats.mean > 0 && rateStats.count > 0) {
+                    const k = typeof meta.calc.custom_std_dev_coefficient === 'number' && Number.isFinite(meta.calc.custom_std_dev_coefficient) ? meta.calc.custom_std_dev_coefficient : 0;
+                    factor = 1 + k * (rateStats.stdDev / rateStats.mean);
+                    if (factor <= 0 || !Number.isFinite(factor)) factor = 1;
+                }
+            } else if (meta.calc && typeof meta.calc.custom === 'number' && Number.isFinite(meta.calc.custom) && meta.calc.custom > 0) factor = meta.calc.custom;
+            else if (typeof meta.selected_curve_factor === 'number' && Number.isFinite(meta.selected_curve_factor) && meta.selected_curve_factor > 0) factor = meta.selected_curve_factor;
+            return rate * factor;
         }
         
         // Benchmark chart instance (for the modal)
@@ -2486,7 +2530,7 @@ let projectData = {
                 selectedPoints = selectedProjects.map(toRatePoint).filter(p => p.x > 0 && p.y >= 0);
             }
             
-            // Calculate regressions
+            // Calculate regressions (chart always uses data-derived curve; optional factor applied only to rate used for All/Selected Rate)
             const allRegression = PowerRegression.calculate(allPoints);
             const selectedRegression = PowerRegression.calculate(selectedPoints);
             
@@ -2498,28 +2542,28 @@ let projectData = {
             const xMax = p90Value * 1.2;
             const xMin = Math.min(...quantities) * 0.5 || 1;
             
-            // Generate curve points
-            const allCurvePoints = allRegression.valid 
+            // Generate curve points from regression only
+            const allCurvePoints = allRegression.valid
                 ? PowerRegression.generateCurve(allRegression.a, allRegression.b, xMin, xMax, 60)
                 : [];
-            const selectedCurvePoints = selectedRegression.valid 
+            const selectedCurvePoints = selectedRegression.valid
                 ? PowerRegression.generateCurve(selectedRegression.a, selectedRegression.b, xMin, xMax, 60)
                 : [];
             
-            // Update equations display
+            // Update equations display (chart shows data-derived curve; factor from Excel is applied only to displayed All/Selected Rate)
             const allEqEl = document.getElementById('benchmark-eq-all');
             const selEqEl = document.getElementById('benchmark-eq-selected');
             const allR2El = document.getElementById('benchmark-r2-all');
             const selR2El = document.getElementById('benchmark-r2-selected');
             
             if (allEqEl) {
-                allEqEl.textContent = allRegression.valid 
-                    ? PowerRegression.formatEquation(allRegression.a, allRegression.b) 
+                allEqEl.textContent = allRegression.valid
+                    ? PowerRegression.formatEquation(allRegression.a, allRegression.b)
                     : 'Insufficient data';
             }
             if (selEqEl) {
-                selEqEl.textContent = selectedRegression.valid 
-                    ? PowerRegression.formatEquation(selectedRegression.a, selectedRegression.b) 
+                selEqEl.textContent = selectedRegression.valid
+                    ? PowerRegression.formatEquation(selectedRegression.a, selectedRegression.b)
                     : 'Insufficient data';
             }
             if (allR2El) {
@@ -3080,16 +3124,29 @@ ${reasoning}`;
                         // Calculate statistical rates
                         const rateStats = BenchmarkStats.calculateRateStats(transformedProjects);
 
+                        const metadata = {
+                            discipline: fileData.discipline,
+                            eqtyMetric: fileData.eqty_metric,
+                            serviceCategory: fileData.service_category
+                        };
+                        if (typeof fileData.all_rate === 'number' && Number.isFinite(fileData.all_rate)) metadata.all_rate = fileData.all_rate;
+                        if (typeof fileData.all_curve_factor === 'number' && Number.isFinite(fileData.all_curve_factor) && fileData.all_curve_factor > 0) metadata.all_curve_factor = fileData.all_curve_factor;
+                        else if (fileData.all_curve && typeof fileData.all_curve.factor === 'number' && Number.isFinite(fileData.all_curve.factor) && fileData.all_curve.factor > 0) metadata.all_curve_factor = fileData.all_curve.factor;
+                        if (typeof fileData.selected_curve_factor === 'number' && Number.isFinite(fileData.selected_curve_factor) && fileData.selected_curve_factor > 0) metadata.selected_curve_factor = fileData.selected_curve_factor;
+                        else if (fileData.selected_curve && typeof fileData.selected_curve.factor === 'number' && Number.isFinite(fileData.selected_curve.factor) && fileData.selected_curve.factor > 0) metadata.selected_curve_factor = fileData.selected_curve.factor;
+                        if (fileData.calc && typeof fileData.calc === 'object') {
+                            metadata.calc = {};
+                            if (typeof fileData.calc.open === 'number' && Number.isFinite(fileData.calc.open) && fileData.calc.open > 0) metadata.calc.open = fileData.calc.open;
+                            if (typeof fileData.calc.custom === 'number' && Number.isFinite(fileData.calc.custom) && fileData.calc.custom > 0) metadata.calc.custom = fileData.calc.custom;
+                            if (fileData.calc.custom_from_selected === true || fileData.calc.custom === 'from_selected') metadata.calc.custom_from_selected = true;
+                            if (typeof fileData.calc.custom_std_dev_coefficient === 'number' && Number.isFinite(fileData.calc.custom_std_dev_coefficient)) metadata.calc.custom_std_dev_coefficient = fileData.calc.custom_std_dev_coefficient;
+                        }
                         loadedData[disciplineId] = {
                             projects: transformedProjects,
                             defaultRate: rateStats.mean,
                             customRate: rateStats.mean,
                             rateStats: rateStats,
-                            metadata: {
-                                discipline: fileData.discipline,
-                                eqtyMetric: fileData.eqty_metric,
-                                serviceCategory: fileData.service_category
-                            }
+                            metadata: metadata
                         };
                     }
                 }
@@ -4053,20 +4110,22 @@ ${reasoning}`;
                     const result = estimateMH(discId, state.quantity, state.selectedProjects);
                     state.mh = result.mh;
                     state.rate = result.rate;
+                    if (result.allRate != null) state.allRate = result.allRate;
 
                     // Update display
                     const mhElem = document.getElementById(`unified-mh-${discId}`);
-                    if (mhElem) {
-                        mhElem.textContent = formatMH(result.mh);
-                    }
-
+                    if (mhElem) mhElem.textContent = formatMH(result.mh);
+                    const config = DISCIPLINE_CONFIG[discId];
+                    const benchmarks = getBenchmarkDataSync(discId);
+                    const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
                     const rateElem = document.getElementById(`unified-rate-${discId}`);
-                    if (rateElem) {
-                        const config = DISCIPLINE_CONFIG[discId];
-                        const benchmarks = getBenchmarkDataSync(discId);
-                        const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
-                        rateElem.textContent = formatRate(result.rate, unit);
-                    }
+                    if (rateElem) rateElem.textContent = formatRate(result.rate, unit);
+                    const allRateEl = document.getElementById(`unified-rate-all-${discId}`);
+                    if (allRateEl && result.allRate != null) allRateEl.textContent = formatRate(result.allRate, unit);
+                    const wideOpenEl = document.getElementById(`unified-wide-open-mh-${discId}`);
+                    const customMHEl = document.getElementById(`unified-custom-mh-${discId}`);
+                    if (wideOpenEl) wideOpenEl.textContent = formatMH(Math.round(state.quantity * (state.allRate != null ? state.allRate : result.allRate || 0)));
+                    if (customMHEl) customMHEl.textContent = formatMH(result.mh);
 
                     // Recalculate costs
                     recalculateUnifiedCosts(discId);
@@ -4328,7 +4387,7 @@ ${reasoning}`;
 
             qtyInput.value = state.quantity.toLocaleString('en-US');
 
-            // Update "All Projects" rate column: always use All curve at current quantity when qty > 0
+            // Update "All Projects" rate column: curve at quantity (same basis as benchmark chart)
             const allProjects = benchmarks ? benchmarks.projects || [] : [];
             const allProjectsMean = allProjects.length > 0 ? BenchmarkStats.calculateRateStats(allProjects).mean : 0;
             const qtyNum = Number(state.quantity) || 0;
@@ -5035,6 +5094,12 @@ ${reasoning}`;
                         if (unifiedRateAllElem && state.allRate != null) {
                             unifiedRateAllElem.textContent = formatRate(state.allRate, unit);
                         }
+                        const wideOpenMH = Math.round(qty * (state.allRate != null ? state.allRate : allMean));
+                        const customMH = state.mh;
+                        const unifiedWideOpenEl = document.getElementById(`unified-wide-open-mh-${discId}`);
+                        const unifiedCustomMHEl = document.getElementById(`unified-custom-mh-${discId}`);
+                        if (unifiedWideOpenEl) unifiedWideOpenEl.textContent = formatMH(wideOpenMH);
+                        if (unifiedCustomMHEl) unifiedCustomMHEl.textContent = formatMH(customMH);
 
                         // Recalculate costs for unified table
                         if (typeof recalculateUnifiedCosts === 'function') {
@@ -5258,9 +5323,7 @@ ${reasoning}`;
 
             const state = mhEstimateState.disciplines[discId];
             const allProjects = benchmarks ? benchmarks.projects || [] : [];
-            let allProjectsRate = allProjects.length > 0
-                ? BenchmarkStats.calculateRateStats(allProjects).mean
-                : 0;
+            let allProjectsRate = allProjects.length > 0 ? BenchmarkStats.calculateRateStats(allProjects).mean : 0;
             if (discId !== 'esdc' && discId !== 'tscd' && state.quantity > 0 && allProjects.length >= 2) {
                 const curveRate = getRateFromAllProjectsCurve(discId, state.quantity);
                 if (curveRate != null) allProjectsRate = curveRate;
@@ -5315,6 +5378,12 @@ ${reasoning}`;
                 </td>
                 <td class="mh-col numeric">
                     <span id="unified-rate-${discId}">${formatRate(selectedRate, unit)}</span>
+                </td>
+                <td class="mh-col numeric">
+                    <span id="unified-wide-open-mh-${discId}">${formatMH(Math.round(((state.allRate != null ? state.allRate : allProjectsRate) || 0) * (state.quantity || 0)))}</span>
+                </td>
+                <td class="mh-col numeric">
+                    <span id="unified-custom-mh-${discId}">${formatMH(state.mh || Math.round((state.quantity || 0) * (selectedRate || 0)))}</span>
                 </td>
                 <td class="mh-col numeric">
                     <input type="number" class="l4-input" id="unified-l4-${discId}"
@@ -5386,7 +5455,7 @@ ${reasoning}`;
             state.rate = result.rate;
             if (result.allRate != null) state.allRate = result.allRate;
 
-            // All Rate = always from All curve at this quantity when qty > 0 (not the mean)
+            // All Rate = from All Projects power curve at this quantity (same basis as benchmark chart / Excel)
             const allRateEl = document.getElementById(`unified-rate-all-${discId}`);
             if (allRateEl) {
                 if (quantity > 0 && discId !== 'esdc' && discId !== 'tscd' && benchmarks?.projects?.length >= 2) {
@@ -5394,8 +5463,8 @@ ${reasoning}`;
                     if (curveRate != null) {
                         state.allRate = curveRate;
                         allRateEl.textContent = formatRate(curveRate, unit);
-                    } else {
-                        if (result.allRate != null) allRateEl.textContent = formatRate(result.allRate, unit);
+                    } else if (result.allRate != null) {
+                        allRateEl.textContent = formatRate(result.allRate, unit);
                     }
                 } else if (result.allRate != null) {
                     allRateEl.textContent = formatRate(result.allRate, unit);
@@ -5412,6 +5481,15 @@ ${reasoning}`;
             if (rateElem) {
                 rateElem.textContent = formatRate(result.rate, unit);
             }
+
+            // Wide Open MHs = All Rate × Quantity (All Rate from All curve at this quantity)
+            const allRateForWideOpen = (state.allRate != null ? state.allRate : (quantity > 0 && benchmarks?.projects?.length >= 2 ? getRateFromAllProjectsCurve(discId, quantity) : null)) || result.allRate || 0;
+            const wideOpenMH = Math.round(quantity * allRateForWideOpen);
+            const customMH = result.mh;
+            const wideOpenEl = document.getElementById(`unified-wide-open-mh-${discId}`);
+            const customMHEl = document.getElementById(`unified-custom-mh-${discId}`);
+            if (wideOpenEl) wideOpenEl.textContent = formatMH(wideOpenMH);
+            if (customMHEl) customMHEl.textContent = formatMH(customMH);
 
             // Format quantity input with commas
             qtyInput.value = quantity.toLocaleString('en-US');
@@ -6432,12 +6510,15 @@ ${reasoning}`;
                     const result = estimateMH(discId, state.quantity, state.selectedProjects);
                     state.mh = result.mh;
                     state.rate = result.rate;
+                    if (result.allRate != null) state.allRate = result.allRate;
 
                     // Update display
                     const mhElem = document.getElementById(`unified-mh-${discId}`);
-                    if (mhElem) {
-                        mhElem.textContent = formatMH(result.mh);
-                    }
+                    if (mhElem) mhElem.textContent = formatMH(result.mh);
+                    const wideOpenEl = document.getElementById(`unified-wide-open-mh-${discId}`);
+                    const customMHEl = document.getElementById(`unified-custom-mh-${discId}`);
+                    if (wideOpenEl) wideOpenEl.textContent = formatMH(Math.round(state.quantity * (state.allRate != null ? state.allRate : result.allRate || 0)));
+                    if (customMHEl) customMHEl.textContent = formatMH(result.mh);
 
                     // Update complexity breakdown
                     updateComplexityBreakdown(discId);
@@ -6806,8 +6887,7 @@ ${reasoning}`;
             // Check for saved data after a brief delay to let UI initialize
             setTimeout(checkForSavedData, 500);
 
-            // Force all benchmarks to be selected after localStorage loads
-            // This ensures All Rate and Selected Rate always match on page load
+            // Force all benchmarks to be selected after localStorage loads; use curve when quantity > 0
             setTimeout(() => {
                 for (const discId of Object.keys(mhEstimateState.disciplines)) {
                     const state = mhEstimateState.disciplines[discId];
@@ -6816,23 +6896,37 @@ ${reasoning}`;
                     const benchmarks = getBenchmarkDataSync(discId);
                     if (!benchmarks || !benchmarks.projects) continue;
 
-                    // Force all projects to be applicable
                     benchmarks.projects.forEach(p => p.applicable = true);
+                    state.selectedProjects = benchmarks.projects;
 
-                    // Calculate rate from ALL projects
-                    const allProjects = benchmarks.projects;
-                    if (allProjects.length > 0) {
-                        const calculatedRate = BenchmarkStats.calculateRateStats(allProjects).mean;
-                        state.rate = calculatedRate;
-                        state.selectedProjects = allProjects;
+                    const qty = state.quantity || 0;
+                    const config = DISCIPLINE_CONFIG[discId];
+                    const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
 
-                        // Update display
-                        const rateElem = document.getElementById(`unified-rate-${discId}`);
-                        if (rateElem) {
-                            const config = DISCIPLINE_CONFIG[discId];
-                            const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
-                            rateElem.textContent = formatRate(calculatedRate, unit);
+                    if (qty > 0 && discId !== 'esdc' && discId !== 'tscd' && benchmarks.projects.length >= 2) {
+                        // Use curve so All Rate and Selected Rate depend on quantity
+                        const qtyInput = document.getElementById(`unified-qty-${discId}`);
+                        if (qtyInput && typeof updateUnifiedQuantity === 'function') {
+                            qtyInput.value = qty.toLocaleString('en-US');
+                            updateUnifiedQuantity(discId);
+                        } else {
+                            const result = estimateMH(discId, qty, state.selectedProjects);
+                            state.rate = result.rate;
+                            state.allRate = result.allRate != null ? result.allRate : BenchmarkStats.calculateRateStats(benchmarks.projects).mean;
+                            state.mh = result.mh;
+                            const rateElem = document.getElementById(`unified-rate-${discId}`);
+                            const allRateEl = document.getElementById(`unified-rate-all-${discId}`);
+                            if (rateElem) rateElem.textContent = formatRate(state.rate, unit);
+                            if (allRateEl && state.allRate != null) allRateEl.textContent = formatRate(state.allRate, unit);
                         }
+                    } else {
+                        const meanRate = BenchmarkStats.calculateRateStats(benchmarks.projects).mean;
+                        state.rate = meanRate;
+                        state.allRate = meanRate;
+                        const rateElem = document.getElementById(`unified-rate-${discId}`);
+                        const allRateEl = document.getElementById(`unified-rate-all-${discId}`);
+                        if (rateElem) rateElem.textContent = formatRate(meanRate, unit);
+                        if (allRateEl) allRateEl.textContent = formatRate(meanRate, unit);
                     }
                 }
                 updateUnifiedSummary();

@@ -4,6 +4,11 @@
     "name": "Alignment Length",
     "uom": "LF"
   },
+  "calc": {
+    "open": 1,
+    "custom_from_selected": true,
+    "custom_std_dev_coefficient": 0
+  },
   "projects": [
     {
       "project": "IH 820 Southeast Connector",

@@ -334,6 +334,8 @@
                                         <th class="mh-col">Benchmark<span class="header-help" data-tooltip="Click to select historical projects for rate calculation">?</span><button class="btn-select-all-benchmarks" onclick="selectAllBenchmarks()" title="Select all projects for all disciplines">⚡ All</button></th>
                                         <th class="mh-col numeric">All Rate<span class="header-help" data-tooltip="Production rate using ALL available benchmark projects">?</span></th>
                                         <th class="mh-col numeric">Selected Rate<span class="header-help" data-tooltip="Production rate using SELECTED benchmark projects only">?</span></th>
+                                        <th class="mh-col numeric">Wide Open MHs<span class="header-help" data-tooltip="All Rate × Quantity (for directs)">?</span></th>
+                                        <th class="mh-col numeric">Custom MH's<span class="header-help" data-tooltip="Quantity × Selected Rate">?</span></th>
                                         <th class="mh-col numeric">Complexity<span class="header-help" data-tooltip="Resource complexity: % of senior engineers (L4-L6) vs junior (L1-L3)">?</span><br><span style="font-size: 8px; font-weight: 400;">(% & Hours)</span></th>
                                         <th class="mh-col mh-col-keep numeric">Est. MH<span class="header-help" data-tooltip="Estimated man-hours = Quantity × Selected Rate">?</span></th>
                                         <th class="mh-col mh-toggle-header">
@@ -358,7 +360,7 @@
                                         <td class="frozen-col section-header">
                                             <span id="kie-labor-toggle-icon">▼</span> LABOR
                                         </td>
-                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td colspan="9" class="mh-col section-header"></td>
                                         <td class="mh-col mh-col-keep section-header numeric" id="kie-labor-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell section-header"></td>
                                         <td class="cost-col section-header numeric" id="kie-labor-avg-rate">$0</td>
@@ -375,7 +377,7 @@
                                         <td class="frozen-col indent-1">
                                             <span id="directs-toggle-icon">▼</span> DIRECTS
                                         </td>
-                                        <td colspan="7" class="mh-col"></td>
+                                        <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="unified-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell"></td>
                                         <td class="cost-col numeric" id="unified-avg-rate">$0</td>
@@ -397,7 +399,7 @@
                                         <td class="frozen-col indent-1">
                                             <span id="indirects-toggle-icon">▼</span> INDIRECTS
                                         </td>
-                                        <td colspan="7" class="mh-col"></td>
+                                        <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="unified-indirect-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell"></td>
                                         <td class="cost-col numeric" id="unified-indirect-avg-rate">$0</td>
@@ -420,7 +422,7 @@
                                         <td class="frozen-col section-header">
                                             <span id="subs-section-toggle-icon">▼</span> SUBS
                                         </td>
-                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td colspan="9" class="mh-col section-header"></td>
                                         <td class="mh-col mh-col-keep section-header numeric" id="subs-section-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell section-header"></td>
                                         <td class="cost-col section-header numeric" id="subs-section-avg-rate">$0</td>
@@ -439,7 +441,7 @@
                                         <td class="frozen-col indent-1">
                                             <span id="ls-subs-toggle-icon">▼</span> LS SUBS
                                         </td>
-                                        <td colspan="7" class="mh-col"></td>
+                                        <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="ls-subs-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell"></td>
                                         <td class="cost-col numeric" id="ls-subs-avg-rate">$0</td>
@@ -461,7 +463,7 @@
                                         <td class="frozen-col indent-1">
                                             <span id="survey-toggle-icon">▼</span> SURVEY
                                         </td>
-                                        <td colspan="7" class="mh-col"></td>
+                                        <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="survey-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell"></td>
                                         <td class="cost-col numeric" id="survey-avg-rate">$0</td>
@@ -483,7 +485,7 @@
                                         <td class="frozen-col indent-1">
                                             <span id="subsurface-utility-toggle-icon">▼</span> SUBSURFACE UTILITY SUBS
                                         </td>
-                                        <td colspan="7" class="mh-col"></td>
+                                        <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="subsurface-utility-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell"></td>
                                         <td class="cost-col numeric" id="subsurface-utility-avg-rate">$0</td>
@@ -506,7 +508,7 @@
                                         <td class="frozen-col section-header">
                                             <span id="expenses-section-toggle-icon">▼</span> EXPENSES
                                         </td>
-                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td colspan="9" class="mh-col section-header"></td>
                                         <td class="mh-col mh-col-keep section-header numeric" id="expenses-section-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell section-header"></td>
                                         <td class="cost-col section-header numeric" id="expenses-section-avg-rate">$0</td>
@@ -525,7 +527,7 @@
                                         <td class="frozen-col indent-1">
                                             <span id="ipc-toggle-icon">▼</span> IPC
                                         </td>
-                                        <td colspan="7" class="mh-col"></td>
+                                        <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="ipc-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell"></td>
                                         <td class="cost-col numeric" id="ipc-avg-rate">$0</td>
@@ -546,7 +548,7 @@
                                         <td class="frozen-col indent-1">
                                             <span id="odcs-toggle-icon">▼</span> ODC'S
                                         </td>
-                                        <td colspan="7" class="mh-col"></td>
+                                        <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="odcs-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell"></td>
                                         <td class="cost-col numeric" id="odcs-avg-rate">$0</td>
@@ -565,7 +567,7 @@
                                 <tbody>
                                     <tr class="section-header-row">
                                         <td class="frozen-col section-header">CONTINGENCY</td>
-                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td colspan="9" class="mh-col section-header"></td>
                                         <td class="mh-col mh-col-keep section-header numeric" id="contingency-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell section-header"></td>
                                         <td class="cost-col section-header numeric" id="contingency-avg-rate">$0</td>
@@ -586,7 +588,7 @@
                                             ESDC
                                             <button class="benchmark-btn" onclick="showDisciplineBenchmark('esdc')" title="View ESDC Benchmarks">📊</button>
                                         </td>
-                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td colspan="9" class="mh-col section-header"></td>
                                         <td class="mh-col mh-col-keep section-header numeric" id="esdc-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell section-header"></td>
                                         <td class="cost-col section-header numeric" id="esdc-avg-rate">0%</td>
@@ -607,7 +609,7 @@
                                             TSCD
                                             <button class="benchmark-btn" onclick="showDisciplineBenchmark('tscd')" title="View TSCD Benchmarks">📊</button>
                                         </td>
-                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td colspan="9" class="mh-col section-header"></td>
                                         <td class="mh-col mh-col-keep section-header numeric" id="tscd-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell section-header"></td>
                                         <td class="cost-col section-header numeric" id="tscd-avg-rate">0%</td>
@@ -625,7 +627,7 @@
                                 <tbody>
                                     <tr class="section-header-row">
                                         <td class="frozen-col section-header">ESCALATION</td>
-                                        <td colspan="7" class="mh-col section-header"></td>
+                                        <td colspan="9" class="mh-col section-header"></td>
                                         <td class="mh-col mh-col-keep section-header numeric" id="escalation-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell section-header"></td>
                                         <td class="cost-col section-header numeric" id="escalation-avg-rate">$0</td>
