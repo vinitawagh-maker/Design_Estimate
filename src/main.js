@@ -25,6 +25,11 @@ window.Chart = Chart;
 window.pdfjsLib = pdfjsLib;
 window.html2pdf = html2pdf;
 
+// Base URL for GitHub Pages (e.g. /Design_Estimate/) so asset paths work when deployed
+window.__BASE_URL__ = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL)
+    ? import.meta.env.BASE_URL
+    : '/';
+
 // Import core modules (these provide the modular foundation)
 import { projectData, currentStep } from './core/state.js';
 import * as constants from './core/constants.js';

@@ -2067,23 +2067,28 @@ let projectData = {
             tscd: './data/benchmarking/All Other Projects/benchmarking-tsdc.json'
         };
 
+        function getBaseUrl() {
+            var b = (typeof window !== 'undefined' && window.__BASE_URL__) ? window.__BASE_URL__ : '/';
+            return String(b).replace(/\/$/, '');
+        }
         // Wall Projects mapping (separate JSON files in Wall subdirectory)
+        // Use base URL so paths work on GitHub Pages (/Design_Estimate/)
         const BENCHMARK_FILE_MAPPING_BORDER_WALL = {
-            drainage: '/data/benchmarking/Wall/JSON Wall/Drainage.json',
-            mot: '/data/benchmarking/Wall/JSON Wall/Directs.json',
-            roadway: '/data/benchmarking/Wall/JSON Wall/roadway.json',
-            traffic: '/data/benchmarking/Wall/JSON Wall/Directs.json',
-            utilities: '/data/benchmarking/Wall/JSON Wall/Directs.json',
-            retainingWalls: '/data/benchmarking/Wall/JSON Wall/Structures.json',
-            bridgesPCGirder: '/data/benchmarking/Wall/JSON Wall/Structures.json',
-            bridgesSteel: '/data/benchmarking/Wall/JSON Wall/Structures.json',
-            bridgesRehab: '/data/benchmarking/Wall/JSON Wall/Structures.json',
-            miscStructures: '/data/benchmarking/Wall/JSON Wall/Structures.json',
-            geotechnical: '/data/benchmarking/Wall/JSON Wall/Geotech.json',
-            systems: '/data/benchmarking/Wall/JSON Wall/Elec_Systems.json',
-            track: '/data/benchmarking/Wall/JSON Wall/roadway.json',
-            esdc: '/data/benchmarking/Wall/JSON Wall/Dig_Engg.json',
-            tscd: '/data/benchmarking/Wall/JSON Wall/TSCd.json'
+            drainage: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Drainage.json',
+            mot: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Directs.json',
+            roadway: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/roadway.json',
+            traffic: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Directs.json',
+            utilities: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Directs.json',
+            retainingWalls: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Structures.json',
+            bridgesPCGirder: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Structures.json',
+            bridgesSteel: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Structures.json',
+            bridgesRehab: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Structures.json',
+            miscStructures: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Structures.json',
+            geotechnical: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Geotech.json',
+            systems: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Elec_Systems.json',
+            track: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/roadway.json',
+            esdc: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Dig_Engg.json',
+            tscd: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/TSCd.json'
         };
 
         // Active benchmark dataset selection
@@ -2936,7 +2941,7 @@ ${reasoning}`;
                 const accountCodeMap = {};
                 if (activeBenchmarkDataset === 'border-wall') {
                     try {
-                        const summaryPath = '/data/benchmarking/Wall/JSON Wall/Summary_-MH.json';
+                        const summaryPath = getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Summary_-MH.json';
                         console.log('🔷 Loading Summary file from:', summaryPath);
                         const summaryResponse = await fetch(summaryPath);
                         console.log('🔷 Summary response ok:', summaryResponse.ok, 'status:', summaryResponse.status);
