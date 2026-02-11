@@ -701,7 +701,8 @@ let projectData = {
             totalHours: 0,
             totalCost: 0,
             yearlyBreakdown: [],
-            manualOverrides: {}
+            manualOverrides: {},
+            hourDistributionOverrides: {}
         };
         
         let escalationChart = null;
@@ -718,7 +719,10 @@ let projectData = {
             const durationInput = document.getElementById('calc-design-duration');
             
             escalationData.baseRate = parseFloat(escalationRateInput?.value) || 5;
-            escalationData.years = Math.ceil((parseFloat(durationInput?.value) || 12) / 12);
+            // Get duration in months directly from the cost parameters
+            const durationMonths = parseFloat(durationInput?.value) || 12;
+            escalationData.durationMonths = durationMonths;
+            escalationData.years = Math.ceil(durationMonths / 12);
             if (escalationData.years < 1) escalationData.years = 1;
             if (escalationData.years > 10) escalationData.years = 10;
             
@@ -728,7 +732,8 @@ let projectData = {
             
             // Update modal inputs
             document.getElementById('escalation-base-rate').value = escalationData.baseRate;
-            document.getElementById('escalation-duration-years').value = escalationData.years;
+            // Display duration in months
+            document.getElementById('escalation-duration-months').value = durationMonths;
             
             // Set NTP date to today if not already set
             const ntpDateInput = document.getElementById('escalation-ntp-date');
@@ -754,109 +759,187 @@ let projectData = {
 
         /**
          * Recalculates escalation based on current inputs
+         * Uses monthly bell curve distribution with fiscal year logic (March to March)
          */
         function recalculateEscalation() {
             const baseRate = parseFloat(document.getElementById('escalation-base-rate')?.value) || 5;
-            const years = parseInt(document.getElementById('escalation-duration-years')?.value) || 3;
+            const durationMonths = parseInt(document.getElementById('escalation-duration-months')?.value) || 36;
+            const years = Math.ceil(durationMonths / 12);
             
             escalationData.baseRate = baseRate;
             escalationData.years = years;
+            escalationData.durationMonths = durationMonths;
             
-            // Get total hours and base cost
-            const totalMHElement = document.getElementById('kie-labor-total-mh');
-            const totalHours = parseFloat(totalMHElement?.textContent?.replace(/,/g, '')) || 0;
+            // Get total hours excluding ESDC and TSCD
+            const kieLaborMH = parseFloat(document.getElementById('kie-labor-total-mh')?.textContent?.replace(/,/g, '')) || 0;
+            // Subtract ESDC and TSCD hours if they exist
+            const esdcMH = parseFloat(document.getElementById('esdc-total-mh')?.textContent?.replace(/,/g, '')) || 0;
+            const tscdMH = parseFloat(document.getElementById('tscd-total-mh')?.textContent?.replace(/,/g, '')) || 0;
+            const totalHours = Math.max(0, kieLaborMH - esdcMH - tscdMH);
             escalationData.totalHours = totalHours;
             
-            // Get base cost (Total Revenue from KIE LABOR + SUBS)
+            // Get base cost (Total Revenue from KIE LABOR + SUBS, excluding ESDC/TSCD)
             const kieLaborCosts = parseFloat(document.getElementById('kie-labor-total-revenue')?.textContent?.replace(/[$,]/g, '')) || 0;
             const subsCosts = parseFloat(document.getElementById('subs-section-total-revenue')?.textContent?.replace(/[$,]/g, '')) || 0;
-            const baseCost = kieLaborCosts + subsCosts;
+            const esdcRevenue = parseFloat(document.getElementById('esdc-total-revenue')?.textContent?.replace(/[$,]/g, '')) || 0;
+            const tscdRevenue = parseFloat(document.getElementById('tscd-total-revenue')?.textContent?.replace(/[$,]/g, '')) || 0;
+            const baseCost = Math.max(0, kieLaborCosts + subsCosts - esdcRevenue - tscdRevenue);
             
-            // Determine if Year 1 should have escalation based on NTP date
-            // Financial escalation year starts March 1 each year
-            // Year 1 should never have escalation UNLESS NTP is after March following today's date
+            // Get NTP date
             const ntpDateInput = document.getElementById('escalation-ntp-date');
-            const ntpDate = ntpDateInput?.value ? new Date(ntpDateInput.value) : null;
+            const ntpDate = ntpDateInput?.value ? new Date(ntpDateInput.value) : new Date();
             
-            // Calculate the March 1 following today's date
-            const today = new Date();
-            let marchFollowing = new Date(today.getFullYear(), 2, 1); // March 1 of current year
-            if (today >= marchFollowing) {
-                // If we're past March 1 this year, use next year's March 1
-                marchFollowing = new Date(today.getFullYear() + 1, 2, 1);
+            // ============================================
+            // FISCAL YEAR LOGIC (March to March)
+            // ============================================
+            // Fiscal year runs March 1 to Feb 28/29
+            // If NTP is before March of a year, escalation starts after March 1 of that year
+            // If NTP is on or after March, no escalation until March 1 of the FOLLOWING year
+            
+            // Calculate the first March 1 AFTER which escalation applies
+            const ntpMonth = ntpDate.getMonth(); // 0-11
+            const ntpYear = ntpDate.getFullYear();
+            
+            let firstEscalationDate;
+            if (ntpMonth < 2) {
+                // NTP is Jan or Feb (before March) -> escalation starts after March 1 of same year
+                firstEscalationDate = new Date(ntpYear, 2, 1); // March 1 of same year
+            } else {
+                // NTP is March or later -> no escalation until March 1 of NEXT year
+                firstEscalationDate = new Date(ntpYear + 1, 2, 1); // March 1 of next year
             }
             
-            // Year 1 gets escalation only if NTP is after the March following today
-            const year1HasEscalation = ntpDate && ntpDate > marchFollowing;
+            // ============================================
+            // CALCULATE MONTHLY BELL CURVE DISTRIBUTION
+            // ============================================
+            const monthlyDistribution = calculateMonthlyBellCurve(durationMonths);
             
-            // Calculate bell curve distribution for hours
-            const hourDistribution = calculateBellCurveDistribution(years);
-            
-            // Calculate yearly breakdown
+            // Calculate monthly breakdown with escalation
+            escalationData.monthlyBreakdown = [];
             escalationData.yearlyBreakdown = [];
             let totalEscalation = 0;
+            let currentDate = new Date(ntpDate);
             
-            for (let i = 0; i < years; i++) {
-                const year = i + 1;
-                const yearHours = totalHours * hourDistribution[i];
-                const hourPercent = hourDistribution[i] * 100;
-                const yearBaseCost = baseCost * hourDistribution[i];
+            // Track fiscal year totals
+            const fiscalYearData = {};
+            
+            for (let m = 0; m < durationMonths; m++) {
+                const monthDate = new Date(ntpDate);
+                monthDate.setMonth(monthDate.getMonth() + m);
                 
-                // Year 1: No escalation unless NTP is after March following today
-                // Year 2+: Escalation starts from Year 1's perspective
-                // e.g., Year 2 = 1 year of escalation, Year 3 = 2 years compounded, etc.
-                let compoundedFactor = 0;
-                let effectiveYears = 0;
+                const monthHours = totalHours * monthlyDistribution[m];
+                const monthBaseCost = baseCost * monthlyDistribution[m];
                 
-                if (year === 1) {
-                    if (year1HasEscalation) {
-                        // NTP is after March following today, so Year 1 gets 1 year of escalation
-                        effectiveYears = 1;
-                        compoundedFactor = Math.pow(1 + (baseRate / 100), 1) - 1;
-                    } else {
-                        // Year 1 has no escalation (baseline year)
-                        effectiveYears = 0;
-                        compoundedFactor = 0;
+                // Determine fiscal year for this month
+                // Fiscal year = the year of the March that ENDS this fiscal year
+                // e.g., March 2026 - Feb 2027 is FY 2027
+                const monthIdx = monthDate.getMonth();
+                const year = monthDate.getFullYear();
+                const fiscalYear = monthIdx >= 2 ? year + 1 : year; // March+ = next FY, Jan-Feb = current FY
+                
+                // Calculate escalation: only if month is AFTER the first escalation date
+                let escalationYears = 0;
+                let escalationFactor = 0;
+                let escalationAmount = 0;
+                
+                if (monthDate >= firstEscalationDate) {
+                    // Count how many March 1 dates have passed since firstEscalationDate
+                    let marchCount = 0;
+                    let checkDate = new Date(firstEscalationDate);
+                    while (checkDate <= monthDate) {
+                        if (checkDate.getMonth() === 2 && checkDate.getDate() === 1) {
+                            marchCount++;
+                        }
+                        checkDate.setMonth(checkDate.getMonth() + 1);
                     }
-                } else {
-                    // Year 2+ gets escalation based on years from baseline
-                    // If Year 1 has no escalation: Year 2 = 1 yr, Year 3 = 2 yrs, etc.
-                    // If Year 1 has escalation: Year 2 = 2 yrs, Year 3 = 3 yrs, etc.
-                    effectiveYears = year1HasEscalation ? year : (year - 1);
-                    compoundedFactor = Math.pow(1 + (baseRate / 100), effectiveYears) - 1;
-                }
-                
-                // Check for manual override
-                const manualOverride = escalationData.manualOverrides[year];
-                let escalationAmount;
-                
-                if (manualOverride !== undefined && manualOverride !== null && manualOverride !== '') {
-                    escalationAmount = parseFloat(manualOverride) || 0;
-                } else {
-                    escalationAmount = yearBaseCost * compoundedFactor;
+                    escalationYears = marchCount;
+                    escalationFactor = Math.pow(1 + (baseRate / 100), escalationYears) - 1;
+                    escalationAmount = monthBaseCost * escalationFactor;
                 }
                 
                 totalEscalation += escalationAmount;
                 
+                // Format month label - short format like "F26" for Feb 2026
+                const monthLetters = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+                const yearShort = String(monthDate.getFullYear()).slice(-2); // Last 2 digits
+                const monthLabel = `${monthLetters[monthDate.getMonth()]}${yearShort}`;
+                // Full label for tooltip
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const monthLabelFull = `${monthNames[monthDate.getMonth()]} ${monthDate.getFullYear()}`;
+                
+                escalationData.monthlyBreakdown.push({
+                    month: m + 1,
+                    label: monthLabel,
+                    labelFull: monthLabelFull,
+                    date: new Date(monthDate),
+                    hours: monthHours,
+                    hourPercent: monthlyDistribution[m] * 100,
+                    baseCost: monthBaseCost,
+                    escalationYears: escalationYears,
+                    escalationFactor: escalationFactor,
+                    escalationAmount: escalationAmount,
+                    fiscalYear: fiscalYear
+                });
+                
+                // Aggregate by fiscal year
+                if (!fiscalYearData[fiscalYear]) {
+                    fiscalYearData[fiscalYear] = { hours: 0, baseCost: 0, escalationAmount: 0 };
+                }
+                fiscalYearData[fiscalYear].hours += monthHours;
+                fiscalYearData[fiscalYear].baseCost += monthBaseCost;
+                fiscalYearData[fiscalYear].escalationAmount += escalationAmount;
+            }
+            
+            // Convert fiscal year data to yearly breakdown for table
+            let yearNum = 1;
+            for (const [fy, data] of Object.entries(fiscalYearData).sort((a, b) => parseInt(a[0]) - parseInt(b[0]))) {
+                const hourPercent = (data.hours / totalHours) * 100 || 0;
+                const effectiveYears = yearNum === 1 ? 0 : yearNum - 1;
+                
                 escalationData.yearlyBreakdown.push({
-                    year: year,
-                    hours: yearHours,
+                    year: yearNum,
+                    fiscalYear: parseInt(fy),
+                    hours: data.hours,
                     hourPercent: hourPercent,
                     rate: baseRate,
                     effectiveYears: effectiveYears,
-                    compoundedFactor: compoundedFactor,
-                    escalationAmount: escalationAmount,
-                    manualOverride: manualOverride
+                    compoundedFactor: data.baseCost > 0 ? data.escalationAmount / data.baseCost : 0,
+                    escalationAmount: data.escalationAmount,
+                    manualOverride: escalationData.manualOverrides?.[yearNum]
                 });
+                yearNum++;
             }
             
             escalationData.totalCost = totalEscalation;
+            escalationData.firstEscalationDate = firstEscalationDate;
             
             // Render the table
             renderEscalationTable();
             
-            // Render the bell curve chart
+            // Render the bell curve chart (monthly view)
             renderEscalationChart();
+        }
+        
+        /**
+         * Calculate monthly bell curve distribution
+         */
+        function calculateMonthlyBellCurve(numMonths) {
+            if (numMonths <= 1) return [1];
+            
+            const distribution = [];
+            const midpoint = (numMonths - 1) / 2;
+            const stdDev = numMonths / 4;
+            
+            let total = 0;
+            for (let i = 0; i < numMonths; i++) {
+                const x = i - midpoint;
+                const value = Math.exp(-(x * x) / (2 * stdDev * stdDev));
+                distribution.push(value);
+                total += value;
+            }
+            
+            // Normalize to sum to 1.0
+            return distribution.map(v => v / total);
         }
 
         /**
@@ -892,14 +975,23 @@ let projectData = {
             let html = '';
             let totalHours = 0;
             let totalAmount = 0;
+            let totalPercent = 0;
             
             escalationData.yearlyBreakdown.forEach(row => {
                 totalHours += row.hours;
                 totalAmount += row.escalationAmount;
+                totalPercent += row.hourPercent;
                 
                 const manualValue = row.manualOverride !== undefined && row.manualOverride !== null && row.manualOverride !== '' 
                     ? parseFloat(row.manualOverride).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     : '';
+                
+                // Check if this year has a manual hour distribution override
+                const hasHourOverride = escalationData.hourDistributionOverrides && 
+                    escalationData.hourDistributionOverrides[row.year] !== undefined;
+                const hourPercentValue = hasHourOverride 
+                    ? escalationData.hourDistributionOverrides[row.year] 
+                    : row.hourPercent;
                 
                 // Highlight Year 1 with no escalation
                 const isNoEscalation = row.effectiveYears === 0;
@@ -911,7 +1003,12 @@ let projectData = {
                     <tr ${rowStyle}>
                         <td>Year ${row.year}${escalationNote}</td>
                         <td>${Math.round(row.hours).toLocaleString()}</td>
-                        <td>${row.hourPercent.toFixed(1)}%</td>
+                        <td>
+                            <input type="number" value="${hourPercentValue.toFixed(1)}" min="0" max="100" step="0.1" 
+                                   style="width: 60px; text-align: right; ${hasHourOverride ? 'background: #fff3cd; border-color: #ffc107;' : ''}"
+                                   onchange="updateYearHourDistribution(${row.year}, this.value)"
+                                   title="Edit to override bell curve distribution">%
+                        </td>
                         <td>${effectiveYearsDisplay}</td>
                         <td>
                             <input type="number" value="${row.rate}" min="0" max="20" step="0.1" 
@@ -929,7 +1026,9 @@ let projectData = {
             
             tbody.innerHTML = html;
             
-            // Update totals
+            // Update totals - show warning if percentages don't sum to 100%
+            const percentWarning = Math.abs(totalPercent - 100) > 0.5 ? 
+                ` <span style="color: #ff9800; font-size: 10px;">(${totalPercent.toFixed(1)}%)</span>` : '';
             document.getElementById('escalation-modal-total-hours').textContent = Math.round(totalHours).toLocaleString();
             document.getElementById('escalation-modal-total-amount').textContent = '$' + Math.round(totalAmount).toLocaleString();
         }
@@ -941,6 +1040,25 @@ let projectData = {
             // For now, just recalculate with the base rate
             // Could be extended to support per-year rates
             recalculateEscalation();
+        }
+
+        /**
+         * Updates the hour distribution percentage override for a specific year
+         */
+        function updateYearHourDistribution(year, value) {
+            if (!escalationData.hourDistributionOverrides) {
+                escalationData.hourDistributionOverrides = {};
+            }
+            
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+                delete escalationData.hourDistributionOverrides[year];
+            } else {
+                escalationData.hourDistributionOverrides[year] = numValue;
+            }
+            
+            // Recalculate with the new distribution
+            recalculateEscalationWithOverrides();
         }
 
         /**
@@ -957,7 +1075,118 @@ let projectData = {
         }
 
         /**
-         * Renders the bell curve chart
+         * Recalculate escalation using manual hour distribution overrides
+         */
+        function recalculateEscalationWithOverrides() {
+            const overrides = escalationData.hourDistributionOverrides || {};
+            const years = escalationData.years || 3;
+            const totalHours = escalationData.totalHours || 0;
+            const baseRate = escalationData.baseRate || 5;
+            
+            // Get base cost
+            const kieLaborCosts = parseFloat(document.getElementById('kie-labor-total-revenue')?.textContent?.replace(/[$,]/g, '')) || 0;
+            const subsCosts = parseFloat(document.getElementById('subs-section-total-revenue')?.textContent?.replace(/[$,]/g, '')) || 0;
+            const esdcRevenue = parseFloat(document.getElementById('esdc-total-revenue')?.textContent?.replace(/[$,]/g, '')) || 0;
+            const tscdRevenue = parseFloat(document.getElementById('tscd-total-revenue')?.textContent?.replace(/[$,]/g, '')) || 0;
+            const baseCost = Math.max(0, kieLaborCosts + subsCosts - esdcRevenue - tscdRevenue);
+            
+            // Calculate distribution - use overrides where set, bell curve otherwise
+            const bellCurve = calculateBellCurveDistribution(years);
+            let distribution = [];
+            let overrideTotal = 0;
+            let bellCurvePortions = [];
+            
+            for (let i = 0; i < years; i++) {
+                const year = i + 1;
+                if (overrides[year] !== undefined) {
+                    distribution[i] = overrides[year] / 100;
+                    overrideTotal += overrides[year];
+                } else {
+                    distribution[i] = null; // Will be filled with adjusted bell curve
+                    bellCurvePortions.push({ index: i, bellValue: bellCurve[i] });
+                }
+            }
+            
+            // Adjust remaining bell curve portions to fill the gap
+            const remainingPercent = (100 - overrideTotal) / 100;
+            const bellCurveSum = bellCurvePortions.reduce((sum, p) => sum + p.bellValue, 0);
+            
+            for (const portion of bellCurvePortions) {
+                if (bellCurveSum > 0) {
+                    distribution[portion.index] = (portion.bellValue / bellCurveSum) * remainingPercent;
+                } else {
+                    distribution[portion.index] = remainingPercent / bellCurvePortions.length;
+                }
+            }
+            
+            // Get NTP date for escalation calculation
+            const ntpDateInput = document.getElementById('escalation-ntp-date');
+            const ntpDate = ntpDateInput?.value ? new Date(ntpDateInput.value) : new Date();
+            const ntpMonth = ntpDate.getMonth();
+            const ntpYear = ntpDate.getFullYear();
+            
+            let firstEscalationDate;
+            if (ntpMonth < 2) {
+                firstEscalationDate = new Date(ntpYear, 2, 1);
+            } else {
+                firstEscalationDate = new Date(ntpYear + 1, 2, 1);
+            }
+            
+            // Recalculate yearly breakdown with new distribution
+            escalationData.yearlyBreakdown = [];
+            let totalEscalation = 0;
+            
+            for (let i = 0; i < years; i++) {
+                const year = i + 1;
+                const yearHours = totalHours * distribution[i];
+                const hourPercent = distribution[i] * 100;
+                const yearBaseCost = baseCost * distribution[i];
+                
+                // Determine if this year has escalation
+                const effectiveYears = year === 1 ? 0 : year - 1;
+                const compoundedFactor = effectiveYears > 0 ? Math.pow(1 + (baseRate / 100), effectiveYears) - 1 : 0;
+                
+                // Check for manual override
+                const manualOverride = escalationData.manualOverrides?.[year];
+                let escalationAmount;
+                
+                if (manualOverride !== undefined && manualOverride !== null && manualOverride !== '') {
+                    escalationAmount = parseFloat(manualOverride) || 0;
+                } else {
+                    escalationAmount = yearBaseCost * compoundedFactor;
+                }
+                
+                totalEscalation += escalationAmount;
+                
+                escalationData.yearlyBreakdown.push({
+                    year: year,
+                    hours: yearHours,
+                    hourPercent: hourPercent,
+                    rate: baseRate,
+                    effectiveYears: effectiveYears,
+                    compoundedFactor: compoundedFactor,
+                    escalationAmount: escalationAmount,
+                    manualOverride: manualOverride
+                });
+            }
+            
+            escalationData.totalCost = totalEscalation;
+            
+            // Re-render table and chart
+            renderEscalationTable();
+            renderEscalationChart();
+        }
+
+        /**
+         * Resets all hour distribution overrides back to bell curve
+         */
+        function resetHourDistribution() {
+            escalationData.hourDistributionOverrides = {};
+            recalculateEscalation();
+        }
+
+        /**
+         * Renders the bell curve chart with monthly data
          */
         function renderEscalationChart() {
             const canvas = document.getElementById('escalation-bell-curve-chart');
@@ -970,9 +1199,13 @@ let projectData = {
                 escalationChart.destroy();
             }
             
-            const labels = escalationData.yearlyBreakdown.map(row => `Year ${row.year}`);
-            const hoursData = escalationData.yearlyBreakdown.map(row => Math.round(row.hours));
-            const escalationData2 = escalationData.yearlyBreakdown.map(row => Math.round(row.escalationAmount));
+            // Use monthly breakdown for chart (with month/year labels)
+            const monthlyData = escalationData.monthlyBreakdown || [];
+            if (monthlyData.length === 0) return;
+            
+            const labels = monthlyData.map(row => row.label);
+            const hoursData = monthlyData.map(row => Math.round(row.hours));
+            const escalationData2 = monthlyData.map(row => Math.round(row.escalationAmount));
             
             // Calculate max values for better scaling
             const maxHours = Math.max(...hoursData);
@@ -981,6 +1214,9 @@ let projectData = {
             // Add 10% padding to the max for better visualization
             const hoursMax = Math.ceil(maxHours * 1.1);
             const escalationMax = Math.ceil(maxEscalation * 1.1);
+            
+            // Reduce point size for many data points
+            const pointRadius = monthlyData.length > 24 ? 2 : monthlyData.length > 12 ? 3 : 5;
             
             escalationChart = new Chart(ctx, {
                 type: 'bar',
@@ -992,8 +1228,8 @@ let projectData = {
                             data: hoursData,
                             backgroundColor: 'rgba(92, 107, 192, 0.7)',
                             borderColor: 'rgba(92, 107, 192, 1)',
-                            borderWidth: 2,
-                            borderRadius: 4,
+                            borderWidth: 1,
+                            borderRadius: 2,
                             yAxisID: 'y'
                         },
                         {
@@ -1004,11 +1240,11 @@ let projectData = {
                             backgroundColor: 'rgba(255, 193, 7, 0.15)',
                             fill: true,
                             tension: 0.4,
-                            borderWidth: 3,
-                            pointRadius: 5,
+                            borderWidth: 2,
+                            pointRadius: pointRadius,
                             pointBackgroundColor: 'rgba(255, 193, 7, 1)',
                             pointBorderColor: '#fff',
-                            pointBorderWidth: 2,
+                            pointBorderWidth: 1,
                             yAxisID: 'y1'
                         }
                     ]
@@ -1039,11 +1275,19 @@ let projectData = {
                             borderWidth: 1,
                             padding: 12,
                             callbacks: {
+                                title: function(context) {
+                                    const idx = context[0].dataIndex;
+                                    const monthData = monthlyData[idx];
+                                    return `${monthData.labelFull} (FY ${monthData.fiscalYear})`;
+                                },
                                 label: function(context) {
+                                    const idx = context.dataIndex;
+                                    const monthData = monthlyData[idx];
                                     if (context.dataset.label.includes('Hours')) {
-                                        return `Hours: ${context.raw.toLocaleString()}`;
+                                        return `Hours: ${context.raw.toLocaleString()} (${monthData.hourPercent.toFixed(1)}%)`;
                                     } else {
-                                        return `Escalation: $${context.raw.toLocaleString()}`;
+                                        const escalYears = monthData.escalationYears;
+                                        return `Escalation: $${context.raw.toLocaleString()} (${escalYears} yr${escalYears !== 1 ? 's' : ''})`;
                                     }
                                 }
                             }
@@ -1051,8 +1295,23 @@ let projectData = {
                     },
                     scales: {
                         x: {
-                            ticks: {
+                            title: {
+                                display: true,
+                                text: 'Month / Year',
                                 color: '#b0b0b0'
+                            },
+                            ticks: {
+                                color: '#b0b0b0',
+                                maxRotation: 0,
+                                minRotation: 0,
+                                font: {
+                                    size: monthlyData.length > 48 ? 7 : monthlyData.length > 24 ? 8 : 9
+                                },
+                                // Show every Nth label based on duration (shorter labels = can show more)
+                                callback: function(value, index) {
+                                    const skipInterval = monthlyData.length > 60 ? 6 : monthlyData.length > 48 ? 4 : monthlyData.length > 36 ? 3 : monthlyData.length > 24 ? 2 : 1;
+                                    return index % skipInterval === 0 ? this.getLabelForValue(value) : '';
+                                }
                             },
                             grid: {
                                 color: 'rgba(255, 255, 255, 0.1)'
@@ -1065,7 +1324,7 @@ let projectData = {
                             max: hoursMax > 0 ? hoursMax : undefined,
                             title: {
                                 display: true,
-                                text: 'Hours',
+                                text: 'Hours (Bell Curve)',
                                 color: '#5c6bc0'
                             },
                             ticks: {
@@ -2056,6 +2315,7 @@ let projectData = {
             traffic: './data/benchmarking/All Other Projects/benchmarking-traffic.json',
             utilities: './data/benchmarking/All Other Projects/benchmarking-utilities.json',
             retainingWalls: './data/benchmarking/All Other Projects/benchmarking-retainingwalls.json',
+            noiseWalls: './data/benchmarking/All Other Projects/benchmarking-noisewalls.json',
             bridgesPCGirder: './data/benchmarking/All Other Projects/benchmarking-bridges.json',
             bridgesSteel: './data/benchmarking/All Other Projects/benchmarking-bridges.json',
             bridgesRehab: './data/benchmarking/All Other Projects/benchmarking-bridges.json',
@@ -2064,7 +2324,8 @@ let projectData = {
             systems: './data/benchmarking/All Other Projects/benchmarking-systems.json',
             track: './data/benchmarking/All Other Projects/benchmarking-track.json',
             esdc: './data/benchmarking/All Other Projects/benchmarking-esdc.json',
-            tscd: './data/benchmarking/All Other Projects/benchmarking-tsdc.json'
+            tscd: './data/benchmarking/All Other Projects/benchmarking-tscd.json',
+            digitalDelivery: './data/benchmarking/Wall/JSON Wall/Dig_Engg.json'
         };
 
         function getBaseUrl() {
@@ -2088,7 +2349,8 @@ let projectData = {
             systems: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Elec_Systems.json',
             track: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/roadway.json',
             esdc: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Dig_Engg.json',
-            tscd: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/TSCd.json'
+            tscd: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/TSCd.json',
+            digitalDelivery: getBaseUrl() + '/data/benchmarking/Wall/JSON Wall/Dig_Engg.json'
         };
 
         // Active benchmark dataset selection
@@ -2502,26 +2764,26 @@ let projectData = {
             // Update chart title dynamically
             const chartTitle = document.getElementById('benchmark-chart-title');
             if (chartTitle) {
-                chartTitle.textContent = isRevenueBased ? '📈 Revenue vs Project Cost' : '📈 Rate vs Quantity';
+                chartTitle.textContent = isRevenueBased ? '📈 Production vs Revenue' : '📈 Rate vs Quantity';
             }
             
             // Convert to chart data points
             let allPoints, selectedPoints;
             
             if (isRevenueBased) {
-                // ESDC/TSCD: Use revenue (esdc_cost) vs project cost (anticipated_cost)
+                // ESDC/TSCD: X = Revenue (esdc_cost), Y = Production % (production_pct)
                 allPoints = allProjects.map(p => ({ 
-                    x: p.anticipated_cost || p.projectCost || 0, // Project cost in K$
-                    y: p.esdc_cost || p.cost || 0, // Revenue in K$
+                    x: p.esdc_cost || p.cost || 0, // Revenue in K$
+                    y: p.production_pct || p.rate || 0, // Production %
                     name: p.name,
-                    rate: p.production_pct || 0
+                    projectCost: p.anticipated_cost || p.projectCost || 0
                 })).filter(p => p.x > 0 && p.y > 0);
                 
                 selectedPoints = selectedProjects.map(p => ({ 
-                    x: p.anticipated_cost || p.projectCost || 0,
-                    y: p.esdc_cost || p.cost || 0,
+                    x: p.esdc_cost || p.cost || 0, // Revenue in K$
+                    y: p.production_pct || p.rate || 0, // Production %
                     name: p.name,
-                    rate: p.production_pct || 0
+                    projectCost: p.anticipated_cost || p.projectCost || 0
                 })).filter(p => p.x > 0 && p.y > 0);
             } else {
                 // Standard: plot Quantity (x) vs Rate (y) — same Rate values shown in the project list
@@ -2536,8 +2798,23 @@ let projectData = {
             }
             
             // Calculate regressions (chart always uses data-derived curve; optional factor applied only to rate used for All/Selected Rate)
-            const allRegression = PowerRegression.calculate(allPoints);
-            const selectedRegression = PowerRegression.calculate(selectedPoints);
+            // For ESDC/TSCD: Use pre-calculated curve from JSON if available
+            let allRegression, selectedRegression;
+            
+            if (isRevenueBased && benchmarks.curve && benchmarks.curve.a && benchmarks.curve.b) {
+                // Use curve from JSON file
+                allRegression = {
+                    valid: true,
+                    a: benchmarks.curve.a,
+                    b: benchmarks.curve.b,
+                    r2: benchmarks.curve.r2 || 0
+                };
+                // For selected, recalculate from selected points
+                selectedRegression = PowerRegression.calculate(selectedPoints);
+            } else {
+                allRegression = PowerRegression.calculate(allPoints);
+                selectedRegression = PowerRegression.calculate(selectedPoints);
+            }
             
             // Smart X-axis scaling: focus on where data is dense
             // Use 90th percentile of quantities with 20% buffer
@@ -2653,11 +2930,11 @@ let projectData = {
                                 label: function(context) {
                                     const point = context.raw;
                                     if (isRevenueBased) {
-                                        // ESDC/TSCD: Show revenue and project cost
+                                        // ESDC/TSCD: Show production % and revenue
                                         if (point.name) {
-                                            return `${point.name}: $${point.y.toLocaleString()}K Revenue @ $${point.x.toLocaleString()}K Project Cost (${point.rate?.toFixed(2) || 0}%)`;
+                                            return `${point.name}: ${point.y.toFixed(2)}% Production @ $${point.x.toLocaleString()}K Revenue (Project: $${point.projectCost?.toLocaleString() || 0}K)`;
                                         }
-                                        return `$${point.y.toLocaleString()}K Revenue`;
+                                        return `${point.y.toFixed(2)}% Production`;
                                     } else {
                                         const rate = point.y;
                                         const mh = point.mh != null ? point.mh : (point.x * rate);
@@ -2680,7 +2957,7 @@ let projectData = {
                             max: xMax,
                             title: {
                                 display: true,
-                                text: isRevenueBased ? 'Project Cost (K$)' : `Quantity (${config?.unit || 'units'})`,
+                                text: isRevenueBased ? 'Revenue (K$)' : `Quantity (${config?.unit || 'units'})`,
                                 color: '#888'
                             },
                             ticks: {
@@ -2699,13 +2976,13 @@ let projectData = {
                             max: yMax,
                             title: {
                                 display: true,
-                                text: isRevenueBased ? 'Revenue (K$)' : `Rate (MH/${config?.unit || 'unit'})`,
+                                text: isRevenueBased ? 'Production (%)' : `Rate (MH/${config?.unit || 'unit'})`,
                                 color: '#888'
                             },
                             ticks: {
                                 color: '#888',
                                 callback: function(value) {
-                                    return isRevenueBased ? '$' + value.toLocaleString() + 'K' : Number(value).toFixed(3);
+                                    return isRevenueBased ? value.toFixed(2) + '%' : Number(value).toFixed(3);
                                 }
                             },
                             grid: {
@@ -3789,48 +4066,133 @@ ${reasoning}`;
         }
 
         /**
-         * Calculate Digital Delivery MH using the complexity matrix
-         * @param {number} projectCostK - Project cost in thousands (K$)
+         * Calculate Digital Delivery MH using the 3-step process from JSON data
+         * Step 1: Check Assumed Construction Cost against size ranges, use Medium complexity to get score
+         * Step 2: Check complexity score against PRA Score ranges to find the column
+         * Step 3: Use Design Duration to find the row, get MH from intersection
+         * @param {number} assumedConstructionCostM - Assumed construction cost in millions ($M)
          * @param {number} durationMonths - Design duration in months
-         * @param {string} complexityGroup - 'Low', 'Low-Med', 'Med', 'Med-High', 'High'
-         * @returns {Object} { mh: number, complexityScore: number }
+         * @param {string} complexityGroup - 'Low', 'Low-Med', 'Med', 'Med-High', 'High' (default: 'Med')
+         * @returns {Object} { mh, complexityScore, praColumn, rawLabor, burden, gna, margin, revenue }
          */
-        function calculateDigitalDeliveryMH(projectCostK, durationMonths, complexityGroup = 'Med') {
-            const matrix = DIGITAL_DELIVERY_MATRIX;
+        function calculateDigitalDeliveryMH(assumedConstructionCostM, durationMonths, complexityGroup = 'Med') {
+            // Default hourly rate for Digital Delivery
+            const hourlyRate = 68;
             
-            // Determine size score
-            let sizeScore = 1;
-            if (projectCostK >= 1000000) sizeScore = 12;
-            else if (projectCostK >= 700000) sizeScore = 10;
-            else if (projectCostK >= 400000) sizeScore = 6;
-            else if (projectCostK >= 200000) sizeScore = 3;
-            else if (projectCostK >= 100000) sizeScore = 2;
-            else sizeScore = 1;
+            // Get cost calculation parameters
+            const burdenRate = parseFloat(document.getElementById('unified-burden')?.value) || 66;
+            const gnaRate = parseFloat(document.getElementById('unified-gna')?.value) || 104;
+            const kieMultiplier = parseFloat(document.getElementById('calc-kie-multiplier')?.value) || 2.85;
+            const marginPercent = (kieMultiplier - 1 - (burdenRate / 100) - (gnaRate / 100)) * 100;
             
-            // Get complexity multiplier
-            const multipliers = matrix.complexityMultipliers[complexityGroup] || matrix.complexityMultipliers['Med'];
-            const complexityScore = multipliers[sizeScore] || sizeScore;
+            // ============================================
+            // STEP 1: Determine complexity score from size range
+            // ============================================
+            // Size ranges in millions: <$100M, $100M-$200M, $200M-$400M, $400M-$700M, $700M-$1B, >$1B
+            // For Medium complexity, use col_4 values: 4, 8, 12, 24, 40, 48
             
-            // Find duration index
-            const durationIdx = matrix.durations.indexOf(durationMonths);
-            const actualDurationIdx = durationIdx >= 0 ? durationIdx : 
-                matrix.durations.findIndex(d => d >= durationMonths) || matrix.durations.length - 1;
+            // Complexity columns: Low=col_2, Low-Med=col_3, Med=col_4, Med-High=col_5, High=col_6
+            const complexityColMap = {
+                'Low': 'col_2',
+                'Low-Med': 'col_3', 
+                'Med': 'col_4',
+                'Med-High': 'col_5',
+                'High': 'col_6'
+            };
+            const complexityCol = complexityColMap[complexityGroup] || 'col_4';
             
-            // Find closest complexity score column
-            const scoreKeys = Object.keys(matrix.complexityScores).map(Number).sort((a, b) => a - b);
-            let scoreKey = scoreKeys[0];
-            for (const key of scoreKeys) {
-                if (complexityScore >= key) scoreKey = key;
+            // Size ranges and their complexity scores for Medium (col_4)
+            // Based on JSON rows 5-10 (indices 4-9)
+            let complexityScore = 4; // Default for <$100M with Medium
+            
+            if (assumedConstructionCostM >= 1000) {
+                // >$1B -> row 10 (index 9), col_4 = 48
+                complexityScore = complexityGroup === 'Low' ? 12 : complexityGroup === 'Low-Med' ? 24 : 
+                                  complexityGroup === 'Med' ? 48 : complexityGroup === 'Med-High' ? 96 : 192;
+            } else if (assumedConstructionCostM >= 700) {
+                // $700M-$1B -> row 9 (index 8), col_4 = 40
+                complexityScore = complexityGroup === 'Low' ? 10 : complexityGroup === 'Low-Med' ? 20 : 
+                                  complexityGroup === 'Med' ? 40 : complexityGroup === 'Med-High' ? 80 : 160;
+            } else if (assumedConstructionCostM >= 400) {
+                // $400M-$700M -> row 8 (index 7), col_4 = 24
+                complexityScore = complexityGroup === 'Low' ? 6 : complexityGroup === 'Low-Med' ? 12 : 
+                                  complexityGroup === 'Med' ? 24 : complexityGroup === 'Med-High' ? 48 : 96;
+            } else if (assumedConstructionCostM >= 200) {
+                // $200M-$400M -> row 7 (index 6), col_4 = 12
+                complexityScore = complexityGroup === 'Low' ? 3 : complexityGroup === 'Low-Med' ? 6 : 
+                                  complexityGroup === 'Med' ? 12 : complexityGroup === 'Med-High' ? 24 : 48;
+            } else if (assumedConstructionCostM >= 100) {
+                // $100M-$200M -> row 6 (index 5), col_4 = 8
+                complexityScore = complexityGroup === 'Low' ? 2 : complexityGroup === 'Low-Med' ? 4 : 
+                                  complexityGroup === 'Med' ? 8 : complexityGroup === 'Med-High' ? 16 : 32;
+            } else {
+                // <$100M -> row 5 (index 4), col_4 = 4
+                complexityScore = complexityGroup === 'Low' ? 1 : complexityGroup === 'Low-Med' ? 2 : 
+                                  complexityGroup === 'Med' ? 4 : complexityGroup === 'Med-High' ? 8 : 16;
             }
             
+            // ============================================
+            // STEP 2: Determine PRA column from complexity score
+            // ============================================
+            // PRA Score ranges (row 16, index 15): 1, 2, 3-6, 7-12, 13-48, >48
+            // Corresponding columns: col_1, col_2, col_3, col_4, col_5, col_6
+            let praColumn = 'col_1';
+            if (complexityScore > 48) praColumn = 'col_6';
+            else if (complexityScore >= 13) praColumn = 'col_5';
+            else if (complexityScore >= 7) praColumn = 'col_4';
+            else if (complexityScore >= 3) praColumn = 'col_3';
+            else if (complexityScore === 2) praColumn = 'col_2';
+            else praColumn = 'col_1';
+            
+            // ============================================
+            // STEP 3: Get MH from duration and PRA column intersection
+            // ============================================
+            // Duration rows start at index 22 (6 months) through index 45 (24 months)
+            // Use the DIGITAL_DELIVERY_MATRIX for lookup
+            const matrix = DIGITAL_DELIVERY_MATRIX;
+            
+            // Clamp duration to valid range (6-24 months)
+            const clampedDuration = Math.max(6, Math.min(24, Math.round(durationMonths)));
+            const durationIdx = matrix.durations.indexOf(clampedDuration);
+            const actualDurationIdx = durationIdx >= 0 ? durationIdx : matrix.durations.length - 1;
+            
+            // Map PRA column to complexity score key in matrix
+            const praToScoreKey = {
+                'col_1': 1,
+                'col_2': 2,
+                'col_3': 4,   // 3-6 range -> score 4
+                'col_4': 8,   // 7-12 range -> score 8
+                'col_5': 16,  // 13-48 range -> score 16
+                'col_6': 24   // >48 range -> score 24
+            };
+            const scoreKey = praToScoreKey[praColumn] || 4;
+            
+            // Get MH from matrix
             const mhValues = matrix.complexityScores[scoreKey];
-            const mh = mhValues[actualDurationIdx] || mhValues[mhValues.length - 1];
+            const mh = mhValues ? (mhValues[actualDurationIdx] || mhValues[mhValues.length - 1]) : 0;
+            
+            // ============================================
+            // Calculate costs using $68/hr rate
+            // ============================================
+            const rawLabor = mh * hourlyRate;
+            const burden = rawLabor * (burdenRate / 100);
+            const gna = rawLabor * (gnaRate / 100);
+            const margin = rawLabor * (marginPercent / 100);
+            const revenue = rawLabor + burden + gna + margin;
+            const totalCost = rawLabor + burden;
             
             return {
                 mh: mh,
                 complexityScore: complexityScore,
-                sizeScore: sizeScore,
-                durationMonths: durationMonths
+                praColumn: praColumn,
+                durationMonths: clampedDuration,
+                hourlyRate: hourlyRate,
+                rawLabor: rawLabor,
+                burden: burden,
+                gna: gna,
+                margin: margin,
+                revenue: revenue,
+                totalCost: totalCost
             };
         }
 
@@ -5050,16 +5412,38 @@ ${reasoning}`;
         }
 
         /**
+         * Define discipline groups that share selected rates
+         * When a rate is selected for any discipline in a group, apply to all in the group
+         */
+        const SHARED_RATE_GROUPS = {
+            bridges: ['bridgesPCGirder', 'bridgesSteel', 'bridgesRehab'],
+            noiseWalls: ['noiseWalls']  // Can add more noise wall types if needed
+        };
+
+        /**
+         * Get the group a discipline belongs to for rate sharing
+         */
+        function getSharedRateGroup(discId) {
+            for (const [groupName, disciplines] of Object.entries(SHARED_RATE_GROUPS)) {
+                if (disciplines.includes(discId)) {
+                    return { name: groupName, disciplines };
+                }
+            }
+            return null;
+        }
+
+        /**
          * Apply benchmark selection and recalculate
          */
         function applyBenchmarkSelection() {
-            // Recalculate all active disciplines with new project selections
+            // Track rates for shared groups - first discipline in group sets the rate
+            const groupRates = {};
+
+            // First pass: calculate rates for each active discipline
             for (const [discId, state] of Object.entries(mhEstimateState.disciplines)) {
                 if (state.active && state.quantity > 0) {
                     const config = DISCIPLINE_CONFIG[discId];
                     const benchmarks = getBenchmarkDataSync(discId);
-
-                    // For Wall disciplines, config may not exist - use benchmarks data
                     const calculationType = config?.calculationType || (benchmarks ? 'benchmark' : null);
 
                     if (calculationType === 'benchmark') {
@@ -5070,8 +5454,23 @@ ${reasoning}`;
                         const fallbackRate = applicableProjects.length > 0 ? calculateWeightedRate(applicableProjects) : benchmarks?.customRate || 0;
                         const allMean = benchmarks?.projects?.length > 0 ? BenchmarkStats.calculateRateStats(benchmarks.projects).mean : fallbackRate;
 
-                        state.rate = (selectedCurveRate != null && selectedCurveRate > 0) ? selectedCurveRate : fallbackRate;
-                        state.allRate = (allCurveRate != null && allCurveRate > 0) ? allCurveRate : allMean;
+                        let rate = (selectedCurveRate != null && selectedCurveRate > 0) ? selectedCurveRate : fallbackRate;
+                        let allRate = (allCurveRate != null && allCurveRate > 0) ? allCurveRate : allMean;
+
+                        // Check if this discipline is part of a shared rate group
+                        const group = getSharedRateGroup(discId);
+                        if (group) {
+                            // If group rate already set, use it; otherwise set it
+                            if (groupRates[group.name]) {
+                                rate = groupRates[group.name].rate;
+                                allRate = groupRates[group.name].allRate;
+                            } else {
+                                groupRates[group.name] = { rate, allRate };
+                            }
+                        }
+
+                        state.rate = rate;
+                        state.allRate = allRate;
                         state.mh = Math.round(qty * state.rate);
                         state.selectedProjects = applicableProjects;
 
@@ -5109,6 +5508,28 @@ ${reasoning}`;
                         // Recalculate costs for unified table
                         if (typeof recalculateUnifiedCosts === 'function') {
                             recalculateUnifiedCosts(discId);
+                        }
+                    }
+                }
+            }
+
+            // Second pass: Apply shared rates to disciplines with quantity 0 (inactive but in group)
+            for (const [groupName, groupData] of Object.entries(groupRates)) {
+                const group = SHARED_RATE_GROUPS[groupName];
+                for (const discId of group) {
+                    const state = mhEstimateState.disciplines[discId];
+                    if (state && state.quantity === 0) {
+                        // Store the shared rate even for inactive disciplines
+                        state.rate = groupData.rate;
+                        state.allRate = groupData.allRate;
+                        
+                        // Update rate display even for 0 quantity
+                        const config = DISCIPLINE_CONFIG[discId];
+                        const benchmarks = getBenchmarkDataSync(discId);
+                        const unit = config?.unit || benchmarks?.eqty_metric?.uom || 'EA';
+                        const unifiedRateElem = document.getElementById(`unified-rate-${discId}`);
+                        if (unifiedRateElem) {
+                            unifiedRateElem.textContent = formatRate(state.rate, unit);
                         }
                     }
                 }
@@ -5416,6 +5837,9 @@ ${reasoning}`;
                 <td class="cost-col numeric revenue-detail-col">
                     <span id="unified-burden-${discId}">$0</span>
                 </td>
+                <td class="cost-col numeric">
+                    <span id="unified-total-cost-${discId}">$0</span>
+                </td>
                 <td class="cost-col numeric revenue-detail-col">
                     <span id="unified-gna-${discId}">$0</span>
                 </td>
@@ -5424,9 +5848,6 @@ ${reasoning}`;
                 </td>
                 <td class="cost-col numeric">
                     <span id="unified-expenses-${discId}">$0</span>
-                </td>
-                <td class="cost-col numeric">
-                    <span id="unified-total-cost-${discId}">$0</span>
                 </td>
             `;
 
@@ -5459,6 +5880,53 @@ ${reasoning}`;
             state.mh = result.mh;
             state.rate = result.rate;
             if (result.allRate != null) state.allRate = result.allRate;
+
+            // For noise walls and bridges, apply selected rate to all related disciplines
+            const group = getSharedRateGroup(discId);
+            if (group && quantity > 0 && state.rate > 0) {
+                // Apply this rate to all other disciplines in the group
+                for (const otherDiscId of group.disciplines) {
+                    if (otherDiscId !== discId) {
+                        const otherState = mhEstimateState.disciplines[otherDiscId];
+                        if (otherState) {
+                            otherState.rate = state.rate;
+                            otherState.allRate = state.allRate;
+                            
+                            // Recalculate MH if other discipline has quantity
+                            if (otherState.quantity > 0) {
+                                otherState.mh = Math.round(otherState.quantity * state.rate);
+                                
+                                // Update displays for other discipline
+                                const otherConfig = DISCIPLINE_CONFIG[otherDiscId];
+                                const otherBenchmarks = getBenchmarkDataSync(otherDiscId);
+                                const otherUnit = otherConfig?.unit || otherBenchmarks?.eqty_metric?.uom || 'EA';
+                                
+                                const otherMhElem = document.getElementById(`unified-mh-${otherDiscId}`);
+                                const otherRateElem = document.getElementById(`unified-rate-${otherDiscId}`);
+                                const otherAllRateElem = document.getElementById(`unified-rate-all-${otherDiscId}`);
+                                const otherWideOpenEl = document.getElementById(`unified-wide-open-mh-${otherDiscId}`);
+                                const otherCustomMHEl = document.getElementById(`unified-custom-mh-${otherDiscId}`);
+                                
+                                if (otherMhElem) otherMhElem.textContent = formatMH(otherState.mh);
+                                if (otherRateElem) otherRateElem.textContent = formatRate(state.rate, otherUnit);
+                                if (otherAllRateElem) otherAllRateElem.textContent = formatRate(state.allRate, otherUnit);
+                                if (otherWideOpenEl) otherWideOpenEl.textContent = formatMH(Math.round(otherState.quantity * state.allRate));
+                                if (otherCustomMHEl) otherCustomMHEl.textContent = formatMH(otherState.mh);
+                                
+                                // Recalculate costs for other discipline
+                                recalculateUnifiedCosts(otherDiscId);
+                            } else {
+                                // Just update rate display
+                                const otherConfig = DISCIPLINE_CONFIG[otherDiscId];
+                                const otherBenchmarks = getBenchmarkDataSync(otherDiscId);
+                                const otherUnit = otherConfig?.unit || otherBenchmarks?.eqty_metric?.uom || 'EA';
+                                const otherRateElem = document.getElementById(`unified-rate-${otherDiscId}`);
+                                if (otherRateElem) otherRateElem.textContent = formatRate(state.rate, otherUnit);
+                            }
+                        }
+                    }
+                }
+            }
 
             // All Rate = from All Projects power curve at this quantity (same basis as benchmark chart / Excel)
             const allRateEl = document.getElementById(`unified-rate-all-${discId}`);
@@ -6039,8 +6507,8 @@ ${reasoning}`;
             // Calculate and display Expenses and Total Cost for discipline rows
             // Disciplines have no expenses (expenses are tracked at section level)
             const disciplineExpenses = 0;
-            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
-            const totalCost = rawLabor + burdenCost + gnaCost + disciplineExpenses;
+            // Total Cost = Raw Labor + Burden
+            const totalCost = rawLabor + burdenCost;
             
             state.expenses = disciplineExpenses;
             state.totalCost = totalCost;
@@ -6060,11 +6528,70 @@ ${reasoning}`;
          * Recalculate all costs
          */
         function recalculateAllUnifiedCosts() {
+            // Recalculate Digital Delivery based on Assumed Construction Cost and Design Duration
+            recalculateDigitalDelivery();
+            
             for (const discId of Object.keys(mhEstimateState.disciplines)) {
                 recalculateUnifiedCosts(discId);
             }
             updateUnifiedSummary();
             saveToLocalStorage();
+        }
+
+        /**
+         * Recalculate Digital Delivery based on Assumed Construction Cost and Design Duration
+         */
+        function recalculateDigitalDelivery() {
+            const state = mhEstimateState.disciplines.digitalDelivery;
+            if (!state) return;
+            
+            // Get Assumed Construction Cost (in $ - convert to millions for calculation)
+            const assumedCostInput = document.getElementById('calc-assumed-construction-cost');
+            const assumedCostStr = assumedCostInput?.value?.replace(/[^0-9.]/g, '') || '0';
+            const assumedConstructionCost = parseFloat(assumedCostStr) || 0;
+            const assumedCostM = assumedConstructionCost / 1000000; // Convert to millions
+            
+            // Get Design Duration (months)
+            const durationInput = document.getElementById('calc-design-duration');
+            const durationMonths = parseInt(durationInput?.value) || 12;
+            
+            // Calculate Digital Delivery MH using 3-step process
+            const result = calculateDigitalDeliveryMH(assumedCostM, durationMonths, 'Med');
+            
+            // Update state
+            state.active = assumedCostM > 0;
+            state.quantity = assumedCostM;
+            state.mh = result.mh;
+            state.rate = 68; // $68/hr
+            state.rawLabor = result.rawLabor;
+            state.burden = result.burden;
+            state.gna = result.gna;
+            state.margin = result.margin;
+            state.revenue = result.revenue;
+            state.totalCost = result.totalCost;
+            state.complexityScore = result.complexityScore;
+            state.praColumn = result.praColumn;
+            
+            // Update display
+            const mhEl = document.getElementById('unified-mh-digitalDelivery');
+            const rateEl = document.getElementById('unified-rate-digitalDelivery');
+            const qtyEl = document.getElementById('unified-qty-digitalDelivery');
+            const rawLaborEl = document.getElementById('unified-raw-labor-digitalDelivery');
+            const burdenEl = document.getElementById('unified-burden-digitalDelivery');
+            const gnaEl = document.getElementById('unified-gna-digitalDelivery');
+            const marginEl = document.getElementById('unified-margin-digitalDelivery');
+            const revenueEl = document.getElementById('unified-revenue-digitalDelivery');
+            const costEl = document.getElementById('unified-cost-digitalDelivery');
+            
+            if (mhEl) mhEl.textContent = formatMH(result.mh);
+            if (rateEl) rateEl.textContent = '$68.00';
+            if (qtyEl) qtyEl.value = assumedCostM > 0 ? '$' + assumedCostM.toFixed(1) + 'M' : '0';
+            if (rawLaborEl) rawLaborEl.textContent = '$' + Math.round(result.rawLabor).toLocaleString('en-US');
+            if (burdenEl) burdenEl.textContent = '$' + Math.round(result.burden).toLocaleString('en-US');
+            if (gnaEl) gnaEl.textContent = '$' + Math.round(result.gna).toLocaleString('en-US');
+            if (marginEl) marginEl.textContent = '$' + Math.round(result.margin).toLocaleString('en-US');
+            if (revenueEl) revenueEl.textContent = '$' + Math.round(result.revenue).toLocaleString('en-US');
+            if (costEl) costEl.textContent = '$' + Math.round(result.totalCost).toLocaleString('en-US');
         }
 
         /**
@@ -6252,8 +6779,8 @@ ${reasoning}`;
             const directsGna = directsRawLabor * (gnaRate / 100);
             const directsMargin = directsRawLabor * (marginPercent / 100);
             const directsTotalLabor = directsRawLabor + directsBurden + directsGna + directsMargin;
-            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
-            const directsTotalCosts = directsRawLabor + directsBurden + directsGna + directsExpenses;
+            // Total Cost = Raw Labor + Burden
+            const directsTotalCosts = directsRawLabor + directsBurden;
             const directsAvgRate = directsMH > 0 ? directsRawLabor / directsMH : 0;
 
             // Update DIRECTS row
@@ -6275,8 +6802,11 @@ ${reasoning}`;
             document.getElementById('unified-total-cost').textContent =
                 '$' + Math.round(directsTotalCosts).toLocaleString('en-US');
 
-            // INDIRECTS - calculated as DIRECTS MH ÷ 15 at $87/hr (rounded to nearest whole number)
-            const indirectsMH = Math.round(directsMH / 15);
+            // INDIRECTS - calculated as DIRECTS MH ÷ divisor at $87/hr (rounded to nearest whole number)
+            // Check if Indirects is enabled
+            const indirectsEnabled = document.getElementById('indirects-enabled-toggle')?.checked ?? true;
+            const indirectsDivisor = parseFloat(document.getElementById('indirects-divisor')?.value) || 15;
+            const indirectsMH = indirectsEnabled ? Math.round(directsMH / indirectsDivisor) : 0;
             const indirectsRate = 87; // Fixed rate for indirects
             const indirectsRawLabor = indirectsMH * indirectsRate;
             const indirectsBurden = indirectsRawLabor * (burdenRate / 100);
@@ -6284,8 +6814,8 @@ ${reasoning}`;
             const indirectsMargin = indirectsRawLabor * (marginPercent / 100);
             const indirectsTotalLabor = indirectsRawLabor + indirectsBurden + indirectsGna + indirectsMargin;
             const indirectsExpenses = 0;
-            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
-            const indirectsTotalCosts = indirectsRawLabor + indirectsBurden + indirectsGna + indirectsExpenses;
+            // Total Cost = Raw Labor + Burden
+            const indirectsTotalCosts = indirectsRawLabor + indirectsBurden;
 
             // Calculate FTEs based on design duration
             const designDurationInput = document.getElementById('calc-design-duration');
@@ -6321,8 +6851,8 @@ ${reasoning}`;
             const kieLaborMargin = directsMargin + indirectsMargin;
             const kieLaborTotalLabor = kieLaborRawLabor + kieLaborBurden + kieLaborGna + kieLaborMargin;
             const kieLaborExpenses = directsExpenses + indirectsExpenses;
-            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
-            const kieLaborTotalCosts = kieLaborRawLabor + kieLaborBurden + kieLaborGna + kieLaborExpenses;
+            // Total Cost = Raw Labor + Burden
+            const kieLaborTotalCosts = kieLaborRawLabor + kieLaborBurden;
             const kieLaborAvgRate = kieLaborMH > 0 ? kieLaborRawLabor / kieLaborMH : 0;
 
             // Update KIE LABOR section
@@ -6409,8 +6939,8 @@ ${reasoning}`;
             const subsMargin = 0;
             const subsTotalLabor = subsRawLabor + subsBurden + subsGna + subsMargin;
             const subsExpenses = lsSubsExpenses + surveyExpenses + subsurfaceUtilityExpenses;
-            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
-            const subsTotalCosts = subsRawLabor + subsBurden + subsGna + subsExpenses;
+            // Total Cost = Raw Labor + Burden
+            const subsTotalCosts = subsRawLabor + subsBurden;
             const subsAvgRate = subsMH > 0 ? subsRawLabor / subsMH : 0;
 
             // Update SUBS section
@@ -6433,10 +6963,12 @@ ${reasoning}`;
                 '$' + Math.round(subsTotalCosts).toLocaleString('en-US');
 
             // Calculate IPC based on (KIE LABOR + SUBS) MH × IPC Fee
+            // Check if IPC is enabled
+            const ipcEnabled = document.getElementById('ipc-enabled-toggle')?.checked ?? true;
             const ipcFeeInput = document.getElementById('unified-ipc-fee');
             const ipcFeePerMH = ipcFeeInput ? parseFloat(ipcFeeInput.value) || 6 : 6;
             const totalMHForIPC = kieLaborMH + subsMH;
-            const ipcExpenses = totalMHForIPC * ipcFeePerMH;
+            const ipcExpenses = ipcEnabled ? totalMHForIPC * ipcFeePerMH : 0;
 
             // Update IPC row (only expenses column has a value)
             const ipcTotalCosts = ipcExpenses; // Only expenses, no labor
@@ -6452,8 +6984,8 @@ ${reasoning}`;
             document.getElementById('ipc-total-cost').textContent =
                 '$' + Math.round(ipcTotalCosts).toLocaleString('en-US');
 
-            // Calculate ODC as 0.25% of Est. Construction Cost
-            const odcsExpenses = estConstructionCost * 0.0025; // 0.25%
+            // Calculate ODC as 0.25% of Assumed Construction Cost
+            const odcsExpenses = assumedConstructionCost * 0.0025; // 0.25%
 
             // Update ODC'S row
             const odcsTotalCosts = odcsExpenses; // Only expenses, no labor
@@ -6514,24 +7046,40 @@ ${reasoning}`;
             document.getElementById('escalation-total-cost').textContent =
                 '$' + Math.round(escalationExpenses).toLocaleString('en-US');
 
-            // Calculate CONTINGENCY as Contingency % × Est. Construction Cost
+            // Calculate CONTINGENCY: 5% of (Directs + Indirects MH) × Average Rate
             const contingencyPercentInput = document.getElementById('unified-contingency');
             const contingencyPercent = contingencyPercentInput ? parseFloat(contingencyPercentInput.value) || 5 : 5;
-            const contingencyExpenses = estConstructionCost * (contingencyPercent / 100);
-            const contingencyTotalCosts = contingencyExpenses; // Only expenses, no labor
+            
+            // Total MH from Directs + Indirects (which is kieLaborMH)
+            const contingencyBaseMH = directsMH + indirectsMH;
+            // 5% of total MH
+            const contingencyMH = Math.round(contingencyBaseMH * (contingencyPercent / 100));
+            // Average rate from directs + indirects
+            const contingencyAvgRate = contingencyBaseMH > 0 ? (directsRawLabor + indirectsRawLabor) / contingencyBaseMH : 0;
+            // Contingency raw labor = contingency MH × avg rate
+            const contingencyRawLabor = contingencyMH * contingencyAvgRate;
+            // Calculate burden, G&A, and margin for contingency
+            const contingencyBurden = contingencyRawLabor * (burdenRate / 100);
+            const contingencyGna = contingencyRawLabor * (gnaRate / 100);
+            const contingencyMargin = contingencyRawLabor * (marginPercent / 100);
+            const contingencyTotalRevenue = contingencyRawLabor + contingencyBurden + contingencyGna + contingencyMargin;
+            // Total Cost = Raw Labor + Burden
+            const contingencyTotalCosts = contingencyRawLabor + contingencyBurden;
 
             // Update CONTINGENCY row
-            document.getElementById('contingency-total-mh').textContent = '0';
-            document.getElementById('contingency-avg-rate').textContent = '$0.00';
-            document.getElementById('contingency-total-raw-labor').textContent = '$0';
-            document.getElementById('contingency-total-burden').textContent = '$0';
-            document.getElementById('contingency-total-gna').textContent = '$0';
-            // Display contingency value in the margin column
+            document.getElementById('contingency-total-mh').textContent = formatMH(contingencyMH);
+            document.getElementById('contingency-avg-rate').textContent = '$' + contingencyAvgRate.toFixed(2);
+            document.getElementById('contingency-total-raw-labor').textContent = 
+                '$' + Math.round(contingencyRawLabor).toLocaleString('en-US');
+            document.getElementById('contingency-total-burden').textContent = 
+                '$' + Math.round(contingencyBurden).toLocaleString('en-US');
+            document.getElementById('contingency-total-gna').textContent = 
+                '$' + Math.round(contingencyGna).toLocaleString('en-US');
             document.getElementById('contingency-total-margin').textContent = 
-                '$' + Math.round(contingencyExpenses).toLocaleString('en-US');
-            document.getElementById('contingency-total-revenue').textContent = '$0';
-            document.getElementById('contingency-total-expenses').textContent =
-                '$' + Math.round(contingencyExpenses).toLocaleString('en-US');
+                '$' + Math.round(contingencyMargin).toLocaleString('en-US');
+            document.getElementById('contingency-total-revenue').textContent = 
+                '$' + Math.round(contingencyTotalRevenue).toLocaleString('en-US');
+            document.getElementById('contingency-total-expenses').textContent = '$0';
             document.getElementById('contingency-total-cost').textContent =
                 '$' + Math.round(contingencyTotalCosts).toLocaleString('en-US');
 
@@ -6600,8 +7148,8 @@ ${reasoning}`;
             const esdcExpensesEl = document.getElementById('esdc-total-expenses');
             const esdcCostEl = document.getElementById('esdc-total-cost');
             if (esdcExpensesEl) esdcExpensesEl.textContent = '$0'; // ESDC is labor-based, no expenses
-            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
-            const esdcTotalCost = esdcCalc.rawLabor + esdcCalc.burden + esdcCalc.gna;
+            // Total Cost = Raw Labor + Burden
+            const esdcTotalCost = esdcCalc.rawLabor + esdcCalc.burden;
             if (esdcCostEl) esdcCostEl.textContent = '$' + Math.round(esdcTotalCost).toLocaleString('en-US');
 
             // TSCD calculation
@@ -6626,9 +7174,42 @@ ${reasoning}`;
             const tscdExpensesEl = document.getElementById('tscd-total-expenses');
             const tscdCostEl = document.getElementById('tscd-total-cost');
             if (tscdExpensesEl) tscdExpensesEl.textContent = '$0'; // TSCD is labor-based, no expenses
-            // Total Cost = Raw Labor + Burden + G&A + Expenses (excludes Margin)
-            const tscdTotalCost = tscdCalc.rawLabor + tscdCalc.burden + tscdCalc.gna;
+            // Total Cost = Raw Labor + Burden
+            const tscdTotalCost = tscdCalc.rawLabor + tscdCalc.burden;
             if (tscdCostEl) tscdCostEl.textContent = '$' + Math.round(tscdTotalCost).toLocaleString('en-US');
+
+            // ============================================
+            // GRAND TOTALS
+            // ============================================
+            // Sum all sections: KIE Labor + SUBS + Expenses + Contingency + ESDC + TSCD + Escalation
+            const grandTotalMH = kieLaborMH + subsMH + contingencyMH + (esdcCalc?.mh || 0) + (tscdCalc?.mh || 0);
+            const grandTotalRawLabor = kieLaborRawLabor + subsRawLabor + contingencyRawLabor + (esdcCalc?.rawLabor || 0) + (tscdCalc?.rawLabor || 0);
+            const grandTotalBurden = kieLaborBurden + subsBurden + contingencyBurden + (esdcCalc?.burden || 0) + (tscdCalc?.burden || 0);
+            const grandTotalGna = kieLaborGna + subsGna + contingencyGna + (esdcCalc?.gna || 0) + (tscdCalc?.gna || 0);
+            const grandTotalMargin = kieLaborMargin + subsMargin + contingencyMargin + (esdcCalc?.margin || 0) + (tscdCalc?.margin || 0);
+            const grandTotalExpenses = kieLaborExpenses + subsExpenses + expensesSectionExpenses + escalationExpenses;
+            // SUBS revenue = labor portion (0) + expenses (which are included in grandTotalExpenses)
+            const grandTotalRevenue = kieLaborTotalLabor + subsTotalLabor + subsExpenses + contingencyTotalRevenue + (esdcCalc?.revenue || 0) + (tscdCalc?.revenue || 0) + odcsExpenses;
+            const grandTotalCost = grandTotalRawLabor + grandTotalBurden;
+
+            // Update Grand Totals row
+            const grandMhEl = document.getElementById('grand-total-mh');
+            const grandRevenueEl = document.getElementById('grand-total-revenue');
+            const grandRawLaborEl = document.getElementById('grand-total-raw-labor');
+            const grandBurdenEl = document.getElementById('grand-total-burden');
+            const grandCostEl = document.getElementById('grand-total-cost');
+            const grandGnaEl = document.getElementById('grand-total-gna');
+            const grandMarginEl = document.getElementById('grand-total-margin');
+            const grandExpensesEl = document.getElementById('grand-total-expenses');
+
+            if (grandMhEl) grandMhEl.textContent = formatMH(grandTotalMH);
+            if (grandRevenueEl) grandRevenueEl.textContent = '$' + Math.round(grandTotalRevenue).toLocaleString('en-US');
+            if (grandRawLaborEl) grandRawLaborEl.textContent = '$' + Math.round(grandTotalRawLabor).toLocaleString('en-US');
+            if (grandBurdenEl) grandBurdenEl.textContent = '$' + Math.round(grandTotalBurden).toLocaleString('en-US');
+            if (grandCostEl) grandCostEl.textContent = '$' + Math.round(grandTotalCost).toLocaleString('en-US');
+            if (grandGnaEl) grandGnaEl.textContent = '$' + Math.round(grandTotalGna).toLocaleString('en-US');
+            if (grandMarginEl) grandMarginEl.textContent = '$' + Math.round(grandTotalMargin).toLocaleString('en-US');
+            if (grandExpensesEl) grandExpensesEl.textContent = '$' + Math.round(grandTotalExpenses).toLocaleString('en-US');
         }
 
         /**
@@ -6642,7 +7223,7 @@ ${reasoning}`;
                 recalcTimer = setTimeout(recalculateAllUnifiedCosts, 300);
             };
 
-            const costParams = ['unified-burden', 'unified-gna', 'unified-contingency', 'unified-ipc-fee', 'unified-escalation', 'calc-est-construction-cost', 'calc-assumed-construction-cost', 'calc-kie-multiplier', 'calc-sub-multiplier'];
+            const costParams = ['unified-burden', 'unified-gna', 'unified-contingency', 'unified-ipc-fee', 'unified-escalation', 'calc-est-construction-cost', 'calc-assumed-construction-cost', 'calc-kie-multiplier', 'calc-sub-multiplier', 'indirects-divisor', 'calc-design-duration'];
             costParams.forEach(id => {
                 const elem = document.getElementById(id);
                 if (elem) {
@@ -6992,15 +7573,23 @@ ${reasoning}`;
         function toggleIndirectsRows() {
             const tbody = document.getElementById('unified-indirects-tbody');
             const icon = document.getElementById('indirects-toggle-icon');
+            const divisorWrapper = document.querySelector('.indirects-divisor-wrapper');
+            const toggleSwitch = document.querySelector('.indirects-toggle-switch');
 
             if (tbody.classList.contains('hidden')) {
                 // Expand - show all indirects
                 tbody.classList.remove('hidden');
                 icon.textContent = '▼';
+                // Show divisor controls when expanded
+                if (divisorWrapper) divisorWrapper.style.display = 'inline-flex';
+                if (toggleSwitch) toggleSwitch.style.display = 'inline-block';
             } else {
                 // Collapse - hide indirects
                 tbody.classList.add('hidden');
                 icon.textContent = '▶';
+                // Hide divisor controls when collapsed
+                if (divisorWrapper) divisorWrapper.style.display = 'none';
+                if (toggleSwitch) toggleSwitch.style.display = 'none';
             }
         }
 
@@ -7022,6 +7611,66 @@ ${reasoning}`;
                     tbody.classList.add('hidden');
                     icon.textContent = '▶';
                 }
+            }
+        }
+
+        /**
+         * Toggle IPC enabled/disabled state
+         */
+        function toggleIpcEnabled() {
+            const isEnabled = document.getElementById('ipc-enabled-toggle')?.checked ?? true;
+            const ipcSection = document.getElementById('ipc-section');
+            const ipcTbody = document.getElementById('ipc-tbody');
+            
+            if (ipcSection) {
+                if (isEnabled) {
+                    ipcSection.style.opacity = '1';
+                } else {
+                    ipcSection.style.opacity = '0.5';
+                }
+            }
+            if (ipcTbody) {
+                if (isEnabled) {
+                    ipcTbody.style.opacity = '1';
+                } else {
+                    ipcTbody.style.opacity = '0.5';
+                }
+            }
+            
+            // Recalculate unified costs
+            recalculateAllUnifiedCosts();
+        }
+
+        /**
+         * Toggle Indirects enabled/disabled state
+         */
+        function toggleIndirectsEnabled() {
+            const isEnabled = document.getElementById('indirects-enabled-toggle')?.checked ?? true;
+            const indirectsRow = document.querySelector('#indirects-section-header');
+            const indirectsTbody = document.getElementById('indirects-tbody');
+            
+            if (indirectsRow) {
+                indirectsRow.style.opacity = isEnabled ? '1' : '0.5';
+            }
+            if (indirectsTbody) {
+                indirectsTbody.style.opacity = isEnabled ? '1' : '0.5';
+            }
+            
+            // Recalculate unified costs
+            recalculateAllUnifiedCosts();
+        }
+
+        /**
+         * Adjust indirects divisor up or down
+         */
+        function adjustIndirectsDivisor(delta) {
+            const input = document.getElementById('indirects-divisor');
+            if (input) {
+                let value = parseInt(input.value) || 15;
+                value = Math.max(1, Math.min(50, value + delta));
+                input.value = value;
+                // Trigger recalculation
+                recalculateAllUnifiedCosts();
             }
         }
 
@@ -7135,6 +7784,9 @@ ${reasoning}`;
         window.toggleDirectsRows = toggleDirectsRows;
         window.toggleIndirectsRows = toggleIndirectsRows;
         window.toggleSubsRow = toggleSubsRow;
+        window.toggleIpcEnabled = toggleIpcEnabled;
+        window.toggleIndirectsEnabled = toggleIndirectsEnabled;
+        window.adjustIndirectsDivisor = adjustIndirectsDivisor;
         window.toggleKieLaborSection = toggleKieLaborSection;
         window.toggleSubsSection = toggleSubsSection;
         window.toggleExpensesSection = toggleExpensesSection;
@@ -17111,6 +17763,8 @@ Chunks: ${JSON.stringify(complexFieldsOnly, null, 2)}`;
         window.applyEscalationChanges = applyEscalationChanges;
         window.updateYearEscalationRate = updateYearEscalationRate;
         window.updateYearManualOverride = updateYearManualOverride;
+        window.updateYearHourDistribution = updateYearHourDistribution;
+        window.resetHourDistribution = resetHourDistribution;
         window.escapeHtml = escapeHtml;
         window.triggerAutosave = triggerAutosave;
         window.saveToLocalStorage = saveToLocalStorage;

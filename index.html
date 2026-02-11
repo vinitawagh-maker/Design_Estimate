@@ -350,10 +350,10 @@
                                         <th class="cost-col numeric">Total Revenue/Bill<span class="header-help" data-tooltip="Click to see breakdown: Raw Labor + Burden + G&A + Margin">?</span></th>
                                         <th class="cost-col numeric revenue-detail-col">Raw Labor<span class="header-help" data-tooltip="Raw Labor = Est. MH × Weighted Rate">?</span></th>
                                         <th class="cost-col numeric revenue-detail-col">Burden<span class="header-help" data-tooltip="Burden = Raw Labor × Burden Rate %">?</span></th>
+                                        <th class="cost-col numeric">Total Cost<span class="header-help" data-tooltip="Raw Labor + Burden">?</span></th>
                                         <th class="cost-col numeric revenue-detail-col">G&A<span class="header-help" data-tooltip="G&A = Raw Labor × G&A Rate %">?</span></th>
                                         <th class="cost-col numeric revenue-detail-col">Margin<span class="header-help" data-tooltip="Margin = Raw Labor × Margin %">?</span></th>
                                         <th class="cost-col numeric">Expenses<span class="header-help" data-tooltip="Other direct costs and expenses">?</span></th>
-                                        <th class="cost-col numeric">Total Cost<span class="header-help" data-tooltip="Raw Labor + Burden + G&A + Expenses">?</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="unified-estimate-tbody-header">
@@ -369,10 +369,10 @@
                                         <td class="cost-col section-header numeric clickable-revenue" id="kie-labor-total-revenue" onclick="event.stopPropagation(); toggleRevenueDetails()">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="kie-labor-total-raw-labor">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="kie-labor-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="kie-labor-total-cost">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="kie-labor-total-gna">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="kie-labor-total-margin">$0</td>
                                         <td class="cost-col section-header numeric" id="kie-labor-total-expenses">$0</td>
-                                        <td class="cost-col section-header numeric" id="kie-labor-total-cost">$0</td>
                                     </tr>
                                     <!-- Directs Row -->
                                     <tr class="summary-row indent-level-1 clickable-row" onclick="toggleDirectsRows()">
@@ -386,10 +386,10 @@
                                         <td class="cost-col numeric clickable-revenue" id="unified-total-revenue" onclick="event.stopPropagation(); toggleRevenueDetails()">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="unified-total-raw-labor">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="unified-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="unified-total-cost">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="unified-total-gna">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="unified-total-margin">$0</td>
                                         <td class="cost-col numeric" id="unified-total-expenses">$0</td>
-                                        <td class="cost-col numeric" id="unified-total-cost">$0</td>
                                     </tr>
                                 </tbody>
                                 <tbody id="unified-estimate-tbody" class="indent-level-2">
@@ -400,6 +400,16 @@
                                     <tr class="summary-row indent-level-1 clickable-row" onclick="toggleIndirectsRows()">
                                         <td class="frozen-col indent-1">
                                             <span id="indirects-toggle-icon">▼</span> INDIRECTS
+                                            <label class="indirects-toggle-switch" title="Toggle Indirects on/off">
+                                                <input type="checkbox" id="indirects-enabled-toggle" checked onclick="event.stopPropagation(); toggleIndirectsEnabled();">
+                                                <span class="indirects-toggle-slider"></span>
+                                            </label>
+                                            <span class="indirects-divisor-wrapper">
+                                                <span class="divisor-label">1 :</span>
+                                                <input type="number" id="indirects-divisor" value="15" min="1" max="50" step="1" 
+                                                       class="indirects-divisor-input" title="DIRECTS MH ÷ this value = INDIRECTS MH"
+                                                       onclick="event.stopPropagation()">
+                                            </span>
                                         </td>
                                         <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="unified-indirect-total-mh">0</td>
@@ -408,10 +418,10 @@
                                         <td class="cost-col numeric clickable-revenue" id="unified-indirect-total-revenue" onclick="event.stopPropagation(); toggleRevenueDetails()">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="unified-indirect-total-raw-labor">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="unified-indirect-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="unified-indirect-total-cost">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="unified-indirect-total-gna">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="unified-indirect-total-margin">$0</td>
                                         <td class="cost-col numeric" id="unified-indirect-total-expenses">$0</td>
-                                        <td class="cost-col numeric" id="unified-indirect-total-cost">$0</td>
                                     </tr>
                                 </tbody>
                                 <tbody id="unified-indirects-tbody" class="indent-level-2">
@@ -422,7 +432,7 @@
                                 <tbody id="subs-section-header">
                                     <tr class="section-header-row clickable-row" onclick="toggleSubsSection()">
                                         <td class="frozen-col section-header">
-                                            <span id="subs-section-toggle-icon">▼</span> SUBS
+                                            <span id="subs-section-toggle-icon">▼</span> LS Subs
                                         </td>
                                         <td colspan="9" class="mh-col section-header"></td>
                                         <td class="mh-col mh-col-keep section-header numeric" id="subs-section-total-mh">0</td>
@@ -431,17 +441,17 @@
                                         <td class="cost-col section-header numeric" id="subs-section-total-revenue">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="subs-section-total-raw-labor">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="subs-section-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="subs-section-total-cost">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="subs-section-total-gna">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="subs-section-total-margin">$0</td>
                                         <td class="cost-col section-header numeric" id="subs-section-total-expenses">$0</td>
-                                        <td class="cost-col section-header numeric" id="subs-section-total-cost">$0</td>
                                     </tr>
                                 </tbody>
                                 <tbody id="ls-subs-section">
                                     <!-- LS SUBS -->
                                     <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('ls-subs')">
                                         <td class="frozen-col indent-1">
-                                            <span id="ls-subs-toggle-icon">▼</span> LS SUBS
+                                            <span id="ls-subs-toggle-icon">▼</span> Survey Subs
                                         </td>
                                         <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="ls-subs-total-mh">0</td>
@@ -450,10 +460,10 @@
                                         <td class="cost-col numeric" id="ls-subs-total-revenue">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="ls-subs-total-raw-labor">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="ls-subs-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="ls-subs-total-cost">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="ls-subs-total-gna">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="ls-subs-total-margin">$0</td>
                                         <td class="cost-col numeric" id="ls-subs-total-expenses">$0</td>
-                                        <td class="cost-col numeric" id="ls-subs-total-cost">$0</td>
                                     </tr>
                                 </tbody>
                                 <tbody id="ls-subs-tbody" class="indent-level-2 hidden">
@@ -463,7 +473,7 @@
                                     <!-- SURVEY -->
                                     <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('survey')">
                                         <td class="frozen-col indent-1">
-                                            <span id="survey-toggle-icon">▼</span> SURVEY
+                                            <span id="survey-toggle-icon">▼</span> Subsurface Utility Subs
                                         </td>
                                         <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="survey-total-mh">0</td>
@@ -472,10 +482,10 @@
                                         <td class="cost-col numeric" id="survey-total-revenue">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="survey-total-raw-labor">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="survey-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="survey-total-cost">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="survey-total-gna">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="survey-total-margin">$0</td>
                                         <td class="cost-col numeric" id="survey-total-expenses">$0</td>
-                                        <td class="cost-col numeric" id="survey-total-cost">$0</td>
                                     </tr>
                                 </tbody>
                                 <tbody id="survey-tbody" class="indent-level-2 hidden">
@@ -485,7 +495,7 @@
                                     <!-- SUBSURFACE UTILITY SUBS -->
                                     <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('subsurface-utility')">
                                         <td class="frozen-col indent-1">
-                                            <span id="subsurface-utility-toggle-icon">▼</span> SUBSURFACE UTILITY SUBS
+                                            <span id="subsurface-utility-toggle-icon">▼</span> Geotech Drilling Subs
                                         </td>
                                         <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="subsurface-utility-total-mh">0</td>
@@ -494,10 +504,10 @@
                                         <td class="cost-col numeric" id="subsurface-utility-total-revenue">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="subsurface-utility-total-raw-labor">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="subsurface-utility-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="subsurface-utility-total-cost">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="subsurface-utility-total-gna">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="subsurface-utility-total-margin">$0</td>
                                         <td class="cost-col numeric" id="subsurface-utility-total-expenses">$0</td>
-                                        <td class="cost-col numeric" id="subsurface-utility-total-cost">$0</td>
                                     </tr>
                                 </tbody>
                                 <tbody id="subsurface-utility-tbody" class="indent-level-2 hidden">
@@ -517,10 +527,10 @@
                                         <td class="cost-col section-header numeric" id="expenses-section-total-revenue">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="expenses-section-total-raw-labor">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="expenses-section-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="expenses-section-total-cost">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="expenses-section-total-gna">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="expenses-section-total-margin">$0</td>
                                         <td class="cost-col section-header numeric" id="expenses-section-total-expenses">$0</td>
-                                        <td class="cost-col section-header numeric" id="expenses-section-total-cost">$0</td>
                                     </tr>
                                 </tbody>
                                 <tbody id="ipc-section">
@@ -528,6 +538,10 @@
                                     <tr class="summary-row indent-level-1 clickable-row" onclick="toggleSubsRow('ipc')">
                                         <td class="frozen-col indent-1">
                                             <span id="ipc-toggle-icon">▼</span> IPC
+                                            <label class="ipc-toggle-switch" title="Toggle IPC on/off">
+                                                <input type="checkbox" id="ipc-enabled-toggle" checked onclick="event.stopPropagation(); toggleIpcEnabled();">
+                                                <span class="ipc-toggle-slider"></span>
+                                            </label>
                                         </td>
                                         <td colspan="9" class="mh-col"></td>
                                         <td class="mh-col mh-col-keep numeric" id="ipc-total-mh">0</td>
@@ -536,10 +550,10 @@
                                         <td class="cost-col numeric" id="ipc-total-revenue">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="ipc-total-raw-labor">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="ipc-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="ipc-total-cost">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="ipc-total-gna">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="ipc-total-margin">$0</td>
                                         <td class="cost-col numeric" id="ipc-total-expenses">$0</td>
-                                        <td class="cost-col numeric" id="ipc-total-cost">$0</td>
                                     </tr>
                                 </tbody>
                                 <tbody id="ipc-tbody" class="indent-level-2 hidden"></tbody>
@@ -557,10 +571,10 @@
                                         <td class="cost-col numeric" id="odcs-total-revenue">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="odcs-total-raw-labor">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="odcs-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="odcs-total-cost">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="odcs-total-gna">$0</td>
                                         <td class="cost-col numeric revenue-detail-col" id="odcs-total-margin">$0</td>
                                         <td class="cost-col numeric" id="odcs-total-expenses">$0</td>
-                                        <td class="cost-col numeric" id="odcs-total-cost">$0</td>
                                     </tr>
                                 </tbody>
                                 <tbody id="odcs-tbody" class="indent-level-2 hidden"></tbody>
@@ -576,10 +590,10 @@
                                         <td class="cost-col section-header numeric" id="contingency-total-revenue">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="contingency-total-raw-labor">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="contingency-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="contingency-total-cost">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="contingency-total-gna">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="contingency-total-margin">$0</td>
                                         <td class="cost-col section-header numeric" id="contingency-total-expenses">$0</td>
-                                        <td class="cost-col section-header numeric" id="contingency-total-cost">$0</td>
                                     </tr>
                                 </tbody>
 
@@ -597,10 +611,10 @@
                                         <td class="cost-col section-header numeric" id="esdc-total-revenue">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="esdc-total-raw-labor">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="esdc-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="esdc-total-cost">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="esdc-total-gna">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="esdc-total-margin">$0</td>
                                         <td class="cost-col section-header numeric" id="esdc-total-expenses">$0</td>
-                                        <td class="cost-col section-header numeric" id="esdc-total-cost">$0</td>
                                     </tr>
                                 </tbody>
 
@@ -618,17 +632,20 @@
                                         <td class="cost-col section-header numeric" id="tscd-total-revenue">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="tscd-total-raw-labor">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="tscd-total-burden">$0</td>
+                                        <td class="cost-col section-header numeric" id="tscd-total-cost">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="tscd-total-gna">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="tscd-total-margin">$0</td>
                                         <td class="cost-col section-header numeric" id="tscd-total-expenses">$0</td>
-                                        <td class="cost-col section-header numeric" id="tscd-total-cost">$0</td>
                                     </tr>
                                 </tbody>
 
                                 <!-- ESCALATION Section (at bottom) -->
                                 <tbody>
                                     <tr class="section-header-row">
-                                        <td class="frozen-col section-header">ESCALATION</td>
+                                        <td class="frozen-col section-header">
+                                            ESCALATION
+                                            <button class="escalation-details-btn" onclick="openEscalationModal()" title="View Escalation Breakdown">📊</button>
+                                        </td>
                                         <td colspan="9" class="mh-col section-header"></td>
                                         <td class="mh-col mh-col-keep section-header numeric" id="escalation-total-mh">0</td>
                                         <td class="mh-col mh-toggle-cell section-header"></td>
@@ -636,17 +653,27 @@
                                         <td class="cost-col section-header numeric" id="escalation-total-revenue">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="escalation-total-raw-labor">$0</td>
                                         <td class="cost-col section-header numeric revenue-detail-col" id="escalation-total-burden">$0</td>
-                                        <td class="cost-col section-header numeric revenue-detail-col" id="escalation-total-gna">$0</td>
-                                        <td class="cost-col section-header numeric revenue-detail-col" id="escalation-total-margin">
-                                            $0
-                                            <button class="escalation-details-btn" onclick="openEscalationModal()" title="View Escalation Breakdown">📊</button>
-                                        </td>
-                                        <td class="cost-col section-header numeric" id="escalation-total-expenses">$0</td>
                                         <td class="cost-col section-header numeric" id="escalation-total-cost">$0</td>
+                                        <td class="cost-col section-header numeric revenue-detail-col" id="escalation-total-gna">$0</td>
+                                        <td class="cost-col section-header numeric revenue-detail-col" id="escalation-total-margin">$0</td>
+                                        <td class="cost-col section-header numeric" id="escalation-total-expenses">$0</td>
                                     </tr>
                                 </tbody>
-                                <tfoot style="display: none;">
-                                    <!-- Keep tfoot for reference but hide it -->
+                                <tfoot id="unified-totals-footer">
+                                    <tr class="totals-row">
+                                        <td class="frozen-col totals-label"><strong>GRAND TOTAL</strong></td>
+                                        <td colspan="9" class="mh-col"></td>
+                                        <td class="mh-col mh-col-keep numeric" id="grand-total-mh">0</td>
+                                        <td class="mh-col mh-toggle-cell"></td>
+                                        <td class="cost-col numeric">-</td>
+                                        <td class="cost-col numeric" id="grand-total-revenue">$0</td>
+                                        <td class="cost-col numeric revenue-detail-col" id="grand-total-raw-labor">$0</td>
+                                        <td class="cost-col numeric revenue-detail-col" id="grand-total-burden">$0</td>
+                                        <td class="cost-col numeric" id="grand-total-cost">$0</td>
+                                        <td class="cost-col numeric revenue-detail-col" id="grand-total-gna">$0</td>
+                                        <td class="cost-col numeric revenue-detail-col" id="grand-total-margin">$0</td>
+                                        <td class="cost-col numeric" id="grand-total-expenses">$0</td>
+                                    </tr>
                                 </tfoot>
                             </table>
                         </div>
@@ -1893,8 +1920,8 @@
                             <input type="number" id="escalation-base-rate" value="5" min="0" max="20" step="0.1" onchange="recalculateEscalation()">
                         </div>
                         <div class="input-group" style="display: inline-block; width: auto;">
-                            <label>Project Duration (Years)</label>
-                            <input type="number" id="escalation-duration-years" value="3" min="1" max="10" step="1" onchange="recalculateEscalation()">
+                            <label>Project Duration (Months)</label>
+                            <input type="number" id="escalation-duration-months" value="36" min="1" max="120" step="1" onchange="recalculateEscalation()">
                         </div>
                         <p style="font-size: 11px; color: #888; margin-top: 8px;">
                             <strong>Note:</strong> Year 1 has no escalation unless NTP is after March 1 of the following fiscal year. Financial escalation year starts March 1.
@@ -1918,7 +1945,7 @@
                             <tr>
                                 <th>Year</th>
                                 <th>Hours</th>
-                                <th>Hour Distribution (%)</th>
+                                <th title="Click to edit and override the bell curve distribution">Hour Distribution (%) <span style="font-size: 9px; color: #ffc107;">✎</span></th>
                                 <th>Effective Escalation</th>
                                 <th>Rate (%/yr)</th>
                                 <th>Compounded Factor</th>
@@ -1947,6 +1974,7 @@
                 <!-- Actions -->
                 <div class="escalation-modal-actions">
                     <button class="btn" onclick="resetEscalationToDefault()">Reset to Default</button>
+                    <button class="btn btn-secondary" onclick="resetHourDistribution()" title="Reset hour distribution to bell curve">Reset Distribution</button>
                     <button class="btn btn-primary" onclick="applyEscalationChanges()">Apply Changes</button>
                 </div>
             </div>

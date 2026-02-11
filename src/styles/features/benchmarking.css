@@ -1331,6 +1331,155 @@
     padding-left: 40px !important;
 }
 
+/* Indirects Toggle Switch */
+.indirects-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 24px;
+    height: 12px;
+    margin-left: 6px;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.indirects-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.indirects-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 12px;
+}
+
+.indirects-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 8px;
+    width: 8px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.indirects-toggle-switch input:checked + .indirects-toggle-slider {
+    background-color: #4caf50;
+}
+
+.indirects-toggle-switch input:checked + .indirects-toggle-slider:before {
+    transform: translateX(12px);
+}
+
+.indirects-toggle-switch input:not(:checked) + .indirects-toggle-slider {
+    background-color: #ff5252;
+}
+
+/* Indirects Divisor Input */
+.indirects-divisor-wrapper {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    font-size: 10px;
+    color: #666;
+    font-weight: normal;
+    gap: 2px;
+}
+
+.indirects-divisor-wrapper .divisor-label {
+    font-size: 10px;
+    color: #666;
+    font-weight: normal;
+}
+
+.indirects-divisor-input {
+    width: 16px;
+    padding: 0 1px;
+    font-size: 10px;
+    border: 1px solid #999;
+    border-radius: 2px;
+    text-align: center;
+    height: 14px;
+    background: #e0e0e0;
+    color: #333;
+    -moz-appearance: textfield;
+}
+
+/* Show spinner arrows on hover/focus */
+.indirects-divisor-input::-webkit-inner-spin-button,
+.indirects-divisor-input::-webkit-outer-spin-button {
+    opacity: 1;
+    height: 12px;
+}
+
+.indirects-divisor-input:focus {
+    outline: none;
+    border-color: #1976d2;
+    background: #fff;
+}
+
+/* IPC Toggle Switch */
+.ipc-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 28px;
+    height: 14px;
+    margin-left: 8px;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.ipc-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.ipc-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 14px;
+}
+
+.ipc-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 10px;
+    width: 10px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.ipc-toggle-switch input:checked + .ipc-toggle-slider {
+    background-color: #4caf50;
+}
+
+.ipc-toggle-switch input:checked + .ipc-toggle-slider:before {
+    transform: translateX(14px);
+}
+
+.ipc-toggle-switch input:not(:checked) + .ipc-toggle-slider {
+    background-color: #ff5252;
+}
+
 /* Summary Row Styling */
 .unified-estimate-table .summary-row {
     font-weight: 700;
@@ -1385,6 +1534,29 @@ tbody.hidden {
 .unified-estimate-table tfoot .summary-row {
     font-weight: 700;
     font-size: 11px;
+}
+
+/* Grand Totals Row */
+.unified-estimate-table .totals-row {
+    background: #2a5298;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    border-top: 3px solid #1a3a6e;
+}
+
+.unified-estimate-table .totals-row td {
+    padding: 8px 4px;
+    border-bottom: none;
+}
+
+.unified-estimate-table .totals-row .totals-label {
+    background: #2a5298;
+    color: #fff;
+}
+
+.unified-estimate-table .totals-row .numeric {
+    text-align: right;
 }
 
 .unified-estimate-table tfoot #unified-total-mh {
